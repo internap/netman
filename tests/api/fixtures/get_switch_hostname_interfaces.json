@@ -1,0 +1,38 @@
+[
+   {
+      "name": "ethernet 1/4",
+      "shutdown": false,
+      "bond_master": null,
+      "port_mode": "trunk",
+      "access_vlan": null,
+      "trunk_native_vlan": 2999,
+      "trunk_vlans": [3000, 3001, 3002]
+   },
+   {
+      "name": "FastEthernet0/3",
+      "shutdown": true,
+      "bond_master": null,
+      "port_mode": "access",
+      "access_vlan": 1999,
+      "trunk_native_vlan": null,
+      "trunk_vlans": []
+   },
+   {
+      "name": "GigabitEthernet0/6",
+      "shutdown": false,
+      "bond_master": null,
+      "port_mode": "dynamic",
+      "access_vlan": 1999,
+      "trunk_native_vlan": 2999,
+      "trunk_vlans": [3000, 3001, 3002]
+   },
+   {
+      "name": "GigabitEthernet0/8",
+      "shutdown": false,
+      "bond_master": 12,
+      "port_mode": "bond_member",
+      "access_vlan": null,
+      "trunk_native_vlan": null,
+      "trunk_vlans": []
+   }
+]

@@ -1,0 +1,60 @@
+[
+   {
+      "number": 1,
+      "name": "One",
+      "ips": [
+         {"address": "1.1.1.1", "mask": 24}
+      ],
+      "vrf_forwarding": "MY_VRF",
+      "access_groups": {
+         "in": "Blah_blah",
+         "out": null
+      },
+      "vrrp_groups": [
+         {
+            "id": 1,
+            "ips": ["1.1.1.2"],
+            "priority": 90,
+            "hello_interval": 5,
+            "dead_interval": 15,
+            "track_id": "101",
+            "track_decrement": 50
+         }
+      ],
+      "dhcp_relay_servers": []
+   },
+   {
+      "number": 2,
+      "name": "",
+      "ips": [
+         {"address": "2.2.2.2", "mask": 24},
+         {"address": "3.3.3.3", "mask": 24}
+      ],
+      "vrf_forwarding": null,
+      "access_groups": {
+         "in": null,
+         "out": null
+      },
+      "vrrp_groups": [
+         {
+            "id": 1,
+            "ips": ["2.2.2.2"],
+            "priority": 100,
+            "hello_interval":null,
+            "dead_interval":null,
+            "track_id":null,
+            "track_decrement":null
+         },
+         {
+            "id": 2,
+            "ips": ["3.3.3.1"],
+            "priority": 100,
+            "hello_interval":null,
+            "dead_interval":null,
+            "track_id":null,
+            "track_decrement":null
+         }
+      ],
+      "dhcp_relay_servers": ["10.10.10.1"]
+   }
+]

@@ -1,0 +1,9 @@
+{
+  "id": 2,
+  "ips": ["10.10.0.1", "10.10.0.2", "10.10.0.3"],
+  "priority": 100,
+  "hello_interval": 5,
+  "dead_interval": 15,
+  "track_decrement": 50,
+  "track_id": "101"
+}

@@ -1,0 +1,8 @@
+nose>=1.2.1
+mock>=1.0.1
+pyhamcrest>=1.6
+-e git+https://github.com/has207/flexmock.git@15570d8b4999cd62e6fdf75d90431d31f9def6a3#egg=flexmock
+MockSSH>=1.4.1
+Sphinx
+sphinxcontrib-httpdomain
+fake-switches>=1.0.2
