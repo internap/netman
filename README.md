@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/internaphosting/netman.svg?branch=master)](https://travis-ci.org/internaphosting/netman)
 
 Netman
 ======
