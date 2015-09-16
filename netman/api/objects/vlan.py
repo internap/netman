@@ -14,13 +14,13 @@
 
 from netaddr import IPNetwork
 
-from netman.api.serializer import Serializer
+from netman.api.objects import Serializable
 from netman.api.objects.vrrp_group import SerializableVrrpGroup
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.vlan import Vlan
 
 
-class SerializableVlan(Serializer):
+class SerializableVlan(Serializable):
     def __init__(self, src):
         super(SerializableVlan, self).__init__(['number', 'name', 'ips', 'vrrp_groups', 'vrf_forwarding',
                                                 'access_groups', 'dhcp_relay_servers'])

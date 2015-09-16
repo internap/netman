@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.serializer import Serializer
+from netman.api.objects import Serializable
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC, BOND_MEMBER
 
@@ -24,7 +24,7 @@ serialized_port_mode = {
 }
 
 
-class SerializableInterface(Serializer):
+class SerializableInterface(Serializable):
     def __init__(self, src):
         super(SerializableInterface, self).__init__(['name', 'shutdown', 'bond_master', 'port_mode', 'access_vlan', 'trunk_native_vlan', 'trunk_vlans'])
 

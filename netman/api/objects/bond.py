@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.serializer import Serializer
+from netman.api.objects import Serializable
 from netman.core.objects.bond import Bond
 from netman.api.objects.interface import SerializableInterface
 
 
-class SerializableBond(Serializer):
+class SerializableBond(Serializable):
     def __init__(self, src):
         super(SerializableBond, self).__init__(['number', 'link_speed', 'interface', 'members'])
 

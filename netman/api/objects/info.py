@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.serializer import Serializer
+from netman.api.objects import Serializable
 
 
-class SerializableInfo(Serializer):
+class SerializableInfo(Serializable):
     def __init__(self, status=None, version=None):
         super(SerializableInfo, self).__init__(['status', 'version'])
 

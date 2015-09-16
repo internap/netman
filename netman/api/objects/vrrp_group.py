@@ -14,11 +14,11 @@
 
 from netaddr import IPNetwork
 
-from netman.api.serializer import Serializer
+from netman.api.objects import Serializable
 from netman.core.objects.vrrp_group import VrrpGroup
 
 
-class SerializableVrrpGroup(Serializer):
+class SerializableVrrpGroup(Serializable):
     def __init__(self, src):
         super(SerializableVrrpGroup, self).__init__(['id', 'ips', 'hello_interval', 'dead_interval', 'priority',
                                                      'track_id', 'track_decrement'])

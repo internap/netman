@@ -13,12 +13,13 @@
 # limitations under the License.
 
 from functools import wraps
+import json
 import logging
 
-from flask import make_response, request, Response
+from flask import make_response, request, Response, current_app
 from werkzeug.routing import BaseConverter
+from netman.api.objects import Serializer
 
-from netman.api.serializer import SWJsonify
 from netman.core.objects.exceptions import UnknownResource, Conflict
 
 
@@ -32,8 +33,7 @@ def to_response(fn):
             else:
                 code, data = result
                 if data is not None:
-                    response = SWJsonify(data)
-                    response.status_code = code
+                    response = json_response(data, code)
                 else:
                     response = make_response("", code)
         except (BadRequest, ValueError) as e:
@@ -61,7 +61,16 @@ def exception_to_response(exception, code):
             data["error-module"] = exception.__module__
         data["error-class"] = exception.__class__.__name__
 
-    response = SWJsonify(data)
+    response = json_response(data, code)
+    response.status_code = code
+
+    return response
+
+
+def json_response(data, code):
+
+    json_data = json.dumps(data, cls=Serializer, indent=None)
+    response = current_app.response_class(json_data, mimetype='application/json; charset=UTF-8')
     response.status_code = code
 
     return response
