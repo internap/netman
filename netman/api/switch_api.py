@@ -654,7 +654,7 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Bond)
     def set_bond_description(self, switch, bond_number, description):
         """
-        Add a description to the a bonded interface
+        Add a description to the bonded interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
