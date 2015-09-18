@@ -430,7 +430,7 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Bond, Vlan)
     def remove_bond_trunk_vlan(self, switch, bond_number, vlan_number):
         """
-        Removes a vlan from the trunk members of an interface
+        Removes a vlan from the trunk members of a bonded interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
@@ -654,7 +654,7 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Bond)
     def set_bond_description(self, switch, bond_number, description):
         """
-        Add a description to the interface
+        Add a description to the bonded interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
@@ -669,7 +669,7 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Bond)
     def remove_bond_description(self, switch, bond_number):
         """
-        Remove interface description
+        Remove bonded interface description
 
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
@@ -683,7 +683,7 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Bond)
     def set_bond_spanning_tree(self, switch, bond_number, state):
         """
-        Add a description to the interface
+        Enable spanning tree on a bonded interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
@@ -702,7 +702,7 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Interface)
     def set_interface_spanning_tree(self, switch, interface_id, state):
         """
-        Add a description to the interface
+        Enable spanning tree on an interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
