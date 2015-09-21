@@ -63,33 +63,33 @@ class TerminalClientTest(unittest.TestCase):
     port = None
 
     def test_connect(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        res = ssh.do('hello')
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        res = client.do('hello')
         assert_that(res, equal_to(['Bonjour']))
 
     def test_connect_timeout(self):
         with self.assertRaises(Timeout):
-            SshClient("1.0.0.1", "whatever", "whatever", connect_timeout=1)
+            self.client("1.0.0.1", "whatever", "whatever", connect_timeout=1)
 
     def test_connect_and_salute(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        ssh.do('passwd', wait_for="Password:")
-        ssh.do('1234')
-        res = ssh.do('hello')
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        client.do('passwd', wait_for="Password:")
+        client.do('1234')
+        res = client.do('hello')
         assert_that(res, equal_to(['Bonjour']))
 
     def test_timeout(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port, command_timeout=1)
-        ssh.do('passwd', wait_for="Password:")
-        ssh.do('1234')
+        client = self.client("127.0.0.1", "admin", "1234", self.port, command_timeout=1)
+        client.do('passwd', wait_for="Password:")
+        client.do('1234')
         with self.assertRaises(Timeout):
-            ssh.do('hang')
+            client.do('hang')
 
     def test_async_result(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        ssh.do('passwd', wait_for="Password:")
-        ssh.do('1234')
-        res = ssh.do('flush')
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        client.do('passwd', wait_for="Password:")
+        client.do('1234')
+        res = client.do('flush')
         assert_that(res, equal_to([
             "Line 1",
             "Line 2",
@@ -99,45 +99,45 @@ class TerminalClientTest(unittest.TestCase):
             ]))
 
     def test_empty_lines_are_filtered_out(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        res = ssh.do('skips')
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        res = client.do('skips')
         assert_that(res, equal_to(["5 lines skipped!"]))
 
     def test_read_prompt(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        res = ssh.get_current_prompt()
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        res = client.get_current_prompt()
         assert_that(res, equal_to("hostname>"))
 
-        ssh.do('passwd', wait_for="Password:")
-        ssh.do('1234')
+        client.do('passwd', wait_for="Password:")
+        client.do('1234')
 
-        res = ssh.get_current_prompt()
+        res = client.get_current_prompt()
         assert_that(res, equal_to("hostname#"))
 
     def test_exit(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        ssh.do('passwd', wait_for="Password:")
-        ssh.do('1234')
-        res = ssh.do('hello')
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        client.do('passwd', wait_for="Password:")
+        client.do('1234')
+        res = client.do('hello')
         assert_that(res, equal_to(['Bonjour']))
 
-        ssh.quit('exit')
+        client.quit('exit')
 
     def test_chunked_reading(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port, reading_chunk_size=1)
-        res = ssh.do('hello')
+        client = self.client("127.0.0.1", "admin", "1234", self.port, reading_chunk_size=1)
+        res = client.do('hello')
         assert_that(res, equal_to(['Bonjour']))
 
     def test_a_complete_log_of_the_conversation_is_kept_and_up_to_date(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", self.port)
-        ssh.do('passwd', wait_for="Password:")
-        ssh.do('1234')
-        res = ssh.do('hello')
+        client = self.client("127.0.0.1", "admin", "1234", self.port)
+        client.do('passwd', wait_for="Password:")
+        client.do('1234')
+        res = client.do('hello')
         assert_that(res, equal_to(['Bonjour']))
 
-        ssh.quit('exit')
+        client.quit('exit')
 
-        assert_that(ssh.full_log.replace("\r\n", "\n"), equal_to(textwrap.dedent("""\
+        assert_that(client.full_log.replace("\r\n", "\n"), equal_to(textwrap.dedent("""\
             hostname>passwd
             Password:
             hostname#hello
@@ -145,20 +145,19 @@ class TerminalClientTest(unittest.TestCase):
             hostname#""")))
 
     def test_send_a_keystroke(self):
-        ssh = self.client("127.0.0.1", "admin", "1234", port=self.port)
-        res = ssh.do('keystroke', wait_for="?", include_last_line=True)
+        client = self.client("127.0.0.1", "admin", "1234", port=self.port)
+        res = client.do('keystroke', wait_for="?", include_last_line=True)
         assert_that(res[-1], is_("whatup?"))
-        res = ssh.send_key('k', wait_for=">", include_last_line=True)
+        res = client.send_key('k', wait_for=">", include_last_line=True)
         assert_that(res, equal_to(['K pressed', "hostname>"]))
 
-        ssh.quit('exit')
+        client.quit('exit')
 
-        assert_that(ssh.full_log.replace("\r\n", "\n"), equal_to(textwrap.dedent("""\
+        assert_that(client.full_log.replace("\r\n", "\n"), equal_to(textwrap.dedent("""\
             hostname>keystroke
             whatup?k
             K pressed
             hostname>""")))
-
 
 
 class SshClientTest(TerminalClientTest):
@@ -185,7 +184,6 @@ class TelnetClientTest(TerminalClientTest):
     @classmethod
     def setUpClass(cls):
         reactor.listenTCP(interface="127.0.0.1", port=cls.port, factory=SwitchTelnetFactory("hostname>", commands))
-
 
 
 class SwitchTelnetFactory(Factory):

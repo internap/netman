@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from _socket import timeout
 
 import re
 import telnetlib
@@ -76,9 +77,9 @@ class TelnetClient(TerminalClient):
         return result[2]
 
 
-def _connect(host, port, timeout):
+def _connect(host, port, connect_timeout):
     try:
-        telnet = telnetlib.Telnet(host, port, timeout)
+        telnet = telnetlib.Telnet(host, port, connect_timeout)
     except timeout:
         raise Timeout()
 
