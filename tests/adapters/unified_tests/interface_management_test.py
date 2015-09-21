@@ -30,3 +30,13 @@ class InterfaceManagementTest(ConfiguredTestCase):
         response = self.put("/switches/{switch}/interfaces/{port}/shutdown", data='false')
         assert_that(response.status_code, equal_to(204))
 
+    @skip_on_switches("cisco", "brocade")
+    def test_enable_spanning_tree(self):
+        response = self.put("/switches/{switch}/interfaces/{port}/spanning-tree", data='true')
+        assert_that(response.status_code, equal_to(204))
+
+    @skip_on_switches("cisco", "brocade")
+    def test_disable_spanning_tree(self):
+        response = self.put("/switches/{switch}/interfaces/{port}/spanning-tree", data='false')
+        assert_that(response.status_code, equal_to(204))
+

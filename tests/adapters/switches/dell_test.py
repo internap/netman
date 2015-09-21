@@ -936,6 +936,28 @@ class DellTest(unittest.TestCase):
 
         self.switch.remove_trunk_vlan("ethernet 1/g10", 1000)
 
+    def test_enable_interface_spanning_tree(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("spanning-tree disable")
+            self.mocked_ssh_client.should_receive("do").with_args("spanning-tree portfast")
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.enable_interface_spanning_tree('ethernet 1/g10')
+
+    def test_disable_interface_spanning_tree(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no spanning-tree disable")
+            self.mocked_ssh_client.should_receive("do").with_args("no spanning-tree portfast")
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.disable_interface_spanning_tree('ethernet 1/g10')
+
 
     @contextmanager
     def configuring_and_committing(self):

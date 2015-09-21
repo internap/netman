@@ -215,6 +215,16 @@ class Dell(SwitchBase):
 
         return interfaces
 
+    def enable_interface_spanning_tree(self, interface_id):
+        with self.config(), self.interface(interface_id):
+            self.ssh.do("spanning-tree disable")
+            self.ssh.do("spanning-tree portfast")
+
+    def disable_interface_spanning_tree(self, interface_id):
+        with self.config(), self.interface(interface_id):
+            self.ssh.do("no spanning-tree disable")
+            self.ssh.do("no spanning-tree portfast")
+
     def read_interface(self, interface_name):
         data = self.get_interface_data(interface_name)
 
