@@ -55,7 +55,7 @@ class TelnetClient(TerminalClient):
         self.telnet.read_until(":", self.command_timeout)
         self.telnet.write(password + "\n")
 
-        result = self.wait_for_it(list(self.prompt))
+        result = self._wait_for(list(self.prompt))
         self.full_log += result[len(password):].lstrip()
 
     def _read_until(self, wait_for):
@@ -64,12 +64,12 @@ class TelnetClient(TerminalClient):
             expect = [expect]
         expect = [re.escape(s) for s in list(expect)]
 
-        result = self.wait_for_it(expect)
+        result = self._wait_for(expect)
         self.full_log += result
 
         return result
 
-    def wait_for_it(self, expect):
+    def _wait_for(self, expect):
         result = self.telnet.expect(expect, timeout=self.command_timeout)
         if result[0] == -1:
             raise Timeout()
