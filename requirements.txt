@@ -1,5 +1,5 @@
 Flask>=0.9
-paramiko>=1.15.1
+paramiko==1.15.1
 netaddr>=0.7.13
 redlockfifo>=0.0.1
 -e git+https://github.com/leopoul/ncclient.git@master#egg=ncclient
