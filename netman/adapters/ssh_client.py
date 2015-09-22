@@ -17,9 +17,10 @@ import logging
 import time
 
 import paramiko
+from netman.adapters.terminal_client import TerminalClient, Timeout
 
 
-class SshClient(object):
+class SshClient(TerminalClient):
 
     def __init__(self, host, username, password, port=22, prompt=('>', '#'), connect_timeout=10, command_timeout=30,
                  reading_interval=0.01, reading_chunk_size=9999):
@@ -38,28 +39,19 @@ class SshClient(object):
         self.channel = None
         self.full_log = ""
 
-        self.open_channel(host, port, username, password, connect_timeout)
+        self._open_channel(host, port, username, password, connect_timeout)
 
     def do(self, command, wait_for=None, include_last_line=False):
         self.logger.debug("[SSH][%s@%s:%d] Send >> %s" % (self.username, self.host, self.port, command))
 
         self.channel.send(command + '\n')
-        return self.read_until(wait_for, include_last_line)
+        return self._read_until(wait_for, include_last_line)
 
     def send_key(self, key, wait_for=None, include_last_line=False):
         self.logger.debug("[SSH][%s@%s:%d] Send KEY >> %s" % (self.username, self.host, self.port, key))
 
         self.channel.send(key)
-        return self.read_until(wait_for, include_last_line)
-
-    def read_until(self, wait_for, include_last_line):
-        self.wait_for(wait_for or self.prompt)
-
-        lines = self.current_buffer.splitlines()[1:]
-        if not include_last_line:
-            lines = lines[:-1]
-
-        return filter(None, lines)
+        return self._read_until(wait_for, include_last_line)
 
     def quit(self, command):
         self.logger.debug("[SSH][%s@%s:%d] Quit >> %s" % (self.username, self.host, self.port, command))
@@ -69,7 +61,7 @@ class SshClient(object):
     def get_current_prompt(self):
         return self.current_buffer.splitlines()[-1]
 
-    def open_channel(self, host, port, username, password, connect_timeout):
+    def _open_channel(self, host, port, username, password, connect_timeout):
         self.client = paramiko.SSHClient()
         self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         try:
@@ -85,9 +77,18 @@ class SshClient(object):
 
         self.channel = self.client.invoke_shell()
 
-        self.wait_for(self.prompt)
+        self._wait_for(self.prompt)
 
-    def wait_for(self, wait_for):
+    def _read_until(self, wait_for, include_last_line):
+        self._wait_for(wait_for or self.prompt)
+
+        lines = self.current_buffer.splitlines()[1:]
+        if not include_last_line:
+            lines = lines[:-1]
+
+        return filter(None, lines)
+
+    def _wait_for(self, wait_for):
         self.current_buffer = ''
 
         started_at = time.time()
@@ -101,7 +102,3 @@ class SshClient(object):
             self.logger.debug("[SSH][%s@%s:%d] Recv << %s" % (self.username, self.host, self.port, repr(read)))
             self.full_log += read
             self.current_buffer += read
-
-
-class Timeout(Exception):
-    pass
