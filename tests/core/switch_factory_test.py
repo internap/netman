@@ -55,7 +55,9 @@ class SwitchFactoryTest(unittest.TestCase):
             "brocade": brocade.factory,
             "juniper": juniper.standard_factory,
             "juniper_qfx_copper": juniper.qfx_copper_factory,
-            "dell": dell.factory
+            "dell": dell.factory_ssh,
+            "dell_ssh": dell.factory_ssh,
+            "dell_telnet": dell.factory_telnet
         }))
 
     def test_two_get_connections_on_the_same_switch_should_give_the_same_semaphore(self):

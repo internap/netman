@@ -14,7 +14,7 @@
 
 import MockSSH
 
-from fake_switches.telnet.stateful_telnet import StatefulTelnet
+from fake_switches.terminal.telnet import StatefulTelnet
 
 
 class MockTelnet(StatefulTelnet):

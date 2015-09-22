@@ -17,7 +17,9 @@ from fake_switches.cisco.cisco_core import CiscoSwitchCore
 from fake_switches.dell.dell_core import DellSwitchCore
 from fake_switches.juniper.juniper_core import JuniperSwitchCore
 from fake_switches.juniper.juniper_qfx_copper_core import JuniperQfxCopperSwitchCore
+from fake_switches.ssh_service import SwitchSshService
 from fake_switches.switch_configuration import Port
+from fake_switches.telnet_service import SwitchTelnetService
 
 from tests.adapters.unified_tests.bond_management_test import BondManagementTest
 from tests.adapters.unified_tests.interface_management_test import InterfaceManagementTest
@@ -35,6 +37,7 @@ available_models = [
         "password": "root",
         "test_port_name": "FastEthernet0/3",
         "core_class": CiscoSwitchCore,
+        "service_class": SwitchSshService,
         "ports": [
             Port("FastEthernet0/1"),
             Port("FastEthernet0/2"),
@@ -50,6 +53,7 @@ available_models = [
         "password": "root",
         "test_port_name": "1/3",
         "core_class": BrocadeSwitchCore,
+        "service_class": SwitchSshService,
         "ports": [
             Port("ethernet 1/1"),
             Port("ethernet 1/2"),
@@ -65,6 +69,7 @@ available_models = [
         "password": "root",
         "test_port_name": "ge-0/0/3",
         "core_class": JuniperSwitchCore,
+        "service_class": SwitchSshService,
         "ports": [
             Port("ge-0/0/1"),
             Port("ge-0/0/2"),
@@ -80,6 +85,7 @@ available_models = [
         "password": "root",
         "test_port_name": "ge-0/0/3",
         "core_class": JuniperQfxCopperSwitchCore,
+        "service_class": SwitchSshService,
         "ports": [
             Port("ge-0/0/1"),
             Port("ge-0/0/2"),
@@ -95,6 +101,25 @@ available_models = [
         "password": "root",
         "test_port_name": "ethernet 2/g2",
         "core_class": DellSwitchCore,
+        "service_class": SwitchSshService,
+        "ports": [
+            Port("ethernet 1/g1"),
+            Port("ethernet 1/g2"),
+            Port("ethernet 2/g1"),
+            Port("ethernet 2/g2"),
+            Port("ethernet 1/xg1"),
+            Port("ethernet 2/xg1")
+        ]
+    },
+    {
+        "model": "dell_telnet",
+        "hostname": "127.0.0.1",
+        "port": 11007,
+        "username": "root",
+        "password": "root",
+        "test_port_name": "ethernet 2/g2",
+        "core_class": DellSwitchCore,
+        "service_class": SwitchTelnetService,
         "ports": [
             Port("ethernet 1/g1"),
             Port("ethernet 1/g2"),

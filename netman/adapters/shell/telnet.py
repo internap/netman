@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from _socket import timeout
-
 import re
 import telnetlib
 from telnetlib import IAC, DO, DONT, WILL, WONT
 
-from netman.adapters.terminal_client import TerminalClient, Timeout
+from netman.adapters.shell.base import TerminalClient, Timeout
 
 
 class TelnetClient(TerminalClient):
@@ -33,7 +32,7 @@ class TelnetClient(TerminalClient):
         self._login(username, password)
 
     def do(self, command, wait_for=None, include_last_line=False):
-        self.telnet.write(command + "\n")
+        self.telnet.write(str(command) + "\n")
         result = self._read_until(wait_for)
 
         return _filter_input_and_empty_lines(command, include_last_line, result)
@@ -52,9 +51,9 @@ class TelnetClient(TerminalClient):
 
     def _login(self, username, password):
         self.telnet.read_until(":", self.command_timeout)
-        self.telnet.write(username + "\n")
+        self.telnet.write(str(username) + "\n")
         self.telnet.read_until(":", self.command_timeout)
-        self.telnet.write(password + "\n")
+        self.telnet.write(str(password) + "\n")
 
         result = self._wait_for(list(self.prompt))
         self.full_log += result[len(password):].lstrip()

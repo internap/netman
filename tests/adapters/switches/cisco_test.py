@@ -1587,7 +1587,7 @@ class CiscoTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 
-    @mock.patch("netman.adapters.ssh_client.SshClient")
+    @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_connect(self, ssh_client_class_mock):
         self.switch = Cisco(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="cisco"))
 
@@ -1608,7 +1608,7 @@ class CiscoTest(unittest.TestCase):
             port=22
         )
 
-    @mock.patch("netman.adapters.ssh_client.SshClient")
+    @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_auto_enabled_switch_doesnt_require_enable(self, ssh_client_class_mock):
         self.switch = Cisco(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="cisco", port=8000))
 

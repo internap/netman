@@ -30,7 +30,7 @@ from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 def test_factory():
     lock = mock.Mock()
-    switch = dell.factory(SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22), lock)
+    switch = dell.factory_ssh(SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22), lock)
 
     assert_that(switch, instance_of(SwitchTransactional))
     assert_that(switch.impl, instance_of(Dell))
@@ -46,21 +46,23 @@ class DellTest(unittest.TestCase):
 
     def setUp(self):
         self.lock = mock.Mock()
-        self.switch = dell.factory(SwitchDescriptor(model='dell', hostname="my.hostname", password="the_password"), self.lock)
+        self.switch = dell.factory_ssh(SwitchDescriptor(model='dell', hostname="my.hostname", password="the_password"), self.lock)
 
     def tearDown(self):
         flexmock_teardown()
 
     def command_setup(self):
         self.mocked_ssh_client = flexmock()
-        self.switch.impl.ssh = self.mocked_ssh_client
+        self.switch.impl.shell = self.mocked_ssh_client
 
     def test_switch_has_a_logger_configured_with_the_switch_name(self):
         assert_that(self.switch.logger.name, is_(Dell.__module__ + ".my.hostname"))
 
-    @mock.patch("netman.adapters.ssh_client.SshClient")
+    @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_connect(self, ssh_client_class_mock):
-        self.switch = Dell(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="dell"))
+        self.switch = Dell(
+            SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="dell"),
+            shell_factory=ssh_client_class_mock)
 
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
@@ -82,12 +84,12 @@ class DellTest(unittest.TestCase):
         logger.should_receive("debug")
 
         mocked_ssh_client = flexmock()
-        self.switch.impl.ssh = mocked_ssh_client
+        self.switch.impl.shell = mocked_ssh_client
         mocked_ssh_client.should_receive("quit").with_args("quit").once().ordered()
 
         logger.should_receive("info").with_args("FULL TRANSACTION LOG").once()
 
-        self.switch.impl.ssh.full_log = "FULL TRANSACTION LOG"
+        self.switch.impl.shell.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
     def test_shutdown_interface(self):
