@@ -20,7 +20,7 @@ from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase
 class IpManagementTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet")
     def test_adding_and_removing_ip_basic(self):
         self.post("/switches/{switch}/vlans", data={"number": 2345})
 
@@ -53,7 +53,7 @@ class IpManagementTest(ConfiguredTestCase):
 
         self.delete("/switches/{switch}/vlans/2345")
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet")
     def test_adding_unavailable_ips_and_various_errors(self):
         self.post("/switches/{switch}/vlans", data={"number": 2345})
 
@@ -84,7 +84,7 @@ class IpManagementTest(ConfiguredTestCase):
 
         self.delete("/switches/{switch}/vlans/2345")
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet")
     def test_handling_access_groups(self):
         self.post("/switches/{switch}/vlans", data={"number": 2345})
 

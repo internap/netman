@@ -14,7 +14,6 @@
 
 import threading
 
-from fake_switches.ssh_service import SwitchSshService
 from fake_switches.switch_configuration import SwitchConfiguration
 
 
@@ -34,9 +33,10 @@ class ThreadedReactor(threading.Thread):
                 privileged_passwords=[specs["password"]],
                 ports=specs["ports"])
 
-            SwitchSshService(
+            specs["service_class"](
                 specs["hostname"],
                 ssh_port=specs["port"],
+                telnet_port=specs["port"],
                 switch_core=specs["core_class"](switch_config),
                 users={specs["username"]: specs["password"]}
             ).hook_to_reactor(cls._threaded_reactor.reactor)

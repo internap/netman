@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from netman.adapters.shell.ssh import SshClient
+from netman.adapters.shell.telnet import TelnetClient
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.interface import Interface
@@ -19,40 +20,47 @@ from netman.adapters.switches.cisco import parse_vlan_ranges
 from netman.core.objects.vlan import Vlan
 from netman import regex
 from netman.core.objects.switch_transactional import SwitchTransactional
-from netman.adapters import ssh_client
 from netman.adapters.switches import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet
 from netman.core.objects.switch_base import SwitchBase
 
 
-def factory(switch_descriptor, lock):
+def factory_ssh(switch_descriptor, lock):
     return SwitchTransactional(
-        impl=Dell(switch_descriptor=switch_descriptor),
-        lock=lock
+        impl=Dell(switch_descriptor=switch_descriptor, shell_factory=SshClient),
+        lock=lock,
+    )
+
+
+def factory_telnet(switch_descriptor, lock):
+    return SwitchTransactional(
+        impl=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
+        lock=lock,
     )
 
 
 class Dell(SwitchBase):
 
-    def __init__(self, switch_descriptor):
+    def __init__(self, switch_descriptor, shell_factory):
         super(Dell, self).__init__(switch_descriptor)
-        self.ssh = None
+        self.shell = None
+        self.shell_factory = shell_factory
 
     def connect(self):
-        self.ssh = ssh_client.SshClient(
+        self.shell = self.shell_factory(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
             port=self.switch_descriptor.port or 22
         )
 
-        self.ssh.do("enable", wait_for=":")
-        self.ssh.do(self.switch_descriptor.password)
+        self.shell.do("enable", wait_for=":")
+        self.shell.do(self.switch_descriptor.password)
 
     def disconnect(self):
-        self.ssh.quit("quit")
-        self.logger.info(self.ssh.full_log)
+        self.shell.quit("quit")
+        self.logger.info(self.shell.full_log)
 
     def start_transaction(self):
         pass
@@ -64,32 +72,32 @@ class Dell(SwitchBase):
         pass
 
     def commit_transaction(self):
-        self.ssh.do("copy running-config startup-config", wait_for="? (y/n) ")
-        self.ssh.send_key("y")
+        self.shell.do("copy running-config startup-config", wait_for="? (y/n) ")
+        self.shell.send_key("y")
 
     def openup_interface(self, interface_id):
         with self.config(), self.interface(interface_id):
-            self.ssh.do('no shutdown')
+            self.shell.do('no shutdown')
 
     def shutdown_interface(self, interface_id):
         with self.config(), self.interface(interface_id):
-            self.ssh.do('shutdown')
+            self.shell.do('shutdown')
 
     def get_vlans(self):
-        result = self.ssh.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        result = self.shell.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
         vlans = parse_vlan_list(result)
         while len(result) > 0 and "--More--" in result[-1]:
-            result = self.ssh.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+            result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
             vlans += parse_vlan_list(result)
 
         return vlans
 
     def get_interfaces(self):
-        result = self.ssh.do('show interfaces status', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        result = self.shell.do('show interfaces status', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
         name_list = self.parse_interface_names(result)
 
         while len(result) > 0 and "--More--" in result[-1]:
-            result = self.ssh.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+            result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
             name_list += self.parse_interface_names(result)
 
         return [self.read_interface(name) for name in name_list]
@@ -110,7 +118,7 @@ class Dell(SwitchBase):
 
     def set_access_mode(self, interface_id):
         with self.config(), self.interface(interface_id):
-            self.ssh.do("switchport mode access")
+            self.shell.do("switchport mode access")
 
     def set_trunk_mode(self, interface_id):
         interface_data = self.get_interface_data(interface_id)
@@ -118,7 +126,7 @@ class Dell(SwitchBase):
 
         if actual_port_mode in ("access", None):
             with self.config(), self.interface(interface_id):
-                self.ssh.do("switchport mode trunk")
+                self.shell.do("switchport mode trunk")
 
     def set_access_vlan(self, interface_id, vlan):
         with self.config(), self.interface(interface_id):
@@ -128,7 +136,7 @@ class Dell(SwitchBase):
 
     def remove_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
-            self.ssh.do("no switchport access vlan")
+            self.shell.do("no switchport access vlan")
 
     def configure_native_vlan(self, interface_id, vlan):
         interface_data = self.get_interface_data(interface_id)
@@ -180,22 +188,22 @@ class Dell(SwitchBase):
             self.set("switchport {} allowed vlan remove {}", actual_port_mode, vlan)
 
     def config(self):
-        return SubShell(self.ssh, enter="configure", exit_cmd='exit')
+        return SubShell(self.shell, enter="configure", exit_cmd='exit')
 
     def vlan_database(self):
-        return SubShell(self.ssh, enter="vlan database", exit_cmd='exit')
+        return SubShell(self.shell, enter="vlan database", exit_cmd='exit')
 
     def interface(self, interface_id):
-        return SubShell(self.ssh, enter="interface %s" % interface_id, exit_cmd='exit',
+        return SubShell(self.shell, enter="interface %s" % interface_id, exit_cmd='exit',
                         validate=no_output(UnknownInterface, interface_id))
 
     def set(self, command, *arguments):
-        result = self.ssh.do(command.format(*arguments))
+        result = self.shell.do(command.format(*arguments))
 
         return ResultChecker(result)
 
     def get_interface_data(self, interface_id):
-        interface_data = self.ssh.do("show running-config interface {}".format(interface_id))
+        interface_data = self.shell.do("show running-config interface {}".format(interface_id))
         if len(interface_data) > 0 and regex.match("ERROR.*", interface_data[0]):
             raise UnknownInterface(interface_id)
         return interface_data
@@ -203,7 +211,7 @@ class Dell(SwitchBase):
     def copy_vlans(self, data, from_mode, to_mode):
         for line in data:
             if regex.match("switchport {} allowed vlan.*".format(from_mode), line):
-                self.ssh.do(line.replace(from_mode, to_mode))
+                self.shell.do(line.replace(from_mode, to_mode))
 
     def parse_interface_names(self, status_list):
         interfaces = []

@@ -20,7 +20,7 @@ from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase
 class VrrpTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet")
     def test_add_and_get_group(self):
         try:
             self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})

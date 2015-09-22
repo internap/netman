@@ -21,11 +21,12 @@ from hamcrest import equal_to, assert_that, is_
 from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 
-from netman.adapters.telnet_client import TelnetClient
-from tests.adapters.clients.mock_telnet import MockTelnet
-from tests.adapters.clients.mock_terminal_commands import passwd_change_protocol_prompt, passwd_write_password_to_transport, \
+from netman.adapters.shell.base import Timeout
+from netman.adapters.shell.ssh import SshClient
+from netman.adapters.shell.telnet import TelnetClient
+from tests.adapters.shell.mock_telnet import MockTelnet
+from tests.adapters.shell.mock_terminal_commands import passwd_change_protocol_prompt, passwd_write_password_to_transport, \
     HangingCommand, MultiAsyncWriteCommand, SkippingLineCommand, exit_command_success, KeystrokeAnsweredCommand
-from netman.adapters.ssh_client import SshClient, Timeout
 
 command_passwd = MockSSH.PromptingCommand(
     name='passwd',
@@ -65,6 +66,11 @@ class TerminalClientTest(unittest.TestCase):
     def test_connect(self):
         client = self.client("127.0.0.1", "admin", "1234", self.port)
         res = client.do('hello')
+        assert_that(res, equal_to(['Bonjour']))
+
+    def test_connect_unicode(self):
+        client = self.client(u"127.0.0.1", u"admin", u"1234", self.port)
+        res = client.do(u'hello')
         assert_that(res, equal_to(['Bonjour']))
 
     def test_connect_timeout(self):

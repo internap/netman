@@ -1925,7 +1925,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(list(result), equal_to(["shizzle 1/1", "shizzle 1/3", "shizzle 1/4", "shizzle 1/5", "shizzle 1/7"]))
 
 
-    @mock.patch("netman.adapters.ssh_client.SshClient")
+    @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_connect(self, ssh_client_class_mock):
         self.switch = Brocade(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade"))
 
@@ -1945,7 +1945,7 @@ class BrocadeTest(unittest.TestCase):
             port=22
         )
 
-    @mock.patch("netman.adapters.ssh_client.SshClient")
+    @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_auto_enabled_switch_doesnt_require_enable(self, ssh_client_class_mock):
         self.switch = Brocade(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade", port=8000))
 

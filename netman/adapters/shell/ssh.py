@@ -17,7 +17,8 @@ import logging
 import time
 
 import paramiko
-from netman.adapters.terminal_client import TerminalClient, Timeout
+
+from netman.adapters.shell.base import TerminalClient, Timeout
 
 
 class SshClient(TerminalClient):

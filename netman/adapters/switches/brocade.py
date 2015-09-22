@@ -17,12 +17,10 @@ import re
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
-from netman.core.objects.vrrp_group import VrrpGroup
-from netman.core.objects.switch_transactional import SwitchTransactional
 from netman import regex
-from netman.adapters import ssh_client
 from netman.adapters.switches import SubShell, split_on_bang, split_on_dedent, no_output, \
     ResultChecker
+from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
@@ -30,8 +28,10 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVla
     BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK
-from netman.core.objects.vlan import Vlan
 from netman.core.objects.switch_base import SwitchBase
+from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.vlan import Vlan
+from netman.core.objects.vrrp_group import VrrpGroup
 
 
 def factory(switch_descriptor, lock):
@@ -47,7 +47,7 @@ class Brocade(SwitchBase):
         self.ssh = None
 
     def connect(self):
-        self.ssh = ssh_client.SshClient(
+        self.ssh = ssh.SshClient(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,

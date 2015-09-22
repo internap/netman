@@ -16,18 +16,18 @@ import re
 
 from netaddr.ip import IPNetwork, IPAddress
 
-from netman.core.objects.switch_transactional import SwitchTransactional
 from netman import regex
-from netman.adapters import ssh_client
 from netman.adapters.switches import SubShell, split_on_dedent, split_on_bang, no_output
+from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
-from netman.core.objects.vlan import Vlan
 from netman.core.objects.switch_base import SwitchBase
+from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
 
 
@@ -45,7 +45,7 @@ class Cisco(SwitchBase):
         self.ssh = None
 
     def connect(self):
-        self.ssh = ssh_client.SshClient(
+        self.ssh = ssh.SshClient(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
