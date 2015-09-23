@@ -439,11 +439,15 @@ class Juniper(SwitchBase):
             raise
 
     def remove_bond(self, number):
-        config = self.query(all_interfaces)
+        config = self.query(all_interfaces, one_rstp_protocol_interface(bond_name(number)))
         self.get_bond_config(number, config)
 
         update = Update()
         update.add_interface(interface_removal(bond_name(number)))
+
+        rstp_node = first(config.xpath("data/configuration/protocols/rstp/interface/name[text()=\"{0:s}\"]/..".format(bond_name(number))))
+        if rstp_node is not None:
+            update.add_rstp_protocol_interface(rstp_interface_removal(bond_name(number)))
 
         for interface_node in self.get_bond_slaves_config(number, config):
             interface_name = first(interface_node.xpath("name")).text
@@ -662,6 +666,20 @@ def rstp_protocol_interfaces():
           </rstp>
         </protocols>
     """)
+
+
+def one_rstp_protocol_interface(interface_id):
+    def m():
+        return to_ele("""
+            <protocols>
+              <rstp>
+                <interface>
+                    <name>{}</name>
+                </interface>
+              </rstp>
+            </protocols>
+        """.format(interface_id))
+    return m
 
 
 class Update(object):

@@ -211,54 +211,6 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.set_access_mode("ge-0/0/6")
 
-    def test_remove_bond_delete_slaves_and_interface_at_same_time(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                    <ether-options>
-                      <auto-negotiation/>
-                      <ieee-802.3ad>
-                        <bundle>ae10</bundle>
-                      </ieee-802.3ad>
-                    </ether-options>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/2</name>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="delete">
-                        <name>ae10</name>
-                      </interface>
-                      <interface>
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <ieee-802.3ad operation="delete" />
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
-
-        self.switch.remove_bond(10)
-
     def test_add_interface_to_bond(self):
         with self.expecting_successful_transaction():
 
