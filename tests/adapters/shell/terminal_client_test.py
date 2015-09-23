@@ -18,7 +18,6 @@ import unittest
 
 import MockSSH
 from hamcrest import equal_to, assert_that, is_
-from twisted.internet import reactor
 from twisted.internet.protocol import Factory
 
 from netman.adapters.shell.base import Timeout
@@ -171,14 +170,6 @@ class SshClientTest(TerminalClientTest):
 
     client = SshClient
     port = 10010
-    
-    @classmethod
-    def setUpClass(cls):
-        sshFactory = MockSSH.getSSHFactory(commands,
-                                           "hostname>",
-                                           tempfile.mkdtemp(),
-                                           **users)
-        reactor.listenTCP(cls.port, sshFactory, interface='127.0.0.1')
 
 
 class TelnetClientTest(TerminalClientTest):
@@ -186,10 +177,6 @@ class TelnetClientTest(TerminalClientTest):
 
     client = TelnetClient
     port = 10011
-    
-    @classmethod
-    def setUpClass(cls):
-        reactor.listenTCP(interface="127.0.0.1", port=cls.port, factory=SwitchTelnetFactory("hostname>", commands))
 
 
 class SwitchTelnetFactory(Factory):
@@ -199,3 +186,14 @@ class SwitchTelnetFactory(Factory):
 
     def protocol(self):
         return MockTelnet(prompt=self.prompt, commands=self.commands)
+
+def telnet_hook_to_reactor(reactor):
+    reactor.listenTCP(interface="127.0.0.1", port=TelnetClientTest.port, factory=SwitchTelnetFactory("hostname>", commands))
+
+
+def ssh_hook_to_reactor(reactor):
+    sshFactory = MockSSH.getSSHFactory(commands,
+                                       "hostname>",
+                                       tempfile.mkdtemp(),
+                                       **users)
+    reactor.listenTCP(interface='127.0.0.1', port=SshClientTest.port, factory=sshFactory)
