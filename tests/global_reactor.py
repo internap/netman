@@ -22,8 +22,11 @@ class ThreadedReactor(threading.Thread):
     _threaded_reactor = None
 
     @classmethod
-    def start_reactor(cls, models):
+    def start_reactor(cls, models, reactor_hook_callbacks):
         cls._threaded_reactor = ThreadedReactor()
+
+        for callback in reactor_hook_callbacks:
+            callback(cls._threaded_reactor.reactor)
 
         for specs in models:
 
