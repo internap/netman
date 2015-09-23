@@ -342,3 +342,33 @@ def is_bond_link_speed(data, **_):
 
 def is_description(description, **_):
     return {'description': description}
+
+
+def is_dict_with(**fields):
+    def m(data, **_):
+        try:
+            result = json.loads(data)
+        except ValueError:
+            raise BadRequest("Malformed JSON request")
+        for field, validator in fields.iteritems():
+            validator(result, field)
+        for field, validator in result.iteritems():
+            if field not in fields:
+                raise BadRequest("Unknown key: {}".format(field))
+        return result
+
+    return m
+
+
+def optional(sub_validator):
+    def m(params, key):
+        if key in params:
+            sub_validator(params, key)
+    return m
+
+
+def is_type(obj_type):
+    def m(params, key):
+        if not isinstance(params[key], obj_type):
+            raise BadRequest('Expected "{}" type for key {}, got "{}"'.format(obj_type.__name__, key, type(params[key]).__name__))
+    return m

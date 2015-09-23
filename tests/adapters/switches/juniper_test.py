@@ -3152,8 +3152,40 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Description is not set on interface ge-0/0/99"))
 
-    def test_enable_interface_spanning_tree_succeeds(self):
+    def test_edit_interface_spanning_tree_enable_edge_from_nothing(self):
         with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
 
             self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
                 <config>
@@ -3171,10 +3203,84 @@ class JuniperTest(unittest.TestCase):
                 </config>
             """)).and_return(an_ok_response())
 
-        self.switch.enable_interface_spanning_tree("ge-0/0/6")
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-    def test_enable_interface_spanning_tree_on_unkown_interface_raises(self):
-        with self.expecting_failed_transaction():
+    def test_edit_interface_spanning_tree_enable_edge_when_all_is_already_set(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge/>
+                      <no-root-port/>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
+
+    def test_edit_interface_spanning_tree_enable_edge_when_only_edge_is_already_set(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge/>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
 
             self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
                 <config>
@@ -3182,37 +3288,8 @@ class JuniperTest(unittest.TestCase):
                     <protocols>
                       <rstp>
                         <interface>
-                          <name>ge-0/0/99</name>
-                          <edge />
-                          <no-root-port />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                port value outside range 0..47 for '99' in 'ge-0/0/99'
-                </error-message>
-                </rpc-error>"""))))
-
-        with self.assertRaises(UnknownInterface) as expect:
-            self.switch.enable_interface_spanning_tree("ge-0/0/99")
-
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
-
-    def test_disable_interface_spanning_tree_description_succeeds(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface operation="delete" >
                           <name>ge-0/0/6</name>
+                          <no-root-port />
                         </interface>
                       </rstp>
                     </protocols>
@@ -3220,62 +3297,289 @@ class JuniperTest(unittest.TestCase):
                 </config>
             """)).and_return(an_ok_response())
 
-        self.switch.disable_interface_spanning_tree("ge-0/0/6")
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-    def test_disable_interface_spanning_tree_on_unkown_interface_raises(self):
-        with self.expecting_failed_transaction():
+    def test_edit_interface_spanning_tree_enable_edge_when_only_no_root_port_is_already_set(self):
+        with self.expecting_successful_transaction():
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
                   <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
                     <protocols>
                       <rstp>
-                        <interface operation="delete" >
-                          <name>ge-0/0/99</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                port value outside range 0..47 for '99' in 'ge-0/0/99'
-                </error-message>
-                </rpc-error>"""))))
-
-        with self.assertRaises(UnknownInterface) as expect:
-            self.switch.disable_interface_spanning_tree("ge-0/0/99")
-
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
-
-    def test_disable_interface_spanning_tree_on_interface_with_one_or_more_attributes_not_set_ignores_the_warning(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface operation="delete" >
+                        <interface>
                           <name>ge-0/0/6</name>
                         </interface>
                       </rstp>
                     </protocols>
                   </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <no-root-port />
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                          <edge />
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
                 </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>warning</error-severity>
-                <error-path>[edit interfaces ge-0/0/6]</error-path>
-                <error-message>statement not found: description</error-message>
-                </rpc-error>"""))))
+            """)).and_return(an_ok_response())
 
-        with self.assertRaises(InterfaceSpanningTreeNotEnabled) as expect:
-            self.switch.disable_interface_spanning_tree("ge-0/0/6")
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-        assert_that(str(expect.exception), contains_string("Spanning tree is not enabled on interface ge-0/0/6"))
+    def test_edit_interface_spanning_tree_disable_edge_when_all_is_set(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge/>
+                      <no-root-port/>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                          <edge operation="delete" />
+                          <no-root-port operation="delete" />
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
+
+    def test_edit_interface_spanning_tree_disable_edge_when_all_is_only_edge_is_set(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge/>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                          <edge operation="delete" />
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
+
+    def test_edit_interface_spanning_tree_disable_edge_when_all_is_only_no_root_port_is_set(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <no-root-port />
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                          <no-root-port operation="delete" />
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
+
+    def test_edit_interface_spanning_tree_disable_edge_when_nothing_is_set(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
+
+    def test_edit_interface_spanning_tree_unknown_interface(self):
+        with self.expecting_failed_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/99</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ge-0/0/99</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration())
+
+            self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.edit_interface_spanning_tree('ge-0/0/99', edge=True)
+
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_enable_interface_succeeds(self):
         with self.expecting_successful_transaction():
@@ -4211,17 +4515,11 @@ class JuniperTest(unittest.TestCase):
         switch.remove_bond_native_vlan(6)
         switch.remove_native_vlan.assert_called_with('ae6')
 
-    def test_configure_bond_spanning_tree(self):
+    def test_edit_bond_spanning_tree(self):
         switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
-        switch.enable_interface_spanning_tree = mock.Mock()
-        switch.enable_bond_spanning_tree(6)
-        switch.enable_interface_spanning_tree.assert_called_with('ae6')
-
-    def test_disable_bond_spanning_tree(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
-        switch.disable_interface_spanning_tree = mock.Mock()
-        switch.disable_bond_spanning_tree(6)
-        switch.disable_interface_spanning_tree.assert_called_with('ae6')
+        switch.edit_interface_spanning_tree = mock.Mock()
+        switch.edit_bond_spanning_tree(6, edge=False)
+        switch.edit_interface_spanning_tree.assert_called_with('ae6', edge=False)
 
     @mock.patch("ncclient.manager.connect")
     def test_connect(self, connect_mock):

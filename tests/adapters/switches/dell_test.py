@@ -938,6 +938,35 @@ class DellTest(unittest.TestCase):
 
         self.switch.remove_trunk_vlan("ethernet 1/g10", 1000)
 
+    def test_edit_interface_spanning_tree_enable_edge(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("spanning-tree portfast").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.edit_interface_spanning_tree('ethernet 1/g10', edge=True)
+
+    def test_edit_interface_spanning_tree_disable_edge(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no spanning-tree portfast").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.edit_interface_spanning_tree('ethernet 1/g10', edge=False)
+
+    def test_edit_interface_spanning_tree_optional_params(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
+
+        self.switch.edit_interface_spanning_tree('ethernet 1/g10')
 
     @contextmanager
     def configuring_and_committing(self):

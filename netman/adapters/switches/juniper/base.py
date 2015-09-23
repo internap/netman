@@ -372,31 +372,23 @@ class Juniper(SwitchBase):
             else:
                 raise UnknownInterface(interface_id)
 
-    def enable_interface_spanning_tree(self, interface_id):
-        update = Update()
-        update.add_rstp_protocol_interface(to_ele("""
-            <interface>
-                <name>%s</name>
-                <edge />
-                <no-root-port />
-            </interface>""" % interface_id))
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
+        config = self.query(one_interface(interface_id), one_rstp_protocol_interface(interface_id))
+        self.get_interface_config(interface_id, config)
 
-        try:
-            self._push(update)
-        except RPCError:
-            raise UnknownInterface(interface_id)
+        if edge is not None:
+            modifications = _compute_edge_state_modifications(interface_id, edge, config)
 
-    def disable_interface_spanning_tree(self, interface_id):
-        update = Update()
-        update.add_rstp_protocol_interface(rstp_interface_removal(interface_id))
+            if modifications:
+                update = Update()
+                update.add_rstp_protocol_interface(to_ele("""
+                   <interface>
+                     <name>{}</name>
+                     {}
+                   </interface>
+                """.format(interface_id, "".join(modifications))))
 
-        try:
-            self._push(update)
-        except RPCError as e:
-            if e.severity == "warning":
-                raise InterfaceSpanningTreeNotEnabled(interface_id)
-            else:
-                raise UnknownInterface(interface_id)
+                self._push(update)
 
     def shutdown_interface(self, interface_id):
         update = Update()
@@ -533,11 +525,8 @@ class Juniper(SwitchBase):
     def remove_bond_native_vlan(self, number):
         return self.remove_native_vlan(bond_name(number))
 
-    def enable_bond_spanning_tree(self, number):
-        return self.enable_interface_spanning_tree(bond_name(number))
-
-    def disable_bond_spanning_tree(self, number):
-        return self.disable_interface_spanning_tree(bond_name(number))
+    def edit_bond_spanning_tree(self, number, edge=None):
+        return self.edit_interface_spanning_tree(bond_name(number), edge=edge)
 
     def _push(self, configuration):
         config = new_ele('config')
@@ -679,6 +668,21 @@ def one_rstp_protocol_interface(interface_id):
               </rstp>
             </protocols>
         """.format(interface_id))
+    return m
+
+
+def one_rstp_protocol_interface(interface_id):
+    def m():
+        return to_ele("""
+            <protocols>
+              <rstp>
+                <interface>
+                    <name>{}</name>
+                </interface>
+              </rstp>
+            </protocols>
+        """.format(interface_id))
+
     return m
 
 
@@ -995,3 +999,24 @@ def value_of(xpath_result, transformer=None):
         return node.text if transformer is None else transformer(node.text)
     else:
         return None
+
+
+def _compute_edge_state_modifications(interface_id, edge, config):
+    modifications = []
+    rstp_node = first(config.xpath("data/configuration/protocols/rstp/interface/name[text()=\"{0:s}\"]/.."
+                                   .format(interface_id)))
+    if rstp_node is not None:
+        edge_node = first(rstp_node.xpath("edge"))
+        no_root_port_node = first(rstp_node.xpath("no-root-port"))
+
+        if edge is True:
+            if edge_node is None:
+                modifications.append("<edge />")
+            if no_root_port_node is None:
+                modifications.append("<no-root-port />")
+        elif edge is False:
+            if edge_node is not None:
+                modifications.append("<edge operation=\"delete\" />")
+            if no_root_port_node is not None:
+                modifications.append("<no-root-port operation=\"delete\" />")
+    return modifications

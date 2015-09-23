@@ -182,7 +182,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_access_mode').with_args("FastEthernet0/4").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/port-mode", data="access")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/port-mode", raw_data="access")
 
         assert_that(code, equal_to(204))
 
@@ -192,7 +192,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_trunk_mode').with_args("FastEthernet0/4").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/port-mode", data="trunk")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/port-mode", raw_data="trunk")
 
         assert_that(code, equal_to(204))
 
@@ -202,7 +202,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_switchport_mode').never()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/port-mode", data="sirpatate")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/port-mode", raw_data="sirpatate")
 
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unknown port mode detected sirpatate'}))
@@ -213,7 +213,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_bond_access_mode').with_args(123).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/bonds/123/port-mode", data="access")
+        result, code = self.put("/switches/my.switch/bonds/123/port-mode", raw_data="access")
 
         assert_that(code, equal_to(204))
 
@@ -223,29 +223,43 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_bond_trunk_mode').with_args(123).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/bonds/123/port-mode", data="trunk")
+        result, code = self.put("/switches/my.switch/bonds/123/port-mode", raw_data="trunk")
 
         assert_that(code, equal_to(204))
 
-    def test_disable_bond_spanning_tree(self):
+    def test_edit_bond_spanning_tree(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('disable_bond_spanning_tree').with_args(5).once().ordered()
+        self.switch_mock.should_receive('edit_bond_spanning_tree').with_args(5, edge=True).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/bonds/5/spanning-tree", data="false")
+        result, code = self.put("/switches/my.switch/bonds/5/spanning-tree",
+                                fixture="put_switch_hostname_interfaces_intname_spanningtree.json")
 
         assert_that(code, equal_to(204))
 
-    def test_enable_bond_spanning_tree(self):
+    def test_edit_bond_spanning_tree_optional_params(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_bond_spanning_tree').with_args(5).once().ordered()
+        self.switch_mock.should_receive('edit_bond_spanning_tree').with_args(5).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/bonds/5/spanning-tree", data="true")
+        result, code = self.put("/switches/my.switch/bonds/5/spanning-tree", raw_data="{}")
 
         assert_that(code, equal_to(204))
+
+    def test_edit_bond_spanning_tree_with_wrong_params(self):
+        result, code = self.put("/switches/my.switch/bonds/5/spanning-tree",
+                                raw_data="whizzle")
+
+        assert_that(code, equal_to(400))
+        assert_that(result['error'], is_('Malformed JSON request'))
+
+        result, code = self.put("/switches/my.switch/bonds/5/spanning-tree",
+                                raw_data='{"unknown_key": "value"}')
+
+        assert_that(code, equal_to(400))
+        assert_that(result['error'], is_('Unknown key: unknown_key'))
 
     def test_anonymous_switch(self):
         self.switch_factory.should_receive('get_anonymous_switch').with_args(
@@ -324,7 +338,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", data='true')
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='true')
 
         assert_that(code, equal_to(204))
 
@@ -334,7 +348,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('openup_interface').with_args('FastEthernet0/4').once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", data='false')
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='false')
 
         assert_that(code, equal_to(204))
 
@@ -344,7 +358,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').never()
         self.switch_mock.should_receive('disconnect').never()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", data='Patate')
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='Patate')
 
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unreadable content "patate". Should be either "true" or "false"'}))
@@ -408,7 +422,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('connect').never()
         self.switch_mock.should_receive('disconnect').never()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan", data='patate')
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan", raw_data='patate')
 
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Vlan number is invalid'}))
@@ -760,13 +774,13 @@ class SwitchApiTest(BaseApiTest):
     def test_put_access_groups_malformed_body(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
 
-        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", data="Hey hey")
+        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", raw_data="Hey hey")
         assert_that(code, equal_to(400))
 
-        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", data="")
+        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", raw_data="")
         assert_that(code, equal_to(400))
 
-        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/notin", data="good")
+        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/notin", raw_data="good")
         assert_that(code, equal_to(404))
 
     def test_put_access_groups_vlan_not_found(self):
@@ -788,7 +802,7 @@ class SwitchApiTest(BaseApiTest):
             .and_raise(ValueError('Access group name \"blablabla\" is invalid'))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", data="blablabla")
+        result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", raw_data="blablabla")
 
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Access group name \"blablabla\" is invalid'}))
@@ -851,7 +865,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_vlan_vrf').with_args(2500, "DEFAULT_LAN").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/vlans/2500/vrf-forwarding", data="DEFAULT_LAN")
+        result, code = self.put("/switches/my.switch/vlans/2500/vrf-forwarding", raw_data="DEFAULT_LAN")
 
         assert_that(code, equal_to(204))
 
@@ -963,7 +977,7 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(204))
 
     def test_set_bond_link_speed_bad_speed(self):
-        result, code = self.put("/switches/my.switch/bonds/4/link-speed", data="9001pb")
+        result, code = self.put("/switches/my.switch/bonds/4/link-speed", raw_data="9001pb")
 
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Malformed bond link speed'}))
@@ -995,7 +1009,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_interface_description').with_args("FastEthernet0/4", "Resistance is futile").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/description", data="Resistance is futile")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/description", raw_data="Resistance is futile")
 
         assert_that(code, equal_to(204))
 
@@ -1015,7 +1029,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('set_bond_description').with_args(123, "Resistance is futile").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/bonds/123/description", data="Resistance is futile")
+        result, code = self.put("/switches/my.switch/bonds/123/description", raw_data="Resistance is futile")
 
         assert_that(code, equal_to(204))
 
@@ -1029,34 +1043,49 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_disable_interface_spanning_tree(self):
+    def test_edit_interface_spanning_tree(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('disable_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()
+        self.switch_mock.should_receive('edit_interface_spanning_tree').with_args("FastEthernet0/4", edge=True).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", data="false")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree",
+                                fixture="put_switch_hostname_interfaces_intname_spanningtree.json")
 
         assert_that(code, equal_to(204))
 
-    def test_enable_interface_spanning_tree(self):
+    def test_edit_interface_spanning_tree_optional_params(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()
+        self.switch_mock.should_receive('edit_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", data="true")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", raw_data="{}")
 
         assert_that(code, equal_to(204))
 
-    def test_uncatched_exceptions_are_formatted_correctly(self):
+    def test_edit_interface_spanning_tree_with_wrong_params(self):
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree",
+                                raw_data="whizzle")
+
+        assert_that(code, equal_to(400))
+        assert_that(result['error'], is_('Malformed JSON request'))
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree",
+                                raw_data='{"unknown_key": "value"}')
+
+        assert_that(code, equal_to(400))
+        assert_that(result['error'], is_('Unknown key: unknown_key'))
+
+    def test_uncaught_exceptions_are_formatted_correctly(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()\
+        self.switch_mock.should_receive('set_access_vlan').with_args('FastEthernet0/4', 1000).once().ordered()\
             .and_raise(Exception("SHIZZLE"))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", data="true")
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan",
+                                fixture="put_switch_hostname_interfaces_intname_accessvlan.txt")
 
         assert_that(code, is_(500))
         assert_that(result, is_({"error": "SHIZZLE"}))
@@ -1064,11 +1093,12 @@ class SwitchApiTest(BaseApiTest):
     def test_raised_exceptions_are_kept_in_the_error_message_for_remote_usage(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()\
+        self.switch_mock.should_receive('set_access_vlan').with_args('FastEthernet0/4', 1000).once().ordered()\
             .and_raise(UnknownInterface("SHIZZLE"))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", data="true",
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan",
+                                fixture="put_switch_hostname_interfaces_intname_accessvlan.txt",
                                 headers={"Netman-Verbose-Errors": "yes"})
 
         assert_that(code, is_(404))
@@ -1081,11 +1111,12 @@ class SwitchApiTest(BaseApiTest):
     def test_raised_exceptions_are_kept_in_the_error_message_for_remote_usage_even_plain_exceptions(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()\
+        self.switch_mock.should_receive('set_access_vlan').with_args('FastEthernet0/4', 1000).once().ordered() \
             .and_raise(Exception("ERMAHGERD"))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", data="true",
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan",
+                                fixture="put_switch_hostname_interfaces_intname_accessvlan.txt",
                                 headers={"Netman-Verbose-Errors": "yes"})
 
         assert_that(code, is_(500))

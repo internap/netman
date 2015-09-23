@@ -22,7 +22,7 @@ from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
-    is_vrrp_group, VrrpGroup
+    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type
 
 
 class SwitchApi(SwitchApiBase):
@@ -54,7 +54,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/bond-master', view_func=self.remove_interface_from_bond, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.set_interface_description, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.remove_interface_description, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.set_interface_spanning_tree, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.edit_interface_spanning_tree, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>', view_func=self.get_bond, methods=['GET'])
@@ -69,7 +69,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-native-vlan', view_func=self.remove_bond_native_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.set_bond_description, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.remove_bond_description, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.set_bond_spanning_tree, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.edit_bond_spanning_tree, methods=['PUT'])
         return self
 
     @to_response
@@ -679,40 +679,36 @@ class SwitchApi(SwitchApiBase):
         return 204, None
 
     @to_response
-    @content(is_boolean)
+    @content(is_dict_with(
+        edge=optional(is_type(bool))))
     @resource(Switch, Bond)
-    def set_bond_spanning_tree(self, switch, bond_number, state):
+    def edit_bond_spanning_tree(self, switch, bond_number, **params):
         """
-        Enable spanning tree on a bonded interface
+        Edit bond spanning tree properties
 
-        :arg str hostname: Hostname or IP of the switch
-        :arg int bond_number: Bond number
+        :arg bool edge: Activates edge mode
         :body:
-            .. true / false
+            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
         """
-        if state:
-            switch.enable_bond_spanning_tree(bond_number)
-        else:
-            switch.disable_bond_spanning_tree(bond_number)
+
+        switch.edit_bond_spanning_tree(bond_number, **params)
 
         return 204, None
 
     @to_response
-    @content(is_boolean)
+    @content(is_dict_with(
+        edge=optional(is_type(bool))))
     @resource(Switch, Interface)
-    def set_interface_spanning_tree(self, switch, interface_id, state):
+    def edit_interface_spanning_tree(self, switch, interface_id, **params):
         """
-        Enable spanning tree on an interface
+        Edit interface spanning tree properties
 
-        :arg str hostname: Hostname or IP of the switch
-        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        :arg bool edge: Activates edge mode
         :body:
-            .. true / false
+            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
         """
-        if state:
-            switch.enable_interface_spanning_tree(interface_id)
-        else:
-            switch.disable_interface_spanning_tree(interface_id)
+
+        switch.edit_interface_spanning_tree(interface_id, **params)
 
         return 204, None
 

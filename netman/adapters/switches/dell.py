@@ -223,6 +223,15 @@ class Dell(SwitchBase):
 
         return interfaces
 
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
+        commands = []
+        if edge is not None:
+            commands.append("{}spanning-tree portfast".format("" if edge else "no "))
+
+        if commands:
+            with self.config(), self.interface(interface_id):
+                [self.shell.do(cmd) for cmd in commands]
+
     def read_interface(self, interface_name):
         data = self.get_interface_data(interface_name)
 

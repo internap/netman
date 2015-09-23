@@ -36,9 +36,9 @@ class VlanManagementTest(ConfiguredTestCase):
     def test_setting_a_vlan_on_an_interface(self):
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data="access")
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data="access")
 
-        self.put("/switches/{switch}/interfaces/{port}/access-vlan", data="2999")
+        self.put("/switches/{switch}/interfaces/{port}/access-vlan", raw_data="2999")
 
         self.delete("/switches/{switch}/interfaces/{port}/access-vlan")
 
@@ -47,27 +47,27 @@ class VlanManagementTest(ConfiguredTestCase):
     def test_port_mode_trunk(self):
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='trunk')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='trunk')
 
         self.delete("/switches/{switch}/vlans/2999")
 
     def test_port_mode_access(self):
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='access')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='access')
 
         self.delete("/switches/{switch}/vlans/2999")
 
     def test_native_trunk(self):
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='trunk')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='trunk')
 
-        self.put("/switches/{switch}/interfaces/{port}/trunk-native-vlan", data='2999')
+        self.put("/switches/{switch}/interfaces/{port}/trunk-native-vlan", raw_data='2999')
 
         self.delete("/switches/{switch}/interfaces/{port}/trunk-native-vlan")
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='access')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='access')
 
         self.delete("/switches/{switch}/vlans/2999")
 
@@ -77,8 +77,8 @@ class VlanManagementTest(ConfiguredTestCase):
         self.post("/switches/{switch}/vlans", data={"number": 1300})
         self.post("/switches/{switch}/vlans", data={"number": 1400})
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='trunk')
-        self.put("/switches/{switch}/interfaces/{port}/trunk-native-vlan", data='1200')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='trunk')
+        self.put("/switches/{switch}/interfaces/{port}/trunk-native-vlan", raw_data='1200')
         self.post("/switches/{switch}/interfaces/{port}/trunk-vlans", raw_data='1100')
         self.post("/switches/{switch}/interfaces/{port}/trunk-vlans", raw_data='1300')
         self.post("/switches/{switch}/interfaces/{port}/trunk-vlans", raw_data='1400')
@@ -91,7 +91,7 @@ class VlanManagementTest(ConfiguredTestCase):
         assert_that(test_if["access_vlan"], equal_to(None))
         assert_that(test_if["trunk_vlans"], equal_to([1100, 1300, 1400]))
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='access')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='access')
 
         interfaces = self.get("/switches/{switch}/interfaces")
         test_if = next(i for i in interfaces if i["name"] == self.test_port)
@@ -110,15 +110,15 @@ class VlanManagementTest(ConfiguredTestCase):
         response = self.delete("/switches/{switch}/vlans/2999", fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        response = self.put("/switches/{switch}/interfaces/{port}/access-vlan", data="2999", fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/{port}/access-vlan", raw_data="2999", fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='trunk')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='trunk')
 
         response = self.post("/switches/{switch}/interfaces/{port}/trunk-vlans", raw_data='2999', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        response = self.put("/switches/{switch}/interfaces/{port}/trunk-native-vlan", data='2999', fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/{port}/trunk-native-vlan", raw_data='2999', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
         response = self.delete("/switches/{switch}/interfaces/{port}/trunk-vlans/2999", fail_on_bad_code=False)
@@ -129,20 +129,20 @@ class VlanManagementTest(ConfiguredTestCase):
         assert_that(response.status_code, equal_to(404))
         self.delete("/switches/{switch}/vlans/2999")
 
-        self.put("/switches/{switch}/interfaces/{port}/port-mode", data='access')
+        self.put("/switches/{switch}/interfaces/{port}/port-mode", raw_data='access')
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_invalid_interface_parameter_fails(self):
-        response = self.put("/switches/{switch}/interfaces/42/9999/shutdown", data='true', fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/42/9999/shutdown", raw_data='true', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        response = self.put("/switches/{switch}/interfaces/42/9999/shutdown", data='false', fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/42/9999/shutdown", raw_data='false', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        response = self.put("/switches/{switch}/interfaces/42/9999/port-mode", data='access', fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/42/9999/port-mode", raw_data='access', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        response = self.put("/switches/{switch}/interfaces/42/9999/port-mode", data='trunk', fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/42/9999/port-mode", raw_data='trunk', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
         response = self.delete("/switches/{switch}/interfaces/42/9999/access-vlan", fail_on_bad_code=False)
@@ -159,13 +159,13 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
 
-        response = self.put("/switches/{switch}/interfaces/42/9999/access-vlan", data="2999", fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/42/9999/access-vlan", raw_data="2999", fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
         response = self.delete("/switches/{switch}/interfaces/42/9999/trunk-vlans/2999", fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
-        response = self.put("/switches/{switch}/interfaces/42/9999/trunk-native-vlan", data='2999', fail_on_bad_code=False)
+        response = self.put("/switches/{switch}/interfaces/42/9999/trunk-native-vlan", raw_data='2999', fail_on_bad_code=False)
         assert_that(response.status_code, equal_to(404))
 
         self.delete("/switches/{switch}/vlans/2999")
@@ -175,7 +175,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
 
-        self.put("/switches/{switch}/vlans/2999/vrf-forwarding", data='DEFAULT-LAN')
+        self.put("/switches/{switch}/vlans/2999/vrf-forwarding", raw_data='DEFAULT-LAN')
 
         vlan = self.get_vlan(2999)
         assert_that(vlan["vrf_forwarding"], is_('DEFAULT-LAN'))
