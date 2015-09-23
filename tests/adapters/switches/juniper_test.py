@@ -3482,6 +3482,13 @@ class JuniperTest(unittest.TestCase):
                 <filter>
                   <configuration>
                     <interfaces/>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ae10</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
                   </configuration>
                 </filter>
             """)).and_return(a_configuration("""
@@ -3509,6 +3516,63 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.remove_bond(10)
 
+    def test_remove_bond_also_removes_rstp_protocol(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces/>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ae10</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ae10</name>
+                  </interface>
+                  <interface>
+                    <name>ge-4/3/3</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ae10</name>
+                      <edge/>
+                      <no-root-port/>
+                    </interface>
+                  </rstp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <interfaces>
+                      <interface operation="delete">
+                        <name>ae10</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <rstp>
+                        <interface operation="delete">
+                          <name>ae10</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.remove_bond(10)
+
     def test_remove_bond_invalid_number_raises(self):
         with self.expecting_failed_transaction():
 
@@ -3516,6 +3580,13 @@ class JuniperTest(unittest.TestCase):
                 <filter>
                   <configuration>
                     <interfaces/>
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ae7</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
                   </configuration>
                 </filter>
             """)).and_return(a_configuration())
@@ -3532,6 +3603,13 @@ class JuniperTest(unittest.TestCase):
                 <filter>
                   <configuration>
                     <interfaces />
+                    <protocols>
+                      <rstp>
+                        <interface>
+                          <name>ae10</name>
+                        </interface>
+                      </rstp>
+                    </protocols>
                   </configuration>
                 </filter>
             """)).and_return(a_configuration("""
