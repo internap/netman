@@ -88,8 +88,8 @@ class IpManagementTest(ConfiguredTestCase):
     def test_handling_access_groups(self):
         self.post("/switches/{switch}/vlans", data={"number": 2345})
 
-        self.put("/switches/{switch}/vlans/2345/access-groups/in", data="my-group")
-        self.put("/switches/{switch}/vlans/2345/access-groups/out", data="your-group")
+        self.put("/switches/{switch}/vlans/2345/access-groups/in", raw_data="my-group")
+        self.put("/switches/{switch}/vlans/2345/access-groups/out", raw_data="your-group")
 
         vlans = self.get("/switches/{switch}/vlans")
         vlan2345 = next(vlan for vlan in vlans if vlan["number"] == 2345)

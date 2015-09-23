@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 
 import re
 
@@ -28,3 +29,10 @@ class RegexFacilitator(object):
 
 
 regex = RegexFacilitator()
+
+
+def raw_or_json(raw_data, data):
+    posting_data = raw_data
+    if data is not None:
+        posting_data = json.dumps(data)
+    return posting_data

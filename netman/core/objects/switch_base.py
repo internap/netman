@@ -105,10 +105,7 @@ class SwitchOperations(object):
     def remove_interface_description(self, interface_id):
         raise NotImplementedError()
 
-    def enable_interface_spanning_tree(self, interface_id):
-        raise NotImplementedError()
-
-    def disable_interface_spanning_tree(self, interface_id):
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
         raise NotImplementedError()
 
     def add_bond(self, number):
@@ -156,10 +153,7 @@ class SwitchOperations(object):
     def remove_bond_native_vlan(self, number):
         raise NotImplementedError()
 
-    def enable_bond_spanning_tree(self, number):
-        raise NotImplementedError()
-
-    def disable_bond_spanning_tree(self, number):
+    def edit_bond_spanning_tree(self, number, edge=None):
         raise NotImplementedError()
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,

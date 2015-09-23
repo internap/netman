@@ -15,6 +15,7 @@
 import json
 import unittest
 import flask
+from netman import raw_or_json
 
 from tests.api import open_fixture
 
@@ -32,12 +33,10 @@ class BaseApiTest(unittest.TestCase):
         return to_json(request_result.data), request_result.status_code
 
     def post(self, url, data=None, raw_data=None, fixture=None):
-        if data is not None:
-            posting_data = json.dumps(data)
-        elif fixture is not None:
+        if fixture is not None:
             posting_data = open_fixture(fixture).read()
         else:
-            posting_data = raw_data
+            posting_data = raw_or_json(raw_data, data)
 
         with self.app.test_client() as http_client:
             request_result = http_client.post(url, data=posting_data)
@@ -49,11 +48,11 @@ class BaseApiTest(unittest.TestCase):
 
         return to_json(request_result.data), request_result.status_code
 
-    def put(self, url, data=None, fixture=None, **kwargs):
-        if fixture:
+    def put(self, url, data=None, raw_data=None, fixture=None, **kwargs):
+        if fixture is not None:
             posting_data = open_fixture(fixture).read()
         else:
-            posting_data = data
+            posting_data = raw_or_json(raw_data, data)
 
         with self.app.test_client() as http_client:
             request_result = http_client.put(url, data=posting_data, **kwargs)

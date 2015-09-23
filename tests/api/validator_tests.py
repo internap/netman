@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 
 import unittest
 
 from flexmock import flexmock
+from hamcrest import is_, equal_to
+from hamcrest import assert_that
 
 from netman.api.api_utils import MultiContext, BadRequest
-from netman.api.validators import is_vlan_number, is_boolean, Vlan, Interface
+from netman.api.validators import is_vlan_number, is_boolean, Vlan, Interface, is_dict_with, optional, is_type
 from netman.core.objects.exceptions import BadVlanNumber
 
 
@@ -65,3 +68,54 @@ class DecoratorTests(unittest.TestCase):
         interface = Interface(None)
         interface.process({'interface_id': 28})
         self.assertEquals(interface.__enter__(), 28)
+
+
+class IsDictTests(unittest.TestCase):
+    def test_empty(self):
+        validate = is_dict_with()
+
+        assert_that(validate("{}"), is_({}))
+
+    def test_one_boolean(self):
+        validate = is_dict_with(mybool=is_type(bool))
+        data = {
+            "mybool": True
+        }
+
+        assert_that(validate(json.dumps(data)), is_(data))
+
+    def test_optional(self):
+        validate = is_dict_with(mybool=optional(is_type(bool)))
+
+        assert_that(validate("{}"), is_({}))
+
+    def test_extra_field(self):
+        validate = is_dict_with(mybool=is_type(bool))
+        data = {
+            "mybool": True,
+            "yourbool": True
+        }
+
+        with self.assertRaises(BadRequest) as expect:
+            validate(json.dumps(data))
+
+        assert_that(str(expect.exception), equal_to("Unknown key: yourbool"))
+
+    def test_incorrect_field(self):
+        validate = is_dict_with(mybool=is_type(bool))
+        data = {
+            "mybool": "string",
+        }
+
+        with self.assertRaises(BadRequest) as expect:
+            validate(json.dumps(data))
+
+        assert_that(str(expect.exception), equal_to("Expected \"bool\" type for key mybool, got \"unicode\""))
+
+    def test_not_json(self):
+        validate = is_dict_with()
+
+        with self.assertRaises(BadRequest) as expect:
+            validate("what")
+
+        assert_that(str(expect.exception), equal_to("Malformed JSON request"))

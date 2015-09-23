@@ -708,29 +708,29 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.remove_bond_description(123)
 
-    def test_enable_interface_spanning_tree_succeeds(self):
+    def test_edit_interface_spanning_tree_succeeds(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/spanning-tree',
             headers=self.headers,
-            data='true'
+            data=json.dumps({"edge": True})
         ).and_return(
             Reply(
                 content='',
                 status_code=204))
 
-        self.switch.enable_interface_spanning_tree("ge-0/0/6")
+        self.switch.edit_interface_spanning_tree("ge-0/0/6", edge=True)
 
-    def test_disable_interface_spanning_tree_description_succeeds(self):
+    def test_edit_interface_spanning_tree_optional_params(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/spanning-tree',
             headers=self.headers,
-            data='false'
+            data=json.dumps({})
         ).and_return(
             Reply(
                 content='',
                 status_code=204))
 
-        self.switch.disable_interface_spanning_tree("ge-0/0/6")
+        self.switch.edit_interface_spanning_tree("ge-0/0/6")
 
     def test_enable_interface(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -802,29 +802,29 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.remove_interface_from_bond('ge-0/0/6')
 
-    def test_enable_bond_spanning_tree(self):
+    def test_edit_bond_spanning_tree(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/bonds/5/spanning-tree',
             headers=self.headers,
-            data='true'
+            data=json.dumps({"edge": True})
         ).and_return(
             Reply(
                 content='',
                 status_code=204))
 
-        self.switch.enable_bond_spanning_tree(5)
+        self.switch.edit_bond_spanning_tree(5, edge=True)
 
-    def disable_bond_spanning_tree(self):
+    def edit_bond_spanning_tree_optional_params(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/bonds/5/spanning-tree',
             headers=self.headers,
-            data='false'
+            data=json.dumps({})
         ).and_return(
             Reply(
                 content='',
                 status_code=204))
 
-        self.switch.disable_bond_spanning_tree(5)
+        self.switch.edit_bond_spanning_tree(5)
 
     def test_change_bond_speed(self):
         self.requests_mock.should_receive("put").once().with_args(

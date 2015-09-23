@@ -22,11 +22,15 @@ class InterfaceManagementTest(ConfiguredTestCase):
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_shutdown_interface(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/shutdown", data='true')
+        response = self.put("/switches/{switch}/interfaces/{port}/shutdown", raw_data='true')
         assert_that(response.status_code, equal_to(204))
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_openup_interface(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/shutdown", data='false')
+        response = self.put("/switches/{switch}/interfaces/{port}/shutdown", raw_data='false')
         assert_that(response.status_code, equal_to(204))
 
+    @skip_on_switches("cisco", "brocade")
+    def test_edit_spanning_tree(self):
+        response = self.put("/switches/{switch}/interfaces/{port}/spanning-tree", data={"edge": True})
+        assert_that(response.status_code, equal_to(204))

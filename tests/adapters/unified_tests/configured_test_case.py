@@ -17,6 +17,7 @@ import logging
 import unittest
 from functools import wraps
 from unittest import SkipTest
+from netman import raw_or_json
 
 from netman.main import app
 
@@ -42,19 +43,15 @@ class ConfiguredTestCase(unittest.TestCase):
         return json.loads(r.data)
 
     def post(self, relative_url, data=None, raw_data=None, fail_on_bad_code=True):
-        posting_data = raw_data
-        if data is not None:
-            posting_data=json.dumps(data)
-
         with app.test_client() as http_client:
-            r = http_client.post(data=posting_data, **self.request(relative_url))
+            r = http_client.post(data=raw_or_json(raw_data, data), **self.request(relative_url))
         if fail_on_bad_code and r.status_code >= 400:
             raise AssertionError("Call to %s returned %s : %s" % (relative_url, r.status_code, r.data))
         return r
 
-    def put(self, relative_url, data=None, fail_on_bad_code=True):
+    def put(self, relative_url, data=None, raw_data=None, fail_on_bad_code=True):
         with app.test_client() as http_client:
-            r = http_client.put(data=data, **self.request(relative_url))
+            r = http_client.put(data=raw_or_json(raw_data, data), **self.request(relative_url))
         if fail_on_bad_code and r.status_code >= 400:
             raise AssertionError("Call to %s returned %s : %s" % (relative_url, r.status_code, r.data))
         return r

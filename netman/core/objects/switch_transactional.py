@@ -143,12 +143,8 @@ class SwitchTransactional(SwitchOperations):
         self.impl.remove_interface_description(interface_id)
 
     @transactional
-    def enable_interface_spanning_tree(self, interface_id):
-        self.impl.enable_interface_spanning_tree(interface_id)
-
-    @transactional
-    def disable_interface_spanning_tree(self, interface_id):
-        self.impl.disable_interface_spanning_tree(interface_id)
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
+        self.impl.edit_interface_spanning_tree(interface_id, edge=edge)
 
     @transactional
     def openup_interface(self, interface_id):
@@ -243,12 +239,8 @@ class SwitchTransactional(SwitchOperations):
         self.impl.set_bond_trunk_mode(bond_number)
 
     @transactional
-    def enable_bond_spanning_tree(self, number):
-        self.impl.enable_bond_spanning_tree(number)
-
-    @transactional
-    def disable_bond_spanning_tree(self, number):
-        self.impl.disable_bond_spanning_tree(number)
+    def edit_bond_spanning_tree(self, number, edge=None):
+        self.impl.edit_bond_spanning_tree(number, edge=edge)
 
     @transactional
     def add_vrrp_group(self, *args, **kwargs):
