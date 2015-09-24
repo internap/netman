@@ -87,7 +87,6 @@ def _connect(host, port, connect_timeout):
 
 
 def _accept_all(sock, cmd, opt):
-    print "received {} {}".format(ord(cmd), ord(opt))
     if cmd == WILL:
         sock.sendall(IAC + DO + opt)
     elif cmd == WONT:

@@ -966,7 +966,33 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
 
-        self.switch.edit_interface_spanning_tree('ethernet 1/g10')
+        self.switch.edit_interface_spanning_tree("ethernet 1/g10")
+
+    def test_enable_lldp(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("lldp transmit").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("lldp receive").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("lldp med transmit-tlv capabilities").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("lldp med transmit-tlv network-policy").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.enable_lldp("ethernet 1/g10", True)
+
+    def test_disable_lldp(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no lldp transmit").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no lldp receive").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no lldp med transmit-tlv capabilities").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no lldp med transmit-tlv network-policy").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.enable_lldp("ethernet 1/g10", False)
 
     @contextmanager
     def configuring_and_committing(self):

@@ -187,6 +187,22 @@ class Dell(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.set("switchport {} allowed vlan remove {}", actual_port_mode, vlan)
 
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
+        commands = []
+        if edge is not None:
+            commands.append("{}spanning-tree portfast".format("" if edge else "no "))
+
+        if commands:
+            with self.config(), self.interface(interface_id):
+                [self.shell.do(cmd) for cmd in commands]
+
+    def enable_lldp(self, interface_id, enabled):
+        with self.config(), self.interface(interface_id):
+            self.set("{}lldp transmit", "" if enabled else "no ")
+            self.set("{}lldp receive", "" if enabled else "no ")
+            self.set("{}lldp med transmit-tlv capabilities", "" if enabled else "no ")
+            self.set("{}lldp med transmit-tlv network-policy", "" if enabled else "no ")
+
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')
 
@@ -222,15 +238,6 @@ class Dell(SwitchBase):
                 interfaces.append("port-channel {}".format(regex[0]))
 
         return interfaces
-
-    def edit_interface_spanning_tree(self, interface_id, edge=None):
-        commands = []
-        if edge is not None:
-            commands.append("{}spanning-tree portfast".format("" if edge else "no "))
-
-        if commands:
-            with self.config(), self.interface(interface_id):
-                [self.shell.do(cmd) for cmd in commands]
 
     def read_interface(self, interface_name):
         data = self.get_interface_data(interface_name)

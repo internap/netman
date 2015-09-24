@@ -55,6 +55,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.set_interface_description, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.remove_interface_description, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.edit_interface_spanning_tree, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.enable_lldp, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>', view_func=self.get_bond, methods=['GET'])
@@ -768,4 +769,21 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.remove_dhcp_relay_server(vlan_number=vlan_number, ip_address=ip_network.ip)
+        return 204, None
+
+    @to_response
+    @content(is_boolean)
+    @resource(Switch, Interface)
+    def enable_lldp(self, switch, interface_id, state):
+        """
+        Enable or disable the LLDP protocol on the interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        :body:
+            ``true`` or ``false``
+        """
+
+        switch.enable_lldp(interface_id, state)
+
         return 204, None

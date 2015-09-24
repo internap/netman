@@ -232,6 +232,10 @@ class RemoteSwitch(SwitchBase):
         self.delete("/vlans/{}/dhcp-relay-server/{}".format(
             vlan_number, ip_address))
 
+    def enable_lldp(self, interface_id, enabled):
+        self.put("/interfaces/{}/lldp".format(interface_id),
+                 raw_data={True: "true", False: "false"}[enabled])
+
     def get(self, relative_url):
         return self.validated(self.requests.get(**self.request(relative_url)))
 

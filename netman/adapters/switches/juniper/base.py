@@ -373,7 +373,7 @@ class Juniper(SwitchBase):
                 raise UnknownInterface(interface_id)
 
     def edit_interface_spanning_tree(self, interface_id, edge=None):
-        config = self.query(one_interface(interface_id), one_rstp_protocol_interface(interface_id))
+        config = self.query(one_interface(interface_id), one_protocol_interface("rstp", interface_id))
         self.get_interface_config(interface_id, config)
 
         if edge is not None:
@@ -381,7 +381,7 @@ class Juniper(SwitchBase):
 
             if modifications:
                 update = Update()
-                update.add_rstp_protocol_interface(to_ele("""
+                update.add_protocol_interface("rstp", to_ele("""
                    <interface>
                      <name>{}</name>
                      {}
@@ -414,6 +414,26 @@ class Juniper(SwitchBase):
             self.logger.info("actual setting error was %s" % e)
             raise UnknownInterface(interface_id)
 
+    def enable_lldp(self, interface_id, enabled):
+        config = self.query(one_interface(interface_id), one_protocol_interface("lldp", interface_id))
+        self.get_interface_config(interface_id, config)
+
+        update_ele = None
+        disabled_node = first(config.xpath("data/configuration/protocols/lldp/interface/name"
+                                           "[text()=\"{0:s}\"]/../disable".format(interface_id)))
+        if enabled:
+            update_ele = protocol_interface_update(interface_id)
+            if disabled_node is not None:
+                update_ele.append(to_ele('<disable operation="delete"/>'))
+        elif not enabled and disabled_node is None:
+            update_ele = protocol_interface_update(interface_id)
+            update_ele.append(to_ele('<disable/>'))
+
+        if update_ele:
+            update = Update()
+            update.add_protocol_interface("lldp", update_ele)
+            self._push(update)
+
     def add_bond(self, number):
         config = self.query(one_interface(bond_name(number)))
         if len(config.xpath("data/configuration/interfaces/interface")) > 0:
@@ -431,7 +451,7 @@ class Juniper(SwitchBase):
             raise
 
     def remove_bond(self, number):
-        config = self.query(all_interfaces, one_rstp_protocol_interface(bond_name(number)))
+        config = self.query(all_interfaces, one_protocol_interface("rstp", bond_name(number)))
         self.get_bond_config(number, config)
 
         update = Update()
@@ -439,7 +459,7 @@ class Juniper(SwitchBase):
 
         rstp_node = first(config.xpath("data/configuration/protocols/rstp/interface/name[text()=\"{0:s}\"]/..".format(bond_name(number))))
         if rstp_node is not None:
-            update.add_rstp_protocol_interface(rstp_interface_removal(bond_name(number)))
+            update.add_protocol_interface("rstp", rstp_interface_removal(bond_name(number)))
 
         for interface_node in self.get_bond_slaves_config(number, config):
             interface_name = first(interface_node.xpath("name")).text
@@ -456,7 +476,7 @@ class Juniper(SwitchBase):
         self.custom_strategies.add_enslave_to_bond_operations(update, interface, bond)
 
         for name_node in config.xpath("data/configuration/protocols/rstp/interface/name[starts-with(text(),'{}')]".format(interface)):
-            update.add_rstp_protocol_interface(rstp_interface_removal(name_node.text))
+            update.add_protocol_interface("rstp", rstp_interface_removal(name_node.text))
 
         self._push(update)
 
@@ -657,31 +677,17 @@ def rstp_protocol_interfaces():
     """)
 
 
-def one_rstp_protocol_interface(interface_id):
+def one_protocol_interface(protocol, interface_id):
     def m():
         return to_ele("""
             <protocols>
-              <rstp>
+              <{protocol}>
                 <interface>
                     <name>{}</name>
                 </interface>
-              </rstp>
+              </{protocol}>
             </protocols>
-        """.format(interface_id))
-    return m
-
-
-def one_rstp_protocol_interface(interface_id):
-    def m():
-        return to_ele("""
-            <protocols>
-              <rstp>
-                <interface>
-                    <name>{}</name>
-                </interface>
-              </rstp>
-            </protocols>
-        """.format(interface_id))
+        """.format(interface_id, protocol=protocol))
 
     return m
 
@@ -692,7 +698,7 @@ class Update(object):
         self.vlans_root = None
         self.interfaces_root = None
         self.protocols_root = None
-        self.rstp_protocols_root = None
+        self.sub_protocol_roots = {}
 
     def add_vlan(self, vlan):
         if self.vlans_root is None:
@@ -709,11 +715,11 @@ class Update(object):
             self.protocols_root = sub_ele(self.root, "protocols")
         self.protocols_root.append(protocol)
 
-    def add_rstp_protocol_interface(self, interface):
-        if self.rstp_protocols_root is None:
-            self.rstp_protocols_root = to_ele("<rstp></rstp>")
-            self.add_protocol(self.rstp_protocols_root)
-        self.rstp_protocols_root.append(interface)
+    def add_protocol_interface(self, protocol, interface):
+        if protocol not in self.sub_protocol_roots:
+            self.sub_protocol_roots[protocol] = to_ele("<{0}></{0}>".format(protocol))
+            self.add_protocol(self.sub_protocol_roots[protocol])
+        self.sub_protocol_roots[protocol].append(interface)
 
 
 def bond_update(number, *aggregated_ether_options):
@@ -975,6 +981,12 @@ def interface_speed_update(interface_name, speed):
         </interface>
     """.format(interface_name, speed))
 
+def protocol_interface_update(name):
+    return to_ele("""
+        <interface>
+          <name>{}</name>
+        </interface>
+    """.format(name))
 
 def list_vlan_members(interface_node, config):
     vlans = set()

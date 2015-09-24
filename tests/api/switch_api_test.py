@@ -749,6 +749,28 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(400))
 
+    def test_enable_lldp(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('enable_lldp').with_args("FastEthernet0/4", True).once().ordered()
+
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/lldp", raw_data="true")
+
+        assert_that(code, equal_to(204))
+
+    def test_disable_lldp(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('enable_lldp').with_args("FastEthernet0/4", False).once().ordered()
+
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/lldp", raw_data="false")
+
+        assert_that(code, equal_to(204))
+
     def test_put_access_groups_in(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
