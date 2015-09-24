@@ -169,6 +169,9 @@ class SwitchOperations(object):
     def remove_dhcp_relay_server(self, vlan_number, ip_address):
         raise NotImplementedError()
 
+    def enable_lldp(self, interface_id, enabled):
+        raise NotImplementedError()
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

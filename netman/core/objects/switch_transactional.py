@@ -257,3 +257,7 @@ class SwitchTransactional(SwitchOperations):
     @transactional
     def remove_dhcp_relay_server(self, vlan_number, ip_address):
         self.impl.remove_dhcp_relay_server(vlan_number, ip_address)
+
+    @transactional
+    def enable_lldp(self, interface_id, enabled):
+        self.impl.enable_lldp(interface_id, enabled)

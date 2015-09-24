@@ -948,6 +948,30 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.remove_dhcp_relay_server(2000, '1.2.3.4')
 
+    def test_enable_lldp(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/lldp',
+            headers=self.headers,
+            data='true'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.enable_lldp("ge-0/0/6", True)
+
+    def test_disable_lldp(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/lldp',
+            headers=self.headers,
+            data='false'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.enable_lldp("ge-0/0/6", False)
+
     def test_unformatted_exceptions_are_handled(self):
         self.requests_mock.should_receive("put").once().and_return(Reply(
             content='Oops an unexpected excepton occured',

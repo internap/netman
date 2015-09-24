@@ -18,7 +18,6 @@ import textwrap
 import unittest
 import re
 
-from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, has_length, equal_to, contains_string, has_key, \
     is_, instance_of
 import mock
@@ -26,14 +25,14 @@ from ncclient.devices.junos import JunosDeviceHandler
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import NCElement, to_ele, to_xml
 
+from flexmock import flexmock, flexmock_teardown
 from netman.adapters.switches import juniper
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.juniper import Juniper, JuniperCustomStrategies
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    InterfaceDescriptionNotSet, InterfaceSpanningTreeNotEnabled, \
-    BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
+    InterfaceDescriptionNotSet, BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -4466,6 +4465,188 @@ class JuniperTest(unittest.TestCase):
         assert_that(if3.interface.trunk_native_vlan, equal_to(2000))
         assert_that(if3.interface.trunk_vlans, equal_to([999, 1000, 1001]))
         assert_that(if3.members, equal_to(['ge-1/0/1']))
+
+    def test_enable_lldp_from_nothing(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.enable_lldp('ge-0/0/6', True)
+
+    def test_enable_lldp_when_disabled(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <disable/>
+                    </interface>
+                  </lldp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                          <disable operation="delete"/>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.enable_lldp('ge-0/0/6', True)
+
+    def test_disable_lldp_when_disabled(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <disable/>
+                    </interface>
+                  </lldp>
+                </protocols>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.enable_lldp('ge-0/0/6', False)
+
+    def test_disable_lldp_when_enabled(self):
+        with self.expecting_successful_transaction():
+
+            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+            """))
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/6</name>
+                          <disable />
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.enable_lldp('ge-0/0/6', False)
 
     def test_bond_port_mode_access(self):
         switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
