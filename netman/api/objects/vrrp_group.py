@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netaddr import IPNetwork
+from netaddr import IPAddress
 
 from netman.api.objects import Serializable
 from netman.core.objects.vrrp_group import VrrpGroup
@@ -23,7 +23,7 @@ class SerializableVrrpGroup(Serializable):
         super(SerializableVrrpGroup, self).__init__(['id', 'ips', 'hello_interval', 'dead_interval', 'priority',
                                                      'track_id', 'track_decrement'])
         self.id = src.id
-        self.ips = sorted([ipn.ip.format() for ipn in src.ips])
+        self.ips = sorted([str(i) for i in src.ips])
         self.priority = src.priority
         self.track_id = src.track_id
         self.track_decrement = src.track_decrement
@@ -34,6 +34,6 @@ class SerializableVrrpGroup(Serializable):
     def to_core(cls, **serialized):
         ips = serialized.pop('ips')
         return VrrpGroup(
-            ips=[IPNetwork(ip) for ip in ips],
+            ips=[IPAddress(ip) for ip in ips],
             ** serialized
         )

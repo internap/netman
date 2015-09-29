@@ -340,11 +340,11 @@ class Cisco(SwitchBase):
                 if len(result) > 0:
                     raise BadVrrpTracking()
 
-            for i, ip_network in enumerate(ips):
-                result = self.ssh.do('standby {group_id} ip {ip}{secondary}'.format(group_id=group_id, ip=ip_network.ip,
-                                                                                    secondary=' secondary' if i > 0 else ''))
+            for i, ip in enumerate(ips):
+                result = self.ssh.do('standby {group_id} ip {ip}{secondary}'.format(
+                    group_id=group_id, ip=ip, secondary=' secondary' if i > 0 else ''))
                 if len(result) > 0:
-                    raise IPNotAvailable(ip_network, reason="; ".join(result))
+                    raise IPNotAvailable(ip, reason="; ".join(result))
 
     def remove_vrrp_group(self, vlan_number, group_id):
         vlan = self.get_vlan_interface_data(vlan_number)
@@ -413,7 +413,7 @@ def apply_interface_running_config_data(vlan, data):
             vrrp_info = regex[1].strip()
 
             if regex.match("^ip ([^\s]*).*", vrrp_info):
-                vrrp_group.ips.append(IPNetwork(regex[0]))
+                vrrp_group.ips.append(IPAddress(regex[0]))
             elif regex.match("^timers ([^\s]*) ([^\s]*)", vrrp_info):
                 vrrp_group.hello_interval = int(regex[0])
                 vrrp_group.dead_interval = int(regex[1])

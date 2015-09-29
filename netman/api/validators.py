@@ -17,7 +17,7 @@ import json
 import logging
 import re
 
-from netaddr import IPNetwork, AddrFormatError
+from netaddr import IPNetwork, AddrFormatError, IPAddress
 from flask import request
 
 from netman.api.api_utils import BadRequest, MultiContext
@@ -282,7 +282,7 @@ def is_vrrp_group(data, **_):
 
     return dict(
         group_id=data.pop('id'),
-        ips=[is_ip_network(x)['validated_ip_network'] for x in data.pop('ips', [])],
+        ips=[validate_ip_address(i) for i in data.pop('ips', [])],
         **data
     )
 
@@ -358,6 +358,13 @@ def is_dict_with(**fields):
         return result
 
     return m
+
+
+def validate_ip_address(data):
+    try:
+        return IPAddress(data)
+    except:
+        raise BadRequest("Incorrect IP Address: \"{}\", should be x.x.x.x".format(data))
 
 
 def optional(sub_validator):

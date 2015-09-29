@@ -173,9 +173,9 @@ class CiscoTest(unittest.TestCase):
 
         v3_vrrp = v3.vrrp_groups[0]
         assert_that(len(v3_vrrp.ips), equal_to(3))
-        assert_that(str(v3_vrrp.ips[0].ip), equal_to('1.1.1.2'))
-        assert_that(str(v3_vrrp.ips[1].ip), equal_to('2.1.1.2'))
-        assert_that(str(v3_vrrp.ips[2].ip), equal_to('3.1.1.2'))
+        assert_that(v3_vrrp.ips[0], equal_to(IPAddress('1.1.1.2')))
+        assert_that(v3_vrrp.ips[1], equal_to(IPAddress('2.1.1.2')))
+        assert_that(v3_vrrp.ips[2], equal_to(IPAddress('3.1.1.2')))
         assert_that(v3_vrrp.hello_interval, equal_to(5))
         assert_that(v3_vrrp.dead_interval, equal_to(15))
         assert_that(v3_vrrp.priority, equal_to(110))
@@ -1687,7 +1687,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                    track_id=101, track_decrement=50)
 
     def test_add_vrrp_success_multiple_ip(self):
@@ -1717,7 +1717,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4"), IPNetwork("5.6.7.8")], priority=110,
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4"), IPAddress("5.6.7.8")], priority=110,
                                    hello_interval=5, dead_interval=15, track_id=101,
                                    track_decrement=50)
 
@@ -1736,7 +1736,7 @@ class CiscoTest(unittest.TestCase):
         ])
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")])
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")])
 
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
@@ -1755,7 +1755,7 @@ class CiscoTest(unittest.TestCase):
         ])
 
         with self.assertRaises(VrrpAlreadyExistsForVlan) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=90)
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=90)
 
         assert_that(str(expect.exception), equal_to("Vrrp group 1 is already in use on vlan 1234"))
 
@@ -1786,13 +1786,13 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_vrrp_group(1234, 2, ips=[IPNetwork("1.2.3.5")], priority=90)
+        self.switch.add_vrrp_group(1234, 2, ips=[IPAddress("1.2.3.5")], priority=90)
 
     def test_add_vrrp_with_out_of_range_group_id(self):
         self.command_setup()
 
         with self.assertRaises(BadVrrpGroupNumber) as expect:
-            self.switch.add_vrrp_group(1234, 0, ips=[IPNetwork("1.2.3.4")], priority=255)
+            self.switch.add_vrrp_group(1234, 0, ips=[IPAddress("1.2.3.4")], priority=255)
 
         assert_that(str(expect.exception), equal_to("VRRP group number is invalid, must be contained between 1 and 255"))
 
@@ -1819,7 +1819,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(BadVrrpPriorityNumber) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=256)
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=256)
 
         assert_that(str(expect.exception), equal_to("VRRP priority value is invalid, must be contained between 1 and 255"))
 
@@ -1848,7 +1848,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(BadVrrpTimers) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], hello_interval=-1, dead_interval=-1)
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], hello_interval=-1, dead_interval=-1)
 
         assert_that(str(expect.exception), equal_to("VRRP timers values are invalid"))
 
@@ -1879,7 +1879,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(BadVrrpTracking) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], track_id='SOMETHING', track_decrement='VALUE')
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], track_id='SOMETHING', track_decrement='VALUE')
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
 

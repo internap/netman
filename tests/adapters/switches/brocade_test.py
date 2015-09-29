@@ -141,15 +141,15 @@ class BrocadeTest(unittest.TestCase):
 
         vrrp_group1, vrrp_group2 = vlan201.vrrp_groups
         assert_that(len(vrrp_group1.ips), equal_to(1))
-        assert_that(str(vrrp_group1.ips[0].ip), equal_to('1.1.1.2'))
+        assert_that(vrrp_group1.ips[0], equal_to(IPAddress('1.1.1.2')))
         assert_that(vrrp_group1.hello_interval, equal_to(5))
         assert_that(vrrp_group1.dead_interval, equal_to(15))
         assert_that(vrrp_group1.priority, equal_to(110))
         assert_that(vrrp_group1.track_id, equal_to('1/1'))
         assert_that(vrrp_group1.track_decrement, equal_to(50))
         assert_that(len(vrrp_group2.ips), equal_to(2))
-        assert_that(str(vrrp_group2.ips[0].ip), equal_to('1.1.1.3'))
-        assert_that(str(vrrp_group2.ips[1].ip), equal_to('1.1.1.4'))
+        assert_that(vrrp_group2.ips[0], equal_to(IPAddress('1.1.1.3')))
+        assert_that(vrrp_group2.ips[1], equal_to(IPAddress('1.1.1.4')))
         assert_that(vrrp_group2.hello_interval, equal_to(5))
         assert_that(vrrp_group2.dead_interval, equal_to(15))
         assert_that(vrrp_group2.priority, equal_to(110))
@@ -1407,7 +1407,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                    track_id="1/1", track_decrement=50)
 
     def test_add_vrrp_success_multiple_ip(self):
@@ -1440,7 +1440,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4"), IPNetwork("1.2.3.5")], priority=110,
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4"), IPAddress("1.2.3.5")], priority=110,
                                    hello_interval=5, dead_interval=15, track_id="1/1", track_decrement=50)
 
     def test_add_vrrp_from_unknown_vlan(self):
@@ -1449,7 +1449,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([])
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
@@ -1478,7 +1478,7 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(VrrpAlreadyExistsForVlan) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("Vrrp group 1 is already in use on vlan 1234"))
@@ -1520,7 +1520,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_vrrp_group(1234, 2, ips=[IPNetwork("1.2.3.5")], priority=110, hello_interval=5, dead_interval=15,
+        self.switch.add_vrrp_group(1234, 2, ips=[IPAddress("1.2.3.5")], priority=110, hello_interval=5, dead_interval=15,
                                    track_id="1/1", track_decrement=50)
 
     def test_add_vrrp_with_out_of_range_group_id(self):
@@ -1547,7 +1547,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(BadVrrpGroupNumber) as expect:
-            self.switch.add_vrrp_group(1234, 256, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 256, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP group number is invalid, must be contained between 1 and 255"))
@@ -1579,7 +1579,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpTimers) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=100, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=100, dead_interval=15,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP timers values are invalid"))
@@ -1612,7 +1612,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpTimers) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=100,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=100,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP timers values are invalid"))
@@ -1642,7 +1642,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpPriorityNumber) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=256, hello_interval=5, dead_interval=100,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=256, hello_interval=5, dead_interval=100,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP priority value is invalid, must be contained between 1 and 255"))
@@ -1672,7 +1672,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpPriorityNumber) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority='testvalue', hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority='testvalue', hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP priority value is invalid, must be contained between 1 and 255"))
@@ -1702,7 +1702,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpTracking) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement=255)
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
@@ -1732,7 +1732,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpTracking) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement='testvalue')
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
@@ -1759,7 +1759,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(2).ordered().ordered()
 
         with self.assertRaises(NoIpOnVlanForVrrp) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=100,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=100,
                                        track_id="1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("Vlan 1234 needs an IP before configuring VRRP"))
@@ -1794,7 +1794,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).times(3).ordered().ordered().ordered()
 
         with self.assertRaises(BadVrrpTracking) as expect:
-            self.switch.add_vrrp_group(1234, 1, ips=[IPNetwork("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="not_an_interface", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
