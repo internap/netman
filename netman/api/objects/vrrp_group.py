@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netaddr import IPNetwork
+from netaddr import IPAddress
 
 from netman.api.objects import Serializable
 from netman.core.objects.vrrp_group import VrrpGroup
@@ -34,6 +34,6 @@ class SerializableVrrpGroup(Serializable):
     def to_core(cls, **serialized):
         ips = serialized.pop('ips')
         return VrrpGroup(
-            ips=[IPNetwork(ip) for ip in ips],
+            ips=[IPAddress(ip) for ip in ips],
             ** serialized
         )

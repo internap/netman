@@ -18,6 +18,7 @@ from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
 from netman.core.objects.vrrp_group import VrrpGroup
+from tests import ExactIpNetwork
 from tests.api import matches_fixture
 from tests.api.base_api_test import BaseApiTest
 from netman.api.api_utils import RegexConverter
@@ -526,7 +527,7 @@ class SwitchApiTest(BaseApiTest):
     def test_add_ip_json(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()
+        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.post("/switches/my.switch/vlans/2500/ips", fixture="post_switch_hostname_vlans_vlanid_ips.json")
@@ -536,7 +537,7 @@ class SwitchApiTest(BaseApiTest):
     def test_add_ip_ipnetwork(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()
+        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.post("/switches/my.switch/vlans/2500/ips", fixture="post_switch_hostname_vlans_vlanid_ips.txt")
@@ -573,7 +574,7 @@ class SwitchApiTest(BaseApiTest):
     def test_add_ip_not_available(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()\
+        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()\
             .and_raise(IPNotAvailable(IPNetwork("1.2.3.4/25")))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -585,7 +586,7 @@ class SwitchApiTest(BaseApiTest):
     def test_add_ip_unknown_vlan(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()\
+        self.switch_mock.should_receive('add_ip_to_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()\
             .and_raise(UnknownVlan('2500'))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -597,7 +598,7 @@ class SwitchApiTest(BaseApiTest):
     def test_remove_ip(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_ip_from_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()
+        self.switch_mock.should_receive('remove_ip_from_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/vlans/2500/ips/1.2.3.4/25")
@@ -607,7 +608,7 @@ class SwitchApiTest(BaseApiTest):
     def test_remove_ip_unknown_vlan(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_ip_from_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()\
+        self.switch_mock.should_receive('remove_ip_from_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()\
             .and_raise(UnknownVlan('2500'))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -619,7 +620,7 @@ class SwitchApiTest(BaseApiTest):
     def test_remove_unknown_ip(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_ip_from_vlan').with_args(2500, IPNetwork("1.2.3.4/25")).once().ordered()\
+        self.switch_mock.should_receive('remove_ip_from_vlan').with_args(2500, ExactIpNetwork("1.2.3.4", 25)).once().ordered()\
             .and_raise(UnknownIP(IPNetwork("1.2.3.4/25")))
         self.switch_mock.should_receive('disconnect').once().ordered()
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netaddr import IPNetwork
+from netaddr import IPNetwork, IPAddress
 
 from netman.api.objects import Serializable
 from netman.api.objects.vrrp_group import SerializableVrrpGroup
@@ -41,10 +41,12 @@ class SerializableVlan(Serializable):
         access_groups = serialized.pop('access_groups')
         ips = serialized.pop('ips')
         vrrp_groups = serialized.pop('vrrp_groups')
+        dhcp_relay_servers = serialized.pop('dhcp_relay_servers')
         return Vlan(
             access_group_in=access_groups['in'],
             access_group_out=access_groups['out'],
             ips=[IPNetwork('{address}/{mask}'.format(**ip)) for ip in ips],
             vrrp_groups=[SerializableVrrpGroup.to_core(**group) for group in vrrp_groups],
+            dhcp_relay_servers=[IPAddress(i) for i in dhcp_relay_servers],
             ** serialized
         )

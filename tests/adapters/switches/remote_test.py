@@ -18,9 +18,10 @@ import unittest
 from hamcrest import assert_that, equal_to, is_, instance_of
 import mock
 from ncclient.operations import RPCError
-from netaddr import IPNetwork, IPAddress
+from netaddr import IPAddress
 from flexmock import flexmock, flexmock_teardown
 
+from tests import ExactIpNetwork
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
@@ -244,17 +245,42 @@ class RemoteSwitchTest(unittest.TestCase):
                 content=open_fixture('get_switch_hostname_vlans.json').read(),
                 status_code=200))
 
-        vlan_1, vlan_2 = self.switch.get_vlans()
+        vlan1, vlan2 = self.switch.get_vlans()
 
-        assert_that(vlan_1.number, is_(1))
-        assert_that(vlan_1.name, is_('One'))
-        assert_that(vlan_1.ips, is_([IPNetwork('1.1.1.1/24')]))
-        assert_that(vlan_1.vrf_forwarding, is_("MY_VRF"))
-        assert_that(vlan_1.access_groups[IN], is_("Blah_blah"))
+        assert_that(vlan1.number, is_(1))
+        assert_that(vlan1.name, is_('One'))
+        assert_that(vlan1.ips, is_([ExactIpNetwork('1.1.1.1', 24)]))
+        assert_that(vlan1.vrf_forwarding, is_("MY_VRF"))
+        assert_that(vlan1.access_groups[IN], is_("Blah_blah"))
+        assert_that(vlan1.access_groups[OUT], is_(None))
+        assert_that(vlan1.dhcp_relay_servers, is_([]))
+        vrrp_group = vlan1.vrrp_groups[0]        
+        assert_that(vrrp_group.id, is_(1))
+        assert_that(vrrp_group.ips, is_([IPAddress("1.1.1.2")]))
+        assert_that(vrrp_group.priority, is_(90))
+        assert_that(vrrp_group.hello_interval, is_(5))
+        assert_that(vrrp_group.dead_interval, is_(15))
+        assert_that(vrrp_group.track_id, is_("101"))
+        assert_that(vrrp_group.track_decrement, is_(50))
 
-        assert_that(vlan_2.number, is_(2))
-        assert_that(vlan_2.name, is_(''))
-        assert_that(vlan_2.ips, is_([IPNetwork('2.2.2.2/24'), IPNetwork('3.3.3.3/24')]))
+        assert_that(vlan2.number, is_(2))
+        assert_that(vlan2.name, is_(''))
+        assert_that(vlan2.ips, is_([ExactIpNetwork('2.2.2.2', 24), ExactIpNetwork('3.3.3.3', 24)]))
+        assert_that(vlan2.vrf_forwarding, is_(None))
+        assert_that(vlan2.access_groups[IN], is_(None))
+        assert_that(vlan2.access_groups[OUT], is_(None))
+        assert_that(vlan2.dhcp_relay_servers, is_([IPAddress("10.10.10.1")]))
+        vrrp_group1, vrrp_group2 = vlan2.vrrp_groups
+        assert_that(vrrp_group1.id, is_(1))
+        assert_that(vrrp_group1.ips, is_([IPAddress("2.2.2.2")]))
+        assert_that(vrrp_group1.priority, is_(100))
+        assert_that(vrrp_group1.hello_interval, is_(None))
+        assert_that(vrrp_group1.dead_interval, is_(None))
+        assert_that(vrrp_group1.track_id, is_(None))
+        assert_that(vrrp_group1.track_decrement, is_(None))
+        assert_that(vrrp_group2.id, is_(2))
+        assert_that(vrrp_group2.ips, is_([IPAddress("3.3.3.1")]))
+        assert_that(vrrp_group2.priority, is_(100))
 
     def test_get_interfaces(self):
         self.requests_mock.should_receive("get").once().with_args(
@@ -463,7 +489,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=201))
 
-        self.switch.add_ip_to_vlan(2500, IPNetwork("1.2.3.4/25"))
+        self.switch.add_ip_to_vlan(2500, ExactIpNetwork("1.2.3.4", 25))
 
     def test_remove_ip(self):
         self.requests_mock.should_receive("delete").once().with_args(
@@ -474,7 +500,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_ip_from_vlan(2500, IPNetwork("1.2.3.4/25"))
+        self.switch.remove_ip_from_vlan(2500, ExactIpNetwork("1.2.3.4", 25))
 
     def test_set_vlan_vrf(self):
         self.requests_mock.should_receive("put").once().with_args(
