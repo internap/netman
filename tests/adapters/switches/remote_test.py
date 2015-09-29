@@ -18,7 +18,7 @@ import unittest
 from hamcrest import assert_that, equal_to, is_, instance_of
 import mock
 from ncclient.operations import RPCError
-from netaddr import IPNetwork
+from netaddr import IPNetwork, IPAddress
 from flexmock import flexmock, flexmock_teardown
 
 from tests.api import open_fixture
@@ -901,7 +901,7 @@ class RemoteSwitchTest(unittest.TestCase):
             headers=self.headers,
             data=JsonData(id=1,
                           priority=2,
-                          ips=['1.2.3.4/32'],
+                          ips=['1.2.3.4'],
                           hello_interval=5,
                           dead_interval=15,
                           track_id="101",
@@ -911,7 +911,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=201))
 
-        self.switch.add_vrrp_group(2000, group_id=1, priority=2, ips=[IPNetwork('1.2.3.4')], hello_interval=5,
+        self.switch.add_vrrp_group(2000, group_id=1, priority=2, ips=[IPAddress('1.2.3.4')], hello_interval=5,
                                    dead_interval=15, track_id='101', track_decrement=50)
 
     def test_remove_vrrp_group(self):

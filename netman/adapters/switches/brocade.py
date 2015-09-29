@@ -324,8 +324,8 @@ class Brocade(SwitchBase):
             .on_result_matching(".*not between 1 and 254$".format(track_decrement), BadVrrpTracking) \
             .on_any_result(BadVrrpPriorityNumber, 1, 255)
 
-        for i, ip_network in enumerate(ips):
-            self.set('ip-address {}', ip_network.ip).on_any_result(IPNotAvailable, ip_network)
+        for i, ip in enumerate(ips):
+            self.set('ip-address {}', ip).on_any_result(IPNotAvailable, ip)
 
         self.set('hello-interval {}', hello_interval).on_any_result(BadVrrpTimers)
         self.set('dead-interval {}', dead_interval).on_any_result(BadVrrpTimers)
@@ -440,7 +440,7 @@ def add_interface_vlan_data(target_vlan, int_vlan_data):
                 vrrp_group = VrrpGroup(id=int(regex[0]))
                 target_vlan.vrrp_groups.append(vrrp_group)
         elif regex.match("^  ip-address ([^\s]*)", line):
-            vrrp_group.ips.append(IPNetwork(regex[0]))
+            vrrp_group.ips.append(IPAddress(regex[0]))
         elif regex.match("^  backup priority ([^\s]*) track-priority ([^\s]*)", line):
             vrrp_group.priority = int(regex[0])
             vrrp_group.track_decrement = int(regex[1])
