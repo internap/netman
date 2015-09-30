@@ -41,7 +41,7 @@ class SwitchFactory(object):
         return self.get_switch_by_descriptor(SwitchDescriptor(**kwargs))
 
     def get_switch_by_descriptor(self, switch_descriptor):
-        if switch_descriptor.netman_server is not None:
+        if switch_descriptor.netman_server:
             return remote.factory(switch_descriptor)
         return self.factories[switch_descriptor.model](
             switch_descriptor,

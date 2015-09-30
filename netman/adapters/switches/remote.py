@@ -29,7 +29,7 @@ from netman.api.objects.bond import SerializableBond
 
 
 def factory(switch_descriptor):
-    return RemoteSwitch(switch_descriptor=switch_descriptor)
+    return RemoteSwitch(switch_descriptor)
 
 
 class RemoteSwitch(SwitchBase):
@@ -47,7 +47,7 @@ class RemoteSwitch(SwitchBase):
 
     def start_transaction(self):
         self.session_id = str(uuid.uuid4())
-        url = "{netman}/switches-sessions/{session_id}".format(netman=self.switch_descriptor.netman_server, session_id=self.session_id)
+        url = "{netman}/switches-sessions/{session_id}".format(netman=self.switch_descriptor.netman_server[0], session_id=self.session_id)
         details = self.request()
         details['headers']['Netman-Session-Id'] = self.session_id
         self.validated(self.requests.post(
@@ -57,17 +57,17 @@ class RemoteSwitch(SwitchBase):
         )
 
     def commit_transaction(self):
-        url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self.switch_descriptor.netman_server, session_id=self.session_id)
+        url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self.switch_descriptor.netman_server[0], session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                             'Netman-Session-Id': self.session_id}, data='commit'))
 
     def rollback_transaction(self):
-        url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self.switch_descriptor.netman_server, session_id=self.session_id)
+        url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self.switch_descriptor.netman_server[0], session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                             'Netman-Session-Id': self.session_id}, data='rollback'))
 
     def end_transaction(self):
-        url = "{netman}/switches-sessions/{session_id}".format(netman=self.switch_descriptor.netman_server, session_id=self.session_id)
+        url = "{netman}/switches-sessions/{session_id}".format(netman=self.switch_descriptor.netman_server[0], session_id=self.session_id)
         session_id = self.session_id
         self.session_id = None
         self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
@@ -256,16 +256,19 @@ class RemoteSwitch(SwitchBase):
             'Netman-Port': self.switch_descriptor.port,
             'Netman-Verbose-Errors': "yes"
         }
+        if len(self.switch_descriptor.netman_server) > 1:
+            headers["Netman-Proxy-Server"] = ",".join(self.switch_descriptor.netman_server[1:])
+
         if self.session_id:
             url = "{netman_url}/switches-sessions/{session_id}{path}".format(
-                netman_url=self.switch_descriptor.netman_server,
+                netman_url=self.switch_descriptor.netman_server[0],
                 session_id=self.session_id,
                 path=relative_url
             )
             headers['Netman-Session-Id'] = self.session_id
         else:
             url = "{netman_url}/switches/{switch}{path}".format(
-                netman_url=self.switch_descriptor.netman_server,
+                netman_url=self.switch_descriptor.netman_server[0],
                 switch=self.switch_descriptor.hostname,
                 path=relative_url)
         self.logger.info("Querying " + url)
