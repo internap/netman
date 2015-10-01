@@ -51,7 +51,7 @@ class RemoteSwitchTest(unittest.TestCase):
     def setUp(self):
         self.switch = RemoteSwitch(SwitchDescriptor(
             model="juniper", hostname="toto", username="tutu",
-            password="titi", port=1234, netman_server=[self.netman_url]))
+            password="titi", port=1234, netman_server=self.netman_url))
 
         self.requests_mock = flexmock()
         self.switch.requests = self.requests_mock

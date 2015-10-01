@@ -29,7 +29,7 @@ class SwitchDescriptor(object):
         self.default_port_speed = default_port_speed
         self.trunked_interfaces = trunked_interfaces
         self.parking_vlan = parking_vlan
-        self.netman_server = netman_server or []
+        self.netman_server = netman_server
         self.vrrp_tracking_object = vrrp_tracking_object
 
     def __eq__(self, other):

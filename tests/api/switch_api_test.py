@@ -269,7 +269,7 @@ class SwitchApiTest(BaseApiTest):
             username='root',
             password='password',
             port=None,
-            netman_server=[]).once().ordered().and_return(self.switch_mock)
+            netman_server=None).once().ordered().and_return(self.switch_mock)
 
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_vlans').once().ordered().and_return([Vlan(1, "One"), Vlan(2, "Two")])
@@ -299,7 +299,7 @@ class SwitchApiTest(BaseApiTest):
             username='root',
             password='password',
             port=830,
-            netman_server=[]).once().ordered().and_return(self.switch_mock)
+            netman_server=None).once().ordered().and_return(self.switch_mock)
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_vlans').and_return([Vlan(1, "One"), Vlan(2, "Two")]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
@@ -320,7 +320,7 @@ class SwitchApiTest(BaseApiTest):
             username='root',
             password='password',
             port=None,
-            netman_server=['1.2.3.4']).once().ordered().and_return(self.switch_mock)
+            netman_server='1.2.3.4').once().ordered().and_return(self.switch_mock)
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_vlans').and_return([Vlan(1, "One"), Vlan(2, "Two")]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
