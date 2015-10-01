@@ -236,6 +236,88 @@ class RemoteSwitchTest(unittest.TestCase):
         with self.assertRaises(AnException):
             self.switch.rollback_transaction()
 
+    @mock.patch('uuid.uuid4')
+    def test_multi_proxy_1(self, m_uuid):
+        self.switch = RemoteSwitch(SwitchDescriptor(
+            model="juniper", hostname="toto", username="tutu",
+            password="titi", port=1234, netman_server=[self.netman_url, "1.2.3.4"]))
+
+        self.requests_mock = flexmock()
+        self.switch.requests = self.requests_mock
+
+        m_uuid.return_value = '0123456789'
+        self.requests_mock.should_receive("post").once().ordered().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers={
+                'Netman-Port': 1234,
+                'Netman-Model': 'juniper',
+                'Netman-Password': 'titi',
+                'Netman-Username': 'tutu',
+                'Netman-Verbose-Errors': 'yes',
+                'Netman-Proxy-Server': '1.2.3.4',
+                'Netman-Session-Id': '0123456789'
+            },
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': '0123456789'}),
+                status_code=201))
+
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Session-Id': '0123456789'}
+        ).and_return(
+            Reply(
+                content="",
+                status_code=204))
+
+        self.switch.start_transaction()
+        self.switch.end_transaction()
+        self.setUp()
+        self.test_add_bond()
+
+    @mock.patch('uuid.uuid4')
+    def test_multi_proxy_few(self, m_uuid):
+        self.switch = RemoteSwitch(SwitchDescriptor(
+            model="juniper", hostname="toto", username="tutu",
+            password="titi", port=1234, netman_server=[self.netman_url, "1.2.3.4", "5.6.7.8"]))
+
+        self.requests_mock = flexmock()
+        self.switch.requests = self.requests_mock
+
+        m_uuid.return_value = '0123456789'
+        self.requests_mock.should_receive("post").once().ordered().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers={
+                'Netman-Port': 1234,
+                'Netman-Model': 'juniper',
+                'Netman-Password': 'titi',
+                'Netman-Username': 'tutu',
+                'Netman-Verbose-Errors': 'yes',
+                'Netman-Proxy-Server': '1.2.3.4,5.6.7.8',
+                'Netman-Session-Id': '0123456789'
+            },
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': '0123456789'}),
+                status_code=201))
+
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Session-Id': '0123456789'}
+        ).and_return(
+            Reply(
+                content="",
+                status_code=204))
+
+        self.switch.start_transaction()
+        self.switch.end_transaction()
+        self.setUp()
+        self.test_add_bond()
+
     def test_get_vlans(self):
         self.requests_mock.should_receive("get").once().with_args(
             url=self.netman_url+'/switches/toto/vlans',

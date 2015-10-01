@@ -333,6 +333,26 @@ class SwitchApiTest(BaseApiTest):
         })
         assert_that(code, equal_to(200))
 
+    def test_anonymous_switch_can_be_multi_netman_proxied(self):
+        self.switch_factory.should_receive('get_anonymous_switch').with_args(
+            hostname='my.switch',
+            model='cisco',
+            username='root',
+            password='password',
+            port=None,
+            netman_server=['1.2.3.4', '5.6.7.8']).once().ordered().and_return(self.switch_mock)
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_vlans').and_return([Vlan(1, "One"), Vlan(2, "Two")]).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/vlans", headers={
+            'Netman-Model':'cisco',
+            'Netman-Username':'root',
+            'Netman-Password':'password',
+            'Netman-Proxy-Server':' 1.2.3.4 , 5.6.7.8 '
+        })
+        assert_that(code, equal_to(200))
+
     def test_shutdown_interface(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()

@@ -45,10 +45,9 @@ class SwitchApiBase(object):
                 except ValueError:
                     raise BadRequest('Netman-Port optional header should be an integer')
 
-            if "Netman-Proxy-Server" in request.headers:
-                netman_server = request.headers["Netman-Proxy-Server"]
-            else:
-                netman_server = None
+            netman_server = request.headers.get("Netman-Proxy-Server", None)
+            if netman_server is not None and "," in netman_server:
+                netman_server = [e.strip() for e in netman_server.split(",")]
 
             self.logger.info("Anonymous Switch Access (%s) %s@%s" % (request.headers['Netman-Model'], request.headers['Netman-Username'], hostname))
             return self.switch_factory.get_anonymous_switch(
