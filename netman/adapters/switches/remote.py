@@ -264,7 +264,7 @@ class RemoteSwitch(SwitchBase):
             'Netman-Verbose-Errors': "yes"
         }
 
-        if len(self._next_proxies) > 1:
+        if len(self._next_proxies) > 0:
             headers["Netman-Proxy-Server"] = ",".join(self._next_proxies)
 
         if self.session_id:
