@@ -17,10 +17,13 @@ import unittest
 
 from hamcrest import assert_that, equal_to, is_, instance_of, has_length, none
 import mock
+
 from flexmock import flexmock, flexmock_teardown
 
+from netman.adapters.shell.telnet import TelnetClient
+from netman.adapters.shell.ssh import SshClient
 from netman.core.objects.port_modes import ACCESS, TRUNK
-from netman.adapters.switches import dell
+from netman.adapters.switches import dell, SubShell
 from netman.adapters.switches.dell import Dell
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
@@ -28,18 +31,28 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
-def test_factory():
+def test_factory_ssh():
     lock = mock.Mock()
-    switch = dell.factory_ssh(SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22), lock)
+    descriptor = SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22)
+    switch = dell.factory_ssh(descriptor, lock)
 
     assert_that(switch, instance_of(SwitchTransactional))
     assert_that(switch.impl, instance_of(Dell))
+    assert_that(switch.impl.shell_factory, equal_to(SshClient))
     assert_that(switch.lock, is_(lock))
-    assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
-    assert_that(switch.switch_descriptor.model, equal_to("dell"))
-    assert_that(switch.switch_descriptor.username, equal_to("username"))
-    assert_that(switch.switch_descriptor.password, equal_to("password"))
-    assert_that(switch.switch_descriptor.port, equal_to(22))
+    assert_that(switch.switch_descriptor, is_(descriptor))
+
+
+def test_factory_telnet():
+    lock = mock.Mock()
+    descriptor = SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22)
+    switch = dell.factory_telnet(descriptor, lock)
+
+    assert_that(switch, instance_of(SwitchTransactional))
+    assert_that(switch.impl, instance_of(Dell))
+    assert_that(switch.impl.shell_factory, equal_to(TelnetClient))
+    assert_that(switch.lock, is_(lock))
+    assert_that(switch.switch_descriptor, is_(descriptor))
 
 
 class DellTest(unittest.TestCase):
@@ -47,6 +60,7 @@ class DellTest(unittest.TestCase):
     def setUp(self):
         self.lock = mock.Mock()
         self.switch = dell.factory_ssh(SwitchDescriptor(model='dell', hostname="my.hostname", password="the_password"), self.lock)
+        SubShell.debug = True
 
     def tearDown(self):
         flexmock_teardown()

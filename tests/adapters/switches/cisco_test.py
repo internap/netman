@@ -20,7 +20,7 @@ import mock
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
-from netman.adapters.switches import cisco
+from netman.adapters.switches import cisco, SubShell
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.cisco import Cisco, parse_vlan_ranges
 from netman.core.objects.access_groups import IN, OUT
@@ -51,6 +51,7 @@ class CiscoTest(unittest.TestCase):
     def setUp(self):
         self.lock = mock.Mock()
         self.switch = cisco.factory(SwitchDescriptor(model='cisco', hostname="my.hostname", password="the_password"), self.lock)
+        SubShell.debug = True
 
     def tearDown(self):
         flexmock_teardown()

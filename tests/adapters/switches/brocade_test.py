@@ -20,7 +20,7 @@ import mock
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
-from netman.adapters.switches import brocade
+from netman.adapters.switches import brocade, SubShell
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.brocade import Brocade, parse_if_ranges
 from netman.core.objects.access_groups import IN, OUT
@@ -50,6 +50,7 @@ class BrocadeTest(unittest.TestCase):
     def setUp(self):
         self.lock = mock.Mock()
         self.switch = brocade.factory(SwitchDescriptor(model='brocade', hostname="my.hostname"), self.lock)
+        SubShell.debug = True
 
     def tearDown(self):
         flexmock_teardown()
