@@ -21,7 +21,7 @@ from netman import regex
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    InterfaceSpanningTreeNotEnabled, InterfaceDescriptionNotSet, \
+    InterfaceDescriptionNotSet, \
     BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
@@ -429,7 +429,7 @@ class Juniper(SwitchBase):
             update_ele = protocol_interface_update(interface_id)
             update_ele.append(to_ele('<disable/>'))
 
-        if update_ele:
+        if update_ele is not None:
             update = Update()
             update.add_protocol_interface("lldp", update_ele)
             self._push(update)

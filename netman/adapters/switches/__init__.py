@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 import re
+import traceback
 
 from netman import regex
 
 
 class SubShell(object):
+    debug = False
+
     def __init__(self, ssh, enter, exit_cmd, validate=None):
         self.ssh = ssh
         self.enter = enter
@@ -31,7 +34,10 @@ class SubShell(object):
             self.validate(self.ssh.do(self.enter))
         return self.ssh
 
-    def __exit__(self, *_):
+    def __exit__(self, eType, eValue, eTrace):
+        if self.debug and eType is not None:
+            logging.error("Subshell exception {}: {}\n{}".format(eType.__name__, eValue, "".join(traceback.format_tb(eTrace))))
+
         self.ssh.do(self.exit)
 
 

@@ -17,7 +17,7 @@ import unittest
 from hamcrest import assert_that, equal_to, instance_of, is_, is_not
 import mock
 
-from netman.adapters.switches import cisco, brocade, juniper, dell
+from netman.adapters.switches import cisco, brocade, juniper, dell, dell10g
 from netman.core.objects.switch_base import SwitchBase
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -57,7 +57,10 @@ class SwitchFactoryTest(unittest.TestCase):
             "juniper_qfx_copper": juniper.qfx_copper_factory,
             "dell": dell.factory_ssh,
             "dell_ssh": dell.factory_ssh,
-            "dell_telnet": dell.factory_telnet
+            "dell_telnet": dell.factory_telnet,
+            "dell10g": dell10g.factory_ssh,
+            "dell10g_ssh": dell10g.factory_ssh,
+            "dell10g_telnet": dell10g.factory_telnet
         }))
 
     def test_two_get_connections_on_the_same_switch_should_give_the_same_semaphore(self):

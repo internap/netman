@@ -15,6 +15,7 @@
 from fake_switches.brocade.brocade_core import BrocadeSwitchCore
 from fake_switches.cisco.cisco_core import CiscoSwitchCore
 from fake_switches.dell.dell_core import DellSwitchCore
+from fake_switches.dell10g.dell_core import Dell10GSwitchCore
 from fake_switches.juniper.juniper_core import JuniperSwitchCore
 from fake_switches.juniper.juniper_qfx_copper_core import JuniperQfxCopperSwitchCore
 from fake_switches.ssh_service import SwitchSshService
@@ -127,6 +128,38 @@ available_models = [
             Port("ethernet 2/g2"),
             Port("ethernet 1/xg1"),
             Port("ethernet 2/xg1")
+        ]
+    },
+    {
+        "model": "dell10g",
+        "hostname": "127.0.0.1",
+        "port": 11008,
+        "username": "root",
+        "password": "root",
+        "test_port_name": "tengigabitethernet 1/0/1",
+        "core_class": Dell10GSwitchCore,
+        "service_class": SwitchSshService,
+        "ports": [
+            Port("tengigabitethernet 1/0/1"),
+            Port("tengigabitethernet 1/0/2"),
+            Port("tengigabitethernet 2/0/1"),
+            Port("tengigabitethernet 2/0/2"),
+        ]
+    },
+    {
+        "model": "dell10g_telnet",
+        "hostname": "127.0.0.1",
+        "port": 11009,
+        "username": "root",
+        "password": "root",
+        "test_port_name": "tengigabitethernet 1/0/1",
+        "core_class": Dell10GSwitchCore,
+        "service_class": SwitchTelnetService,
+        "ports": [
+            Port("tengigabitethernet 1/0/1"),
+            Port("tengigabitethernet 1/0/2"),
+            Port("tengigabitethernet 2/0/1"),
+            Port("tengigabitethernet 2/0/2"),
         ]
     }
 ]

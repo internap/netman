@@ -170,7 +170,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.delete("/switches/{switch}/vlans/2999")
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_vrf_management(self):
 
         self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})

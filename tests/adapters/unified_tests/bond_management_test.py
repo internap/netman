@@ -20,7 +20,7 @@ from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase
 class BondManagementTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("cisco", "brocade", "dell", "dell_telnet")
+    @skip_on_switches("cisco", "brocade", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_creating_deleting_a_bond(self):
         self.post("/switches/{switch}/bonds", data={"number": 3})
 
