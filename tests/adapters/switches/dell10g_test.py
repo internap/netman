@@ -117,7 +117,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.shutdown_interface("tengigabitethernet 1/0/4")
 
     def test_shutdown_interface_invalid_interface_raises(self):
-        #TODO: erreur ?????????????????????????????
         self.command_setup()
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
@@ -142,7 +141,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.openup_interface("tengigabitethernet 1/0/4")
 
     def test_openup_interface_invalid_interface_raises(self):
-        #TODO: erreur ?????????????????????????????
         self.command_setup()
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])

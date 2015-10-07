@@ -55,12 +55,12 @@ class Dell10G(Dell):
 
     def add_vlan(self, number, name=None):
         with self.config():
-            result = self.shell.do('vlan %s' % number)
+            result = self.shell.do('vlan {}'.format(number))
             if len(result) > 0:
                 raise BadVlanNumber()
             else:
                 if name:
-                    result = self.shell.do('name %s' % name)
+                    result = self.shell.do('name {}'.format(name))
 
                 self.shell.do('exit')
 
@@ -96,7 +96,7 @@ class Dell10G(Dell):
 
         with self.config(), self.interface(interface_id):
             self.set("switchport access vlan {}", vlan) \
-                .on_result_matching(".*VLAN ID not found.*", UnknownVlan, vlan) \
+                .on_result_matching(".*VLAN ID not found.*", UnknownVlan, vlan)
 
     def add_trunk_vlan(self, interface_id, vlan):
         interface_data = self.get_interface_data(interface_id)
