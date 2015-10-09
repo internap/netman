@@ -252,7 +252,7 @@ class Brocade(SwitchBase):
             if vlan.access_groups[direction] is not None:
                 self.ssh.do("no ip access-group %s %s" % (vlan.access_groups[direction], {IN: 'in', OUT: 'out'}[direction]))
             result = self.ssh.do("ip access-group %s %s" % (name, {IN: 'in', OUT: 'out'}[direction]))
-            if len(result) > 0:
+            if len(result) > 0 and not result[0].startswith("Warning:"):
                 raise ValueError("Access group name \"%s\" is invalid" % name)
 
     def remove_vlan_access_group(self, vlan_number, direction):

@@ -1094,7 +1094,10 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("router-interface ve 2500").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("interface ve 2500").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup in").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup in").and_return([
+            "Warning: An undefined or zero length ACL has been applied. "
+            "Filtering will not occur for the specified interface VE 2500 (outbound)."
+        ]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
@@ -1117,7 +1120,10 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ve 3333").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup out").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup out").and_return([
+            "Warning: An undefined or zero length ACL has been applied. "
+            "Filtering will not occur for the specified interface VE 2500 (outbound)."
+        ]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
@@ -1170,7 +1176,10 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface ve 2500").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip access-group helloThere! in").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup in").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup in").and_return([
+            "Warning: An undefined or zero length ACL has been applied. "
+            "Filtering will not occur for the specified interface VE 2500 (outbound)."
+        ]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
@@ -1204,7 +1213,10 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ve 2500").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("no ip access-group helloThere! in").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no ip access-group helloThere! in").and_return([
+            "Warning: An undefined or zero length ACL has been applied. "
+            "Filtering will not occur for the specified interface VE 2500 (outbound)."
+        ]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
@@ -1228,7 +1240,10 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ve 2500").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("no ip access-group Waaaat out").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no ip access-group Waaaat out").and_return([
+            "Warning: An undefined or zero length ACL has been applied. "
+            "Filtering will not occur for the specified interface VE 2500 (outbound)."
+        ]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
