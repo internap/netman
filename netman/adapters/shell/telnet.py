@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from _socket import timeout
+from _socket import timeout, gaierror
 import re
 import telnetlib
 from telnetlib import IAC, DO, DONT, WILL, WONT
 
-from netman.adapters.shell.base import TerminalClient, Timeout
+from netman.adapters.shell.base import TerminalClient
+from netman.core.objects.exceptions import CouldNotConnect, CommandTimeout, ConnectTimeout
 
 
 class TelnetClient(TerminalClient):
@@ -72,7 +73,7 @@ class TelnetClient(TerminalClient):
     def _wait_for(self, expect):
         result = self.telnet.expect(expect, timeout=self.command_timeout)
         if result[0] == -1:
-            raise Timeout()
+            raise CommandTimeout(expect)
         return result[2]
 
 
@@ -80,7 +81,9 @@ def _connect(host, port, connect_timeout):
     try:
         telnet = telnetlib.Telnet(host, port, connect_timeout)
     except timeout:
-        raise Timeout()
+        raise ConnectTimeout(host, port)
+    except gaierror:
+        raise CouldNotConnect(host, port)
 
     telnet.set_option_negotiation_callback(_accept_all)
     return telnet
