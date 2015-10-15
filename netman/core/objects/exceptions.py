@@ -232,3 +232,24 @@ class UnknownSwitch(UnknownResource):
 class MalformedSwitchSessionRequest(ValueError):
     def __init__(self):
         super(MalformedSwitchSessionRequest, self).__init__("Malformed switch session request")
+
+
+class Timeout(Exception):
+    pass
+
+
+class ConnectTimeout(Exception):
+    def __init__(self, host=None, port=None):
+        super(ConnectTimeout, self).__init__("Timed out while connecting to {} on port {}".format(host, port))
+
+
+class CommandTimeout(Exception):
+    def __init__(self, wait_for=None, buffer=None):
+        super(CommandTimeout, self).__init__("Command timed out expecting {}. Current read buffer: {}"
+                                             .format(repr(wait_for), buffer))
+
+
+class CouldNotConnect(Exception):
+    def __init__(self, host=None, port=None):
+        super(CouldNotConnect, self).__init__("Could not connect to {} on port {}".format(host, port))
+

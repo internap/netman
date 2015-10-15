@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from _socket import timeout
+from _socket import timeout, gaierror
 import logging
 import time
 
 import paramiko
 
-from netman.adapters.shell.base import TerminalClient, Timeout
+from netman.adapters.shell.base import TerminalClient
+from netman.core.objects.exceptions import CouldNotConnect, ConnectTimeout, CommandTimeout
 
 
 class SshClient(TerminalClient):
@@ -74,7 +75,9 @@ class SshClient(TerminalClient):
                                 allow_agent=False,
                                 look_for_keys=False)
         except timeout:
-            raise Timeout()
+            raise ConnectTimeout(host, port)
+        except gaierror:
+            raise CouldNotConnect(host, port)
 
         self.channel = self.client.invoke_shell()
 
@@ -96,7 +99,7 @@ class SshClient(TerminalClient):
         while not self.current_buffer.endswith(wait_for):
             while not self.channel.recv_ready():
                 if time.time() - started_at > self.command_timeout:
-                    raise Timeout("Command timed out expecting %s and read %s" % (wait_for, self.current_buffer))
+                    raise CommandTimeout(wait_for, self.current_buffer)
                 time.sleep(self.reading_interval)
 
             read = self.channel.recv(self.reading_chunk_size)

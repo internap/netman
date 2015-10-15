@@ -25,7 +25,3 @@ class TerminalClient(object):
 
     def get_current_prompt(self):
         raise NotImplemented()
-
-
-class Timeout(Exception):
-    pass

@@ -17,12 +17,13 @@ import textwrap
 import unittest
 
 import MockSSH
-from hamcrest import equal_to, assert_that, is_
+from hamcrest import equal_to, assert_that, is_, starts_with
+
 from twisted.internet.protocol import Factory
 
-from netman.adapters.shell.base import Timeout
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
+from netman.core.objects.exceptions import CouldNotConnect, CommandTimeout, ConnectTimeout
 from tests.adapters.shell.mock_telnet import MockTelnet
 from tests.adapters.shell.mock_terminal_commands import passwd_change_protocol_prompt, passwd_write_password_to_transport, \
     HangingCommand, MultiAsyncWriteCommand, SkippingLineCommand, exit_command_success, KeystrokeAnsweredCommand
@@ -73,8 +74,16 @@ class TerminalClientTest(unittest.TestCase):
         assert_that(res, equal_to(['Bonjour']))
 
     def test_connect_timeout(self):
-        with self.assertRaises(Timeout):
+        with self.assertRaises(ConnectTimeout) as expect:
             self.client("1.0.0.1", "whatever", "whatever", connect_timeout=1)
+
+        assert_that(str(expect.exception), starts_with("Timed out while connecting to 1.0.0.1 on port"))
+
+    def test_connect_error(self):
+        with self.assertRaises(CouldNotConnect) as expect:
+            self.client("url.invalid", "bleh", "blah", 12345)
+
+        assert_that(str(expect.exception), is_("Could not connect to url.invalid on port 12345"))
 
     def test_connect_and_salute(self):
         client = self.client("127.0.0.1", "admin", "1234", self.port)
@@ -87,7 +96,7 @@ class TerminalClientTest(unittest.TestCase):
         client = self.client("127.0.0.1", "admin", "1234", self.port, command_timeout=1)
         client.do('passwd', wait_for="Password:")
         client.do('1234')
-        with self.assertRaises(Timeout):
+        with self.assertRaises(CommandTimeout):
             client.do('hang')
 
     def test_async_result(self):
