@@ -252,7 +252,8 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 2/xg1").and_return([
             "shutdown",
             "switchport mode trunk",
-            "switchport trunk allowed vlan add 900,1000-1001,1003-1005",
+            "switchport trunk allowed vlan add 900,1000-1001",
+            "switchport trunk allowed vlan add 1003-1005",
         ])
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 2/xg2").and_return([
             "switchport mode general",
