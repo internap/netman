@@ -253,7 +253,7 @@ class Dell(SwitchBase):
             if regex.match("switchport general pvid (\d+)", line):
                 interface.trunk_native_vlan = int(regex[0])
             if regex.match("switchport \S+ allowed vlan add (\S+)", line):
-                interface.trunk_vlans = parse_vlan_ranges(regex[0])
+                interface.trunk_vlans += parse_vlan_ranges(regex[0])
 
         return interface
 
