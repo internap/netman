@@ -55,7 +55,11 @@ def to_response(fn):
 def exception_to_response(exception, code):
     data = {'error': str(exception)}
     if data['error'] == "":
-        data['error'] = "Unexpected error: {}.{}".format(exception.__module__, exception.__class__.__name__)
+        if hasattr(exception, "__module__"):
+            data['error'] = "Unexpected error: {}.{}".format(exception.__module__, exception.__class__.__name__)
+        else:
+            data['error'] = "Unexpected error: {}".format(exception.__class__.__name__)
+
     if "Netman-Verbose-Errors" in request.headers:
         if hasattr(exception, "__module__"):
             data["error-module"] = exception.__module__

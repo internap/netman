@@ -1321,6 +1321,18 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(500))
         assert_that(result, equal_to({'error': 'Unexpected error: tests.api.switch_api_test.EmptyException'}))
 
+    def test_an_error_without_a_message_and_without_a_module_is_given_one_containing_the_error_name_and_module(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('remove_vlan_access_group').with_args(2500, OUT).once().ordered()\
+            .and_raise(NotImplementedError())
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/vlans/2500/access-groups/out")
+
+        assert_that(code, equal_to(500))
+        assert_that(result, equal_to({'error': 'Unexpected error: NotImplementedError'}))
+
 
 class EmptyException(Exception):
     pass
