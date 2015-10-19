@@ -1143,7 +1143,7 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, is_(500))
         assert_that(result, is_({"error": "SHIZZLE"}))
 
-    def test_raised_exceptions_are_kept_in_the_error_message_for_remote_usage(self):
+    def test_raised_exceptions_are_marshalled_correctly(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('set_access_vlan').with_args('FastEthernet0/4', 1000).once().ordered()\
@@ -1161,7 +1161,7 @@ class SwitchApiTest(BaseApiTest):
             "error-class": UnknownInterface.__name__,
         }))
 
-    def test_raised_exceptions_are_kept_in_the_error_message_for_remote_usage_even_plain_exceptions(self):
+    def test_raised_base_exceptions_are_marshalled_correctly(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('set_access_vlan').with_args('FastEthernet0/4', 1000).once().ordered() \
@@ -1176,6 +1176,23 @@ class SwitchApiTest(BaseApiTest):
         assert_that(result, is_({
             "error": "ERMAHGERD",
             "error-class": "Exception",
+        }))
+
+    def test_raised_not_implemented_error_are_marshalled_correctly(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_access_vlan').with_args('FastEthernet0/4', 1000).once().ordered() \
+            .and_raise(NotImplementedError())
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan",
+                                fixture="put_switch_hostname_interfaces_intname_accessvlan.txt",
+                                headers={"Netman-Verbose-Errors": "yes"})
+
+        assert_that(code, is_(501))
+        assert_that(result, is_({
+            "error": "",
+            "error-class": "NotImplementedError",
         }))
 
     def test_open_session(self):

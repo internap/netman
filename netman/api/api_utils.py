@@ -42,6 +42,8 @@ def to_response(fn):
             response = exception_to_response(e, 404)
         except Conflict as e:
             response = exception_to_response(e, 409)
+        except NotImplementedError as e:
+            response = exception_to_response(e, 501)
         except Exception as e:
             logging.exception(e)
             response = exception_to_response(e, 500)
@@ -54,12 +56,18 @@ def to_response(fn):
 
 def exception_to_response(exception, code):
     data = {'error': str(exception)}
-    if data['error'] == "":
-        data['error'] = "Unexpected error: {}.{}".format(exception.__module__, exception.__class__.__name__)
+
     if "Netman-Verbose-Errors" in request.headers:
         if hasattr(exception, "__module__"):
             data["error-module"] = exception.__module__
         data["error-class"] = exception.__class__.__name__
+    else:
+        if data['error'] == "":
+            if hasattr(exception, "__module__"):
+                data['error'] = "Unexpected error: {}.{}".format(exception.__module__, exception.__class__.__name__)
+            else:
+                data['error'] = "Unexpected error: {}".format(exception.__class__.__name__)
+
 
     response = json_response(data, code)
     response.status_code = code
