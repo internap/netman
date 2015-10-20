@@ -159,6 +159,11 @@ class BadVlanNumber(ValueError):
         super(BadVlanNumber, self).__init__("Vlan number is invalid")
 
 
+class BadInterfaceDescription(ValueError):
+    def __init__(self, desc=None):
+        super(BadInterfaceDescription, self).__init__("Invalid description : {}".format(desc))
+
+
 class BadVrrpGroupNumber(ValueError):
     def __init__(self, minimum=None, maximum=None):
         super(BadVrrpGroupNumber, self).__init__("VRRP group number is invalid, must be contained between {min} and {max}".format(min=minimum, max=maximum))

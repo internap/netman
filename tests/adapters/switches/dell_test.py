@@ -27,7 +27,7 @@ from netman.adapters.switches import dell, SubShell
 from netman.adapters.switches.dell import Dell
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
-    BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet
+    BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
@@ -1008,6 +1008,45 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
         self.switch.enable_lldp("ethernet 1/g10", False)
+
+    def test_set_interface_description(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("description \"Hey\"").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.set_interface_description("ethernet 1/g10", "Hey")
+
+    def test_set_interface_description_invalid_interface(self):
+        self.command_setup()
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g99").once().ordered().and_return([
+                "An invalid interface has been used for this function."
+            ])
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.set_interface_description("ethernet 1/g99", "Hey")
+
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
+
+    def test_set_interface_description_invalid_description(self):
+        self.command_setup()
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("description \"Hey \"you\"\"").once().ordered().and_return([
+                "                       ^",
+                "% Invalid input detected at '^' marker."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        with self.assertRaises(BadInterfaceDescription) as expect:
+            self.switch.set_interface_description("ethernet 1/g10", 'Hey "you"')
+
+        assert_that(str(expect.exception), equal_to("Invalid description : Hey \"you\""))
 
     @contextmanager
     def configuring_and_committing(self):
