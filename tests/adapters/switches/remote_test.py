@@ -418,7 +418,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(if1.interface.access_vlan, equal_to(1999))
         assert_that(if1.interface.trunk_native_vlan, equal_to(None))
         assert_that(if1.interface.trunk_vlans, equal_to([]))
-        assert_that(if1.members, equal_to(None))
+        assert_that(if1.members, equal_to([]))
 
     def test_get_bonds(self):
         self.requests_mock.should_receive("get").once().with_args(
@@ -439,7 +439,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(if1.interface.access_vlan, equal_to(1999))
         assert_that(if1.interface.trunk_native_vlan, equal_to(None))
         assert_that(if1.interface.trunk_vlans, equal_to([]))
-        assert_that(if1.members, equal_to(None))
+        assert_that(if1.members, equal_to([]))
 
         assert_that(if2.number, equal_to(4))
         assert_that(if2.members, equal_to(["ge-0/0/1", "ge-1/0/1"]))
@@ -459,7 +459,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(if3.interface.access_vlan, equal_to(1999))
         assert_that(if3.interface.trunk_native_vlan, equal_to(2999))
         assert_that(if3.interface.trunk_vlans, equal_to([3000, 3001, 3002]))
-        assert_that(if3.members, equal_to(None))
+        assert_that(if3.members, equal_to([]))
 
     def test_add_vlan(self):
         self.requests_mock.should_receive("post").once().with_args(

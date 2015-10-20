@@ -17,4 +17,7 @@ class Bond(object):
         self.number = number
         self.interface = interface
         self.link_speed = link_speed
-        self.members = members
+        self.members = members or []
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
