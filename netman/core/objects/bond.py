@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 class Bond(object):
     def __init__(self, number=None, interface=None, link_speed=None, members=None):
         self.number = number
         self.interface = interface
         self.link_speed = link_speed
-        self.members = members
+        self.members = members or []
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.__dict__ == other.__dict__
+        return False

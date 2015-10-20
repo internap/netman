@@ -2,7 +2,7 @@
    {
       "number": 3,
       "link_speed": "1g",
-      "members": null,
+      "members": [],
       "interface": {
          "name": "ae3",
          "shutdown": true,
@@ -37,7 +37,7 @@
    {
       "number": 6,
       "link_speed": "10g",
-      "members": null,
+      "members": [],
       "interface": {
          "name": "ae6",
          "shutdown": false,

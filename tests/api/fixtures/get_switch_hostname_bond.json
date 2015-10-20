@@ -1,7 +1,7 @@
 {
    "number": 3,
    "link_speed": "1g",
-   "members": null,
+   "members": [],
    "interface": {
       "name": "ae3",
       "shutdown": true,

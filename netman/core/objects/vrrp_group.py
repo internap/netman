@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 class VrrpGroup(object):
     def __init__(self, id=None, ips=None, priority=None, hello_interval=None, dead_interval=None, track_id=None,
                  track_decrement=None):
@@ -22,3 +23,8 @@ class VrrpGroup(object):
         self.dead_interval = dead_interval
         self.track_id = track_id
         self.track_decrement = track_decrement
+
+    def __eq__(self, other):
+        if isinstance(other, type(self)):
+            return self.__dict__ == other.__dict__
+        return False
