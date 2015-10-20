@@ -25,3 +25,6 @@ class Vlan(object):
         self.ips = ips or []
         self.vrrp_groups = vrrp_groups or []
         self.dhcp_relay_servers = dhcp_relay_servers or []
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__

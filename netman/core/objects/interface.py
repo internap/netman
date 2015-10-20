@@ -23,3 +23,7 @@ class Interface(object):
         self.trunk_native_vlan = trunk_native_vlan
         self.trunk_vlans = trunk_vlans or []
         self.bond_master = bond_master
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+

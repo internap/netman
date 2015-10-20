@@ -22,3 +22,6 @@ class VrrpGroup(object):
         self.dead_interval = dead_interval
         self.track_id = track_id
         self.track_decrement = track_decrement
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
