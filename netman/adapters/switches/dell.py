@@ -22,7 +22,7 @@ from netman import regex
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
-    BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet
+    BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -115,6 +115,10 @@ class Dell(SwitchBase):
         with self.config():
             with self.vlan_database():
                 self.set('no vlan {}', number).on_result_matching(".*These VLANs do not exist:.*", UnknownVlan, number)
+
+    def set_interface_description(self, interface_id, description):
+        with self.config(), self.interface(interface_id):
+            self.set('description "{}"', description).on_any_result(BadInterfaceDescription, description)
 
     def set_access_mode(self, interface_id):
         with self.config(), self.interface(interface_id):
