@@ -12,79 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-import logging
 import unittest
 from functools import wraps
 from unittest import SkipTest
-from netman import raw_or_json
 
+from netman.adapters.switches.remote import RemoteSwitch
+from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.main import app
+from .flask_helper import FlaskRequest
+
+
+def sub_dict(d, *keys):
+    return dict((k, d[k]) for k in keys)
 
 
 class ConfiguredTestCase(unittest.TestCase):
     switch_specs = None
 
     def setUp(self):
-        tested_switch = type(self).switch_specs
-        self.switch_hostname = tested_switch["hostname"]
-        self.switch_port = tested_switch["port"]
-        self.switch_type = tested_switch["model"]
-        self.switch_username = tested_switch["username"]
-        self.switch_password = tested_switch["password"]
-        self.test_port = tested_switch["test_port_name"]
+        specs = type(self).switch_specs
+        self.switch_hostname = specs["hostname"]
+        self.switch_port = specs["port"]
+        self.switch_type = specs["model"]
+        self.switch_username = specs["username"]
+        self.switch_password = specs["password"]
+        self.test_port = specs["test_port_name"]
 
-    def get(self, relative_url, fail_on_bad_code=True):
-        with app.test_client() as http_client:
-            r = http_client.get(**self.request(relative_url))
-
-        if fail_on_bad_code and r.status_code >= 400:
-            raise AssertionError("Call to %s returned %s : %s" % (relative_url, r.status_code, r.data))
-        return json.loads(r.data)
-
-    def post(self, relative_url, data=None, raw_data=None, fail_on_bad_code=True):
-        with app.test_client() as http_client:
-            r = http_client.post(data=raw_or_json(raw_data, data), **self.request(relative_url))
-        if fail_on_bad_code and r.status_code >= 400:
-            raise AssertionError("Call to %s returned %s : %s" % (relative_url, r.status_code, r.data))
-        return r
-
-    def put(self, relative_url, data=None, raw_data=None, fail_on_bad_code=True):
-        with app.test_client() as http_client:
-            r = http_client.put(data=raw_or_json(raw_data, data), **self.request(relative_url))
-        if fail_on_bad_code and r.status_code >= 400:
-            raise AssertionError("Call to %s returned %s : %s" % (relative_url, r.status_code, r.data))
-        return r
-
-    def delete(self, relative_url, fail_on_bad_code=True):
-        with app.test_client() as http_client:
-            r = http_client.delete(**self.request(relative_url))
-        if fail_on_bad_code and r.status_code >= 400:
-            raise AssertionError("Call to %s returned %s : %s" % (relative_url, r.status_code, r.data))
-        return r
-
-    def request(self, relative_url):
-        logging.info("Querying " + ("http://netman.example.org%s" % relative_url.format(switch=self.switch_hostname, port=self.test_port)))
-        headers = {
-            'Netman-Model': self.switch_type,
-            'Netman-Username': self.switch_username,
-            'Netman-Password': self.switch_password,
-            'Netman-Port': self.switch_port
-        }
-
-        return {
-            "path": relative_url.format(switch=self.switch_hostname, port=self.test_port),
-            "headers": headers
-        }
+        self.client = RemoteSwitch(SwitchDescriptor(
+            netman_server='', **sub_dict(
+                specs, 'hostname', 'port', 'model', 'username', 'password')))
+        self.client.requests = FlaskRequest(app.test_client())
 
     def get_vlan(self, number):
-        data = self.get("/switches/{switch}/vlans")
-
-        vlan = next((vlan for vlan in data if vlan["number"] == number), None)
-        if not vlan:
+        try:
+            return next((vlan for vlan in self.client.get_vlans()
+                         if vlan.number == number))
+        except StopIteration:
             raise AssertionError("Vlan #{} not found".format(number))
-
-        return vlan
 
 
 def skip_on_switches(*to_skip):

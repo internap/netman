@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from hamcrest import assert_that, is_, none, is_not
+from netaddr import IPAddress
 
 from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
 
@@ -23,20 +24,19 @@ class DhcpRelayServerTest(ConfiguredTestCase):
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_add_and_get_and_delete_dhcp_relay_server(self):
         try:
-            self.post("/switches/{switch}/vlans", data={"number": 2999, "name": "my-test-vlan"})
-
-            self.post("/switches/{switch}/vlans/2999/dhcp-relay-server", raw_data="10.10.10.1")
+            self.client.add_vlan(2999, name="my-test-vlan")
+            self.client.add_dhcp_relay_server(2999, ip_address=IPAddress("10.10.10.1"))
 
             vlan = self.get_vlan(2999)
-            dhcp_relay_server = next((g for g in vlan["dhcp_relay_servers"] if g == '10.10.10.1'), None)
+            dhcp_relay_server = next((g for g in vlan.dhcp_relay_servers if str(g) == '10.10.10.1'), None)
 
             assert_that(dhcp_relay_server, is_not(None))
 
-            self.delete("/switches/{switch}/vlans/2999/dhcp-relay-server/10.10.10.1")
+            self.client.remove_dhcp_relay_server(2999, ip_address=IPAddress("10.10.10.1"))
 
             vlan = self.get_vlan(2999)
-            dhcp_relay_server = next((g for g in vlan["dhcp_relay_servers"] if g == '10.10.10.1'), None)
+            dhcp_relay_server = next((g for g in vlan.dhcp_relay_servers if str(g) == '10.10.10.1'), None)
             assert_that(dhcp_relay_server, is_(none()))
 
         finally:
-            self.delete("/switches/{switch}/vlans/2999", fail_on_bad_code=False)
+            self.client.remove_vlan(2999)
