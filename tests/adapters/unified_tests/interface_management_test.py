@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from hamcrest import assert_that, equal_to
-
 from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
 
 
@@ -22,25 +20,20 @@ class InterfaceManagementTest(ConfiguredTestCase):
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_shutdown_interface(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/shutdown", raw_data='true')
-        assert_that(response.status_code, equal_to(204))
+        self.client.shutdown_interface(self.test_port)
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_openup_interface(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/shutdown", raw_data='false')
-        assert_that(response.status_code, equal_to(204))
+        self.client.openup_interface(self.test_port)
 
     @skip_on_switches("cisco", "brocade")
     def test_edit_spanning_tree(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/spanning-tree", data={"edge": True})
-        assert_that(response.status_code, equal_to(204))
+        self.client.edit_interface_spanning_tree(self.test_port, edge=True)
 
     @skip_on_switches("cisco", "brocade")
     def test_enable_lldp(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/lldp", raw_data='true')
-        assert_that(response.status_code, equal_to(204))
+        self.client.enable_lldp(self.test_port, enabled=True)
 
     @skip_on_switches("cisco", "brocade")
     def test_disable_lldp(self):
-        response = self.put("/switches/{switch}/interfaces/{port}/lldp", raw_data='false')
-        assert_that(response.status_code, equal_to(204))
+        self.client.enable_lldp(self.test_port, enabled=False)

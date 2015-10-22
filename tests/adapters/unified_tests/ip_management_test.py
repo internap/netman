@@ -13,6 +13,11 @@
 # limitations under the License.
 
 from hamcrest import equal_to, assert_that, has_length
+from netaddr import IPNetwork
+
+from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.exceptions import UnknownVlan, UnknownIP, \
+    IPNotAvailable, Conflict
 
 from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
 
@@ -22,92 +27,93 @@ class IpManagementTest(ConfiguredTestCase):
 
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_adding_and_removing_ip_basic(self):
-        self.post("/switches/{switch}/vlans", data={"number": 2345})
+        self.client.add_vlan(2345)
 
-        self.post("/switches/{switch}/vlans/2345/ips", data={"address": "2.2.2.2", "mask": "24"})
-        self.post("/switches/{switch}/vlans/2345/ips", data={"address": "1.1.1.1", "mask": "24"})
-        self.post("/switches/{switch}/vlans/2345/ips", data={"address": "1.1.1.2", "mask": "24"})
-        self.post("/switches/{switch}/vlans/2345/ips", data={"address": "1.1.1.3", "mask": "24"})
-        self.post("/switches/{switch}/vlans/2345/ips", data={"address": "1.1.1.4", "mask": "24"})
+        self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("2.2.2.2/24"))
+        self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.1/24"))
+        self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.2/24"))
+        self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.3/24"))
+        self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.4/24"))
 
-        vlans = self.get("/switches/{switch}/vlans")
-        vlan2345 = next(vlan for vlan in vlans if vlan["number"] == 2345)
+        vlans = self.client.get_vlans()
+        vlan2345 = next(vlan for vlan in vlans if vlan.number == 2345)
 
-        assert_that(vlan2345["ips"], has_length(5))
-        assert_that(vlan2345["ips"][0], equal_to({"address": "1.1.1.1", "mask": 24}))
-        assert_that(vlan2345["ips"][1], equal_to({"address": "1.1.1.2", "mask": 24}))
-        assert_that(vlan2345["ips"][2], equal_to({"address": "1.1.1.3", "mask": 24}))
-        assert_that(vlan2345["ips"][3], equal_to({"address": "1.1.1.4", "mask": 24}))
-        assert_that(vlan2345["ips"][4], equal_to({"address": "2.2.2.2", "mask": 24}))
+        assert_that(vlan2345.ips, has_length(5))
+        assert_that(str(vlan2345.ips[0]), equal_to("1.1.1.1/24"))
+        assert_that(str(vlan2345.ips[1]), equal_to("1.1.1.2/24"))
+        assert_that(str(vlan2345.ips[2]), equal_to("1.1.1.3/24"))
+        assert_that(str(vlan2345.ips[3]), equal_to("1.1.1.4/24"))
+        assert_that(str(vlan2345.ips[4]), equal_to("2.2.2.2/24"))
 
-        self.delete("/switches/{switch}/vlans/2345/ips/1.1.1.1/24")
-        self.delete("/switches/{switch}/vlans/2345/ips/1.1.1.3/24")
+        self.client.remove_ip_from_vlan(2345, ip_network=IPNetwork("1.1.1.1/24"))
+        self.client.remove_ip_from_vlan(2345, ip_network=IPNetwork("1.1.1.3/24"))
 
-        vlans = self.get("/switches/{switch}/vlans")
-        vlan2345 = next(vlan for vlan in vlans if vlan["number"] == 2345)
+        vlans = self.client.get_vlans()
+        vlan2345 = next(vlan for vlan in vlans if vlan.number == 2345)
 
-        assert_that(vlan2345["ips"], has_length(3))
-        assert_that(vlan2345["ips"][0], equal_to({"address": "1.1.1.2", "mask": 24}))
-        assert_that(vlan2345["ips"][1], equal_to({"address": "1.1.1.4", "mask": 24}))
-        assert_that(vlan2345["ips"][2], equal_to({"address": "2.2.2.2", "mask": 24}))
+        assert_that(vlan2345.ips, has_length(3))
+        assert_that(str(vlan2345.ips[0]), equal_to("1.1.1.2/24"))
+        assert_that(str(vlan2345.ips[1]), equal_to("1.1.1.4/24"))
+        assert_that(str(vlan2345.ips[2]), equal_to("2.2.2.2/24"))
 
-        self.delete("/switches/{switch}/vlans/2345")
+        self.client.remove_vlan(2345)
 
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_adding_unavailable_ips_and_various_errors(self):
-        self.post("/switches/{switch}/vlans", data={"number": 2345})
+        self.client.add_vlan(2345)
 
-        self.post("/switches/{switch}/vlans/2345/ips", data={"address": "1.1.1.1", "mask": "24"})
+        self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.1/24"))
 
-        response = self.post("/switches/{switch}/vlans/3333/ips", data={"address": "1.1.1.1", "mask": "24"}, fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(404)) #vlan not found
+        with self.assertRaises(UnknownVlan):
+            self.client.add_ip_to_vlan(3333, ip_network=IPNetwork("1.1.1.1/24"))
 
-        response = self.post("/switches/{switch}/vlans/2345/ips", data={"address": "1.1.1.1", "mask": "24"}, fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(409))
+        # TODO(jprovost) Unify switch adapters to raise the same exception
+        # multiple exceptions: IPNotAvailable, IPAlreadySet
+        with self.assertRaises(Conflict): 
+            self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.1/24"))
 
-        self.post("/switches/{switch}/vlans", data={"number": 2999})
-        response = self.post("/switches/{switch}/vlans/2999/ips", data={"address": "1.1.1.1", "mask": "24"}, fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(409))
+        self.client.add_vlan(2999)
+        with self.assertRaises(IPNotAvailable):
+            self.client.add_ip_to_vlan(2999, ip_network=IPNetwork("1.1.1.1/24"))
 
-        response = self.post("/switches/{switch}/vlans/2999/ips", data={"address": "1.1.1.2", "mask": "24"}, fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(409))
-        self.delete("/switches/{switch}/vlans/2999")
+        with self.assertRaises(IPNotAvailable):
+            self.client.add_ip_to_vlan(2999, ip_network=IPNetwork("1.1.1.2/24"))
+        self.client.remove_vlan(2999)
 
-        response = self.delete("/switches/{switch}/vlans/1111/ips/1.1.1.1/24", fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(404)) #vlan not found
+        with self.assertRaises(UnknownVlan):
+            self.client.remove_ip_from_vlan(1111, ip_network=IPNetwork("1.1.1.1/24"))
 
-        response = self.delete("/switches/{switch}/vlans/2345/ips/2.2.2.2/24", fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(404)) #ip not found
+        with self.assertRaises(UnknownIP):
+            self.client.remove_ip_from_vlan(2345, ip_network=IPNetwork("2.2.2.2/24"))
 
-        response = self.delete("/switches/{switch}/vlans/2345/ips/1.1.1.1/30", fail_on_bad_code=False)
-        assert_that(response.status_code, equal_to(404)) #ip not found
+        with self.assertRaises(UnknownIP):
+            self.client.remove_ip_from_vlan(2345, ip_network=IPNetwork("1.1.1.1/30"))
 
-        self.delete("/switches/{switch}/vlans/2345")
+        self.client.remove_vlan(2345)
 
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_handling_access_groups(self):
-        self.post("/switches/{switch}/vlans", data={"number": 2345})
+        self.client.add_vlan(2345)
 
-        self.put("/switches/{switch}/vlans/2345/access-groups/in", raw_data="my-group")
-        self.put("/switches/{switch}/vlans/2345/access-groups/out", raw_data="your-group")
+        self.client.set_vlan_access_group(2345, direction=IN, name="my-group")
+        self.client.set_vlan_access_group(2345, direction=OUT, name="your-group")
 
-        vlans = self.get("/switches/{switch}/vlans")
-        vlan2345 = next(vlan for vlan in vlans if vlan["number"] == 2345)
+        vlans = self.client.get_vlans()
+        vlan2345 = next(vlan for vlan in vlans if vlan.number == 2345)
 
-        assert_that(vlan2345["access_groups"]["in"], equal_to("my-group"))
-        assert_that(vlan2345["access_groups"]["out"], equal_to("your-group"))
+        assert_that(vlan2345.access_groups[IN], equal_to("my-group"))
+        assert_that(vlan2345.access_groups[OUT], equal_to("your-group"))
 
+        self.client.remove_vlan_access_group(2345, direction=IN)
+        self.client.remove_vlan_access_group(2345, direction=OUT)
 
-        self.delete("/switches/{switch}/vlans/2345/access-groups/in")
-        self.delete("/switches/{switch}/vlans/2345/access-groups/out")
+        vlans = self.client.get_vlans()
+        vlan2345 = next(vlan for vlan in vlans if vlan.number == 2345)
 
-        vlans = self.get("/switches/{switch}/vlans")
-        vlan2345 = next(vlan for vlan in vlans if vlan["number"] == 2345)
+        assert_that(vlan2345.access_groups[IN], equal_to(None))
+        assert_that(vlan2345.access_groups[OUT], equal_to(None))
 
-        assert_that(vlan2345["access_groups"]["in"], equal_to(None))
-        assert_that(vlan2345["access_groups"]["out"], equal_to(None))
-
-        self.delete("/switches/{switch}/vlans/2345")
+        self.client.remove_vlan(2345)
 
 
 # all covered cases
