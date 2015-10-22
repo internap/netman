@@ -106,6 +106,10 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(self.switch.get_vlans(), is_([Vlan(2)]))
 
+    def test_remove_vlan_alone(self):
+        self.real_switch_mock.should_receive("remove_vlan").once().with_args(1)
+        self.switch.remove_vlan(1)
+
     def test_get_interfaces(self):
         all_interfaces = [Interface('xe-1/0/1'), Interface('xe-1/0/2')]
 
@@ -402,6 +406,10 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.remove_bond(2)
 
         assert_that(self.switch.get_bonds(), is_([Bond(1)]))
+
+    def test_remove_bond_alone(self):
+        self.real_switch_mock.should_receive("remove_bond").once().with_args(2)
+        self.switch.remove_bond(2)
 
     def test_get_bonds(self):
         all_bonds = [Bond(1), Bond(2)]
