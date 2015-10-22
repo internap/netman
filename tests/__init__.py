@@ -28,9 +28,10 @@ def tearDown():
 
 
 class ExactIpNetwork(object):
-    def __init__(self, ip, mask):
-        self.ip = IPAddress(ip)
-        self.mask = mask
+    def __init__(self, ip, mask=None):
+        net = IPNetwork(ip)
+        self.ip = net.ip
+        self.mask = mask or net.prefixlen
 
     def __eq__(self, other):
         if not isinstance(other, IPNetwork):

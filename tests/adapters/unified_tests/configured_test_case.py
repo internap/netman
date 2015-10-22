@@ -16,6 +16,9 @@ import unittest
 from functools import wraps
 from unittest import SkipTest
 
+from hamcrest import assert_that, is_
+
+from netman.adapters.switches.cached import CachedSwitch
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.main import app
@@ -24,6 +27,28 @@ from .flask_helper import FlaskRequest
 
 def sub_dict(d, *keys):
     return dict((k, d[k]) for k in keys)
+
+
+class ValidatingCachedSwitch(CachedSwitch):
+    def get_bond(self, number):
+        bond = super(ValidatingCachedSwitch, self).get_bond(number)
+        assert_that(bond, is_(self.real_switch.get_bond(number)))
+        return bond
+
+    def get_bonds(self):
+        bonds = super(ValidatingCachedSwitch, self).get_bonds()
+        assert_that(bonds, is_(self.real_switch.get_bonds()))
+        return bonds
+
+    def get_interfaces(self):
+        interfaces = super(ValidatingCachedSwitch, self).get_interfaces()
+        assert_that(interfaces, is_(self.real_switch.get_interfaces()))
+        return interfaces
+
+    def get_vlans(self):
+        vlans = super(ValidatingCachedSwitch, self).get_vlans()
+        assert_that(vlans, is_(self.real_switch.get_vlans()))
+        return vlans
 
 
 class ConfiguredTestCase(unittest.TestCase):
@@ -38,10 +63,12 @@ class ConfiguredTestCase(unittest.TestCase):
         self.switch_password = specs["password"]
         self.test_port = specs["test_port_name"]
 
-        self.client = RemoteSwitch(SwitchDescriptor(
+        self.remote_switch = RemoteSwitch(SwitchDescriptor(
             netman_server='', **sub_dict(
                 specs, 'hostname', 'port', 'model', 'username', 'password')))
-        self.client.requests = FlaskRequest(app.test_client())
+        self.remote_switch.requests = FlaskRequest(app.test_client())
+
+        self.client = ValidatingCachedSwitch(self.remote_switch)
 
     def get_vlan(self, number):
         try:
