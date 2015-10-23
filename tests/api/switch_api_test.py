@@ -73,7 +73,24 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(200))
         assert_that(result, matches_fixture("get_switch_hostname_vlans.json"))
 
-    def test_gat_vlans_can_be_empty(self):
+    def test_single_vlan_serialization(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_vlan').with_args(1).and_return(
+            Vlan(1, "One", [IPNetwork('1.1.1.1/24')], vrf_forwarding="MY_VRF", access_group_in="Blah_blah",
+                 vrrp_groups=[
+                     VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
+                               track_id='101', track_decrement=50)
+                 ]),
+        ).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/vlans/1")
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_switch_hostname_vlans_vlan.json"))
+
+    def test_get_vlans_can_be_empty(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_vlans').and_return([]).once().ordered()

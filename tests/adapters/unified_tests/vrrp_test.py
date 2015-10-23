@@ -38,7 +38,7 @@ class VrrpTest(ConfiguredTestCase):
                 dead_interval=15
             )
 
-            vlan = self.get_vlan(2999)
+            vlan = self.get_vlan_from_list(2999)
             vrrp_group = next((g for g in vlan.vrrp_groups if g.id == 73), None)
 
             assert_that(vrrp_group, is_not(None))
@@ -52,7 +52,7 @@ class VrrpTest(ConfiguredTestCase):
 
             self.client.remove_vrrp_group(vlan_number=2999, group_id=73)
 
-            vlan = self.get_vlan(2999)
+            vlan = self.get_vlan_from_list(2999)
             vrrp_group = next((g for g in vlan.vrrp_groups if g.id == 73), None)
             assert_that(vrrp_group, is_(none()))
 

@@ -30,6 +30,7 @@ class SwitchApi(SwitchApiBase):
     def hook_to(self, server):
         server.add_url_rule('/switches/<hostname>/vlans', view_func=self.get_vlans, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/vlans', view_func=self.add_vlan, methods=['POST'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>', view_func=self.get_vlan, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>', view_func=self.remove_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/ips', view_func=self.add_ip, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/ips/<path:ip_network>', view_func=self.remove_ip, methods=['DELETE'])
@@ -91,6 +92,25 @@ class SwitchApi(SwitchApiBase):
         vlans = sorted(switch.get_vlans(), key=lambda x: x.number)
 
         return 200, [SerializableVlan(vlan) for vlan in vlans]
+
+    @to_response
+    @resource(Switch, Vlan)
+    def get_vlan(self, switch, vlan_number):
+        """
+        Displays informations about one VLAN
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        :code 200 OK:
+
+        Example output:
+
+        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_vlans_vlan.json
+            :language: json
+
+        """
+
+        return 200, SerializableVlan(switch.get_vlan(vlan_number))
 
     @to_response
     @content(is_vlan)

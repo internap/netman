@@ -45,6 +45,11 @@ class ValidatingCachedSwitch(CachedSwitch):
         assert_that(interfaces, is_(self.real_switch.get_interfaces()))
         return interfaces
 
+    def get_vlan(self, number):
+        vlan = super(ValidatingCachedSwitch, self).get_vlan(number)
+        assert_that(vlan, is_(self.real_switch.get_vlan(number)))
+        return vlan
+
     def get_vlans(self):
         vlans = super(ValidatingCachedSwitch, self).get_vlans()
         assert_that(vlans, is_(self.real_switch.get_vlans()))
@@ -70,7 +75,7 @@ class ConfiguredTestCase(unittest.TestCase):
 
         self.client = ValidatingCachedSwitch(self.remote_switch)
 
-    def get_vlan(self, number):
+    def get_vlan_from_list(self, number):
         try:
             return next((vlan for vlan in self.client.get_vlans()
                          if vlan.number == number))

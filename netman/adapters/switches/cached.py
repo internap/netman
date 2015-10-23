@@ -118,6 +118,12 @@ class CachedSwitch(SwitchBase):
     def end_transaction(self):
         return self.real_switch.end_transaction()
 
+    def get_vlan(self, number):
+        if (self.vlans_cache.refresh_items and number not in self.vlans_cache) \
+                or number in self.vlans_cache.refresh_items:
+            self.vlans_cache[number] = self.real_switch.get_vlan(number)
+        return copy.deepcopy(self.vlans_cache[number])
+
     def get_vlans(self):
         if self.vlans_cache.refresh_items:
             self.vlans_cache = VlanCache(

@@ -80,6 +80,9 @@ class RemoteSwitch(SwitchBase):
         self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                               'Netman-Session-Id': session_id}))
 
+    def get_vlan(self, number):
+        return SerializableVlan.to_core(**self.get("/vlans/{}".format(number)).json())
+
     def get_vlans(self):
         return [SerializableVlan.to_core(**row) for row in self.get("/vlans").json()]
 

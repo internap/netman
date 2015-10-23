@@ -93,6 +93,9 @@ class SwitchTransactional(SwitchOperations):
     def get_interfaces(self):
         return self.impl.get_interfaces()
 
+    def get_vlan(self, number):
+        return self.impl.get_vlan(number)
+
     def get_vlans(self):
         return self.impl.get_vlans()
 

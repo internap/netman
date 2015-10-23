@@ -27,14 +27,14 @@ class DhcpRelayServerTest(ConfiguredTestCase):
             self.client.add_vlan(2999, name="my-test-vlan")
             self.client.add_dhcp_relay_server(2999, ip_address=IPAddress("10.10.10.1"))
 
-            vlan = self.get_vlan(2999)
+            vlan = self.get_vlan_from_list(2999)
             dhcp_relay_server = next((g for g in vlan.dhcp_relay_servers if str(g) == '10.10.10.1'), None)
 
             assert_that(dhcp_relay_server, is_not(None))
 
             self.client.remove_dhcp_relay_server(2999, ip_address=IPAddress("10.10.10.1"))
 
-            vlan = self.get_vlan(2999)
+            vlan = self.get_vlan_from_list(2999)
             dhcp_relay_server = next((g for g in vlan.dhcp_relay_servers if str(g) == '10.10.10.1'), None)
             assert_that(dhcp_relay_server, is_(none()))
 

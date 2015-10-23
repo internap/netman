@@ -74,6 +74,15 @@ class Cisco(SwitchBase):
     def rollback_transaction(self):
         pass
 
+    def get_vlan(self, number):
+        vlan = Vlan(int(number))
+        apply_vlan_running_config_data(vlan, self._get_vlan_run_conf(number))
+        apply_interface_running_config_data(
+            vlan,
+            self.ssh.do("show running-config interface vlan {} | begin interface".format(number))
+        )
+        return vlan
+
     def get_vlans(self):
         vlan_list = self.ssh.do("show vlan brief")
 
@@ -113,7 +122,7 @@ class Cisco(SwitchBase):
                     raise BadVlanName()
 
     def remove_vlan(self, number):
-        self.ensure_vlan_exists(number)
+        self._get_vlan_run_conf(number)
 
         with self.config():
             self.ssh.do('no interface vlan %s' % number)
@@ -128,7 +137,7 @@ class Cisco(SwitchBase):
         return interfaces
 
     def set_access_vlan(self, interface_id, vlan):
-        self.ensure_vlan_exists(vlan)
+        self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport access vlan %s' % vlan)
@@ -152,7 +161,7 @@ class Cisco(SwitchBase):
             self.ssh.do('no switchport access vlan')
 
     def add_trunk_vlan(self, interface_id, vlan):
-        self.ensure_vlan_exists(vlan)
+        self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport trunk allowed vlan add %s' % vlan)
@@ -174,7 +183,7 @@ class Cisco(SwitchBase):
             self.ssh.do('no shutdown')
 
     def configure_native_vlan(self, interface_id, vlan):
-        self.ensure_vlan_exists(vlan)
+        self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport trunk native vlan %s' % vlan)
@@ -286,16 +295,16 @@ class Cisco(SwitchBase):
     def interface_vlan(self, interface_id):
         return SubShell(self.ssh, enter=["interface vlan %s" % interface_id, "no shutdown"], exit_cmd='exit')
 
-    def ensure_vlan_exists(self, vlan_number):
-        run_config = self.ssh.do('show running-config vlan %s' % vlan_number)
-        vlan = any(re.match("^vlan %s" % vlan_number, line) for line in run_config)
-        if not vlan:
+    def _get_vlan_run_conf(self, vlan_number):
+        run_config = self.ssh.do('show running-config vlan {} | begin vlan'.format(vlan_number))
+        if not run_config:
             raise UnknownVlan(vlan_number)
+        return run_config
 
     def get_vlan_interface_data(self, vlan_number):
         run_int_vlan_data = self.ssh.do('show running-config interface vlan %s' % vlan_number)
         if not run_int_vlan_data[0].startswith("Building configuration..."):
-            self.ensure_vlan_exists(vlan_number)
+            self._get_vlan_run_conf(vlan_number)
 
         vlan = Vlan(vlan_number)
         apply_interface_running_config_data(vlan, run_int_vlan_data)
@@ -425,6 +434,13 @@ def apply_interface_running_config_data(vlan, data):
 
         elif regex.match("^ ip helper-address ([^\s]*)", line):
             vlan.dhcp_relay_servers.append(IPAddress(regex[0]))
+
+
+def apply_vlan_running_config_data(vlan, data):
+    vlan.name = ""
+    for line in data:
+        if regex.match("^ name ([^\s]*)", line):
+            vlan.name = regex[0]
 
 
 def parse_vlan_ranges(all_ranges):
