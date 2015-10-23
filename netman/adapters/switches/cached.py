@@ -66,8 +66,8 @@ class Cache(object):
         return len(self.dict)
 
     def __delitem__(self, key):
-        del self.dict[key]
         try:
+            del self.dict[key]
             self.refresh_items.remove(key)
         except KeyError:
             pass
