@@ -64,21 +64,27 @@ class RemoteSwitch(SwitchBase):
         )
 
     def commit_transaction(self):
+        self.logger.info("Commiting %s" % self.session_id)
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                             'Netman-Session-Id': self.session_id}, data='commit'))
+        self.logger.info("Commited %s" % self.session_id)
 
     def rollback_transaction(self):
+        self.logger.info("Rollbacking %s" % self.session_id)
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                             'Netman-Session-Id': self.session_id}, data='rollback'))
+        self.logger.info("Rollbacked %s" % self.session_id)
 
     def end_transaction(self):
+        self.logger.info("Ending session %s" % self.session_id)
         url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
         session_id = self.session_id
         self.session_id = None
         self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                               'Netman-Session-Id': session_id}))
+        self.logger.info("Ended session %s" % self.session_id)
 
     def get_vlans(self):
         return [SerializableVlan.to_core(**row) for row in self.get("/vlans").json()]
