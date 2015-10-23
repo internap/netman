@@ -64,6 +64,24 @@ class CacheSwitchTest(unittest.TestCase):
         self.real_switch_mock.should_receive("end_transaction").once()
         self.switch.end_transaction()
 
+    def test_get_vlan(self):
+        a_vlan = Vlan(1, 'first')
+
+        self.real_switch_mock.should_receive("get_vlan").once().and_return(
+            a_vlan)
+        assert_that(self.switch.get_vlan(1), is_(a_vlan))
+        assert_that(self.switch.get_vlan(1), is_(a_vlan))
+
+    def test_get_vlan_after_list(self):
+        all_vlans = [Vlan(1, 'first'), Vlan(2, 'second')]
+
+        self.real_switch_mock.should_receive("get_vlans").once().and_return(
+            all_vlans)
+        assert_that(self.switch.get_vlans(), is_(all_vlans))
+
+        assert_that(self.switch.get_vlan(1), is_(all_vlans[0]))
+        assert_that(self.switch.get_vlan(2), is_(all_vlans[1]))
+
     def test_get_vlans(self):
         all_vlans = [Vlan(1, 'first'), Vlan(2, 'second')]
 

@@ -318,6 +318,33 @@ class RemoteSwitchTest(unittest.TestCase):
         self.setUp()
         self.test_add_bond()
 
+    def test_get_vlan(self):
+        self.requests_mock.should_receive("get").once().with_args(
+            url=self.netman_url+'/switches/toto/vlans/1',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content=open_fixture('get_switch_hostname_vlans_vlan.json').read(),
+                status_code=200))
+
+        vlan1 = self.switch.get_vlan(1)
+
+        assert_that(vlan1.number, is_(1))
+        assert_that(vlan1.name, is_('One'))
+        assert_that(vlan1.ips, is_([ExactIpNetwork('1.1.1.1', 24)]))
+        assert_that(vlan1.vrf_forwarding, is_("MY_VRF"))
+        assert_that(vlan1.access_groups[IN], is_("Blah_blah"))
+        assert_that(vlan1.access_groups[OUT], is_(None))
+        assert_that(vlan1.dhcp_relay_servers, is_([]))
+        vrrp_group = vlan1.vrrp_groups[0]
+        assert_that(vrrp_group.id, is_(1))
+        assert_that(vrrp_group.ips, is_([IPAddress("1.1.1.2")]))
+        assert_that(vrrp_group.priority, is_(90))
+        assert_that(vrrp_group.hello_interval, is_(5))
+        assert_that(vrrp_group.dead_interval, is_(15))
+        assert_that(vrrp_group.track_id, is_("101"))
+        assert_that(vrrp_group.track_decrement, is_(50))
+
     def test_get_vlans(self):
         self.requests_mock.should_receive("get").once().with_args(
             url=self.netman_url+'/switches/toto/vlans',

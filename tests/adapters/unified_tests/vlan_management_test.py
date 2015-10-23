@@ -13,21 +13,43 @@
 # limitations under the License.
 
 from hamcrest import equal_to, assert_that, has_length, is_, none
+from netaddr import IPNetwork, IPAddress
+
+from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan, UnknownInterface, \
     UnknownResource
 from netman.core.objects.port_modes import ACCESS, TRUNK
-
-
 from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
 
 
 class VlanManagementTest(ConfiguredTestCase):
     __test__ = False
 
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    def test_get_vlan(self):
+        self.client.add_vlan(2999, name="my-test-vlan")
+        self.client.set_vlan_access_group(2999, IN, "ACL-IN")
+        self.client.set_vlan_access_group(2999, OUT, "ACL-OUT")
+        self.client.set_vlan_vrf(2999, "DEFAULT-LAN")
+        self.client.add_ip_to_vlan(2999, IPNetwork("10.10.10.2/29"))
+        self.client.add_vrrp_group(vlan_number=2999, group_id=73, ips=[IPAddress("10.10.0.1")], priority=110,
+                                   track_id="101", track_decrement=50, hello_interval=5, dead_interval=15)
+        self.client.add_dhcp_relay_server(2999, IPAddress("10.10.10.11"))
+
+        single_vlan = self.client.get_vlan(2999)
+        vlan_from_list = self.get_vlan_from_list(2999)
+
+        assert_that(single_vlan, equal_to(vlan_from_list))
+
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    def test_get_vlan_fails(self):
+        with self.assertRaises(UnknownVlan):
+            self.client.get_vlan(4000)
+
     def test_adding_and_removing_a_vlan(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
-        vlan = self.get_vlan(2999)
+        vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.name, equal_to('my-test-vlan'))
         assert_that(len(vlan.ips), equal_to(0))
 
@@ -195,12 +217,12 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.set_vlan_vrf(2999, 'DEFAULT-LAN')
 
-        vlan = self.get_vlan(2999)
+        vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_('DEFAULT-LAN'))
 
         self.client.remove_vlan_vrf(2999)
 
-        vlan = self.get_vlan(2999)
+        vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_(none()))
 
         self.client.remove_vlan(2999)

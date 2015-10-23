@@ -15,7 +15,7 @@
 import unittest
 
 from flexmock import flexmock, flexmock_teardown
-from hamcrest import assert_that, has_length, equal_to, is_, instance_of, none
+from hamcrest import assert_that, has_length, equal_to, is_, instance_of, none, empty
 import mock
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
@@ -161,6 +161,127 @@ class BrocadeTest(unittest.TestCase):
         assert_that(str(vlan201.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
         assert_that(str(vlan201.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
 
+    def test_get_vlan_with_no_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
+            vlan_display(1750)
+        )
+
+        vlan = self.switch.get_vlan(1750)
+
+        assert_that(vlan.number, is_(1750))
+        assert_that(vlan.name, is_(""))
+        assert_that(vlan.access_groups[IN], is_(none()))
+        assert_that(vlan.access_groups[OUT], is_(none()))
+        assert_that(vlan.vrf_forwarding, is_(none()))
+        assert_that(vlan.ips, is_(empty()))
+        assert_that(vlan.vrrp_groups, is_(empty()))
+        assert_that(vlan.dhcp_relay_servers, is_(empty()))
+
+    def test_get_vlan_with_an_empty_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
+            vlan_with_vif_display(1750, 999, name="Shizzle")
+        )
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 999").once().ordered().and_return([
+            "interface ve 999",
+            "!",
+        ])
+
+        vlan = self.switch.get_vlan(1750)
+
+        assert_that(vlan.number, is_(1750))
+        assert_that(vlan.name, is_("Shizzle"))
+        assert_that(vlan.access_groups[IN], is_(none()))
+        assert_that(vlan.access_groups[OUT], is_(none()))
+        assert_that(vlan.vrf_forwarding, is_(none()))
+        assert_that(vlan.ips, is_(empty()))
+        assert_that(vlan.vrrp_groups, is_(empty()))
+        assert_that(vlan.dhcp_relay_servers, is_(empty()))
+
+    def test_get_vlan_with_a_full_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
+            vlan_with_vif_display(1750, 1750, name="Shizzle")
+        )
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1750").once().ordered().and_return([
+            "interface ve 1750",
+            " vrf forwarding SHIZZLE",
+            " ip address 1.1.1.1/24",
+            " ip address 2.1.1.1/27",
+            " ip address 1.1.1.9/24 secondary",
+            " ip access-group ACL-IN in",
+            " ip access-group ACL-OUT out",
+            " ip helper-address 10.10.10.1",
+            " ip helper-address 10.10.10.2",
+            " ip vrrp-extended auth-type simple-text-auth VLAN201",
+            " ip vrrp-extended vrid 1",
+            "  backup priority 110 track-priority 50",
+            "  ip-address 1.1.1.2",
+            "  hello-interval 5",
+            "  dead-interval 15",
+            "  advertise backup",
+            "  track-port ethernet 1/1",
+            "  activate",
+            " ip vrrp-extended vrid 2",
+            "  backup priority 110 track-priority 50",
+            "  ip-address 1.1.1.3",
+            "  ip-address 1.1.1.4",
+            "  hello-interval 5",
+            "  dead-interval 15",
+            "  advertise backup",
+            "  track-port ethernet 1/1",
+            "  activate",
+            "!",        
+        ])
+
+        vlan = self.switch.get_vlan(1750)
+
+        assert_that(vlan.number, is_(1750))
+        assert_that(vlan.name, is_("Shizzle"))
+        assert_that(vlan.access_groups[IN], is_("ACL-IN"))
+        assert_that(vlan.access_groups[OUT], is_("ACL-OUT"))
+        assert_that(vlan.vrf_forwarding, is_("SHIZZLE"))
+        assert_that(vlan.ips, has_length(3))
+
+        vrrp_group1, vrrp_group2 = vlan.vrrp_groups
+        assert_that(len(vrrp_group1.ips), equal_to(1))
+        assert_that(vrrp_group1.ips[0], equal_to(IPAddress('1.1.1.2')))
+        assert_that(vrrp_group1.hello_interval, equal_to(5))
+        assert_that(vrrp_group1.dead_interval, equal_to(15))
+        assert_that(vrrp_group1.priority, equal_to(110))
+        assert_that(vrrp_group1.track_id, equal_to('1/1'))
+        assert_that(vrrp_group1.track_decrement, equal_to(50))
+        assert_that(len(vrrp_group2.ips), equal_to(2))
+        assert_that(vrrp_group2.ips[0], equal_to(IPAddress('1.1.1.3')))
+        assert_that(vrrp_group2.ips[1], equal_to(IPAddress('1.1.1.4')))
+        assert_that(vrrp_group2.hello_interval, equal_to(5))
+        assert_that(vrrp_group2.dead_interval, equal_to(15))
+        assert_that(vrrp_group2.priority, equal_to(110))
+        assert_that(vrrp_group2.track_id, equal_to('1/1'))
+        assert_that(vrrp_group2.track_decrement, equal_to(50))
+
+        assert_that(len(vlan.dhcp_relay_servers), equal_to(2))
+        assert_that(str(vlan.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
+        assert_that(str(vlan.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
+
+    def test_get_vlan_unknown_interface_raises(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1750").once().ordered().and_return([
+            "Error: vlan 1750 is not configured"
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan(1750)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1750 not found"))
+
     def test_add_vlan(self):
         self.command_setup()
 
@@ -212,11 +333,10 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            " router-interface ve 3333",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
@@ -227,7 +347,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vlan_invalid_vlan_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return([
+            "Error: vlan 2999 is not configured"
+        ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
 
@@ -239,10 +361,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -255,7 +376,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_vlan_invalid_vlan_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return([
+            "Error: vlan 2999 is not configured"
+        ])
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.set_access_vlan("1/4", vlan=2999)
@@ -265,10 +388,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_vlan_invalid_interface_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -391,11 +513,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_trunk_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            " tagged ethe 1/10 to 1/11",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -408,11 +528,10 @@ class BrocadeTest(unittest.TestCase):
     def test_add_trunk_vlan_invalid_interface_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            " tagged ethe 1/10 to 1/11",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
+
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -430,8 +549,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_trunk_vlan_invalid_vlan_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return([
+            "Error: vlan 2999 is not configured"
+        ])
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
 
         with self.assertRaises(UnknownVlan) as expect:
@@ -442,11 +562,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_trunk_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            " tagged ethe 1/10 to 1/11",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -459,26 +577,52 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_trunk_vlan_invalid_vlan_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return([
+            "Error: vlan 2999 is not configured"
+        ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.remove_trunk_vlan("1/2", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
-    def test_remove_trunk_vlan_invalid_interface_raises(self):
+    def test_remove_trunk_vlan_not_set_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            " tagged ethe 1/10 to 1/13",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no tagged ethernet 1/14").and_return([
+            "Error: ports ethe 1/14 are not tagged members of vlan 2999"
+        ]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(TrunkVlanNotSet) as expect:
             self.switch.remove_trunk_vlan("1/14", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface 1/14"))
+
+    def test_remove_trunk_vlan_invalid_interface_raises(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no tagged ethernet 9/999").and_return([
+            "Invalid input -> 1/99",
+            "Type ? for a list",
+        ]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.remove_trunk_vlan("9/999", vlan=2999)
+
+        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
 
     def test_shutdown_interface(self):
         self.command_setup()
@@ -535,10 +679,9 @@ class BrocadeTest(unittest.TestCase):
     def test_configure_native_vlan_on_trunk(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -551,10 +694,9 @@ class BrocadeTest(unittest.TestCase):
     def test_configure_native_vlan_on_trunk_invalid_interface_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([
-            "vlan 2999",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
+            vlan_display(2999)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -572,7 +714,9 @@ class BrocadeTest(unittest.TestCase):
     def test_configure_native_vlan_on_trunk_invalid_vlan_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2999").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return([
+            "Error: vlan 2999 is not configured"
+        ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
 
@@ -609,14 +753,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_creates_router_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            "!",
-            "vlan 4000 name some-name",
-            " router-interface ve 4000",
-            "!",
-            "!"
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_display(1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("vlan 1234").and_return([]).once().ordered()
@@ -632,11 +771,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_doesnt_creates_router_interface_if_already_created(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 3333",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 3333)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 3333").once().ordered().and_return([
             "interface ve 3333",
@@ -655,11 +792,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_contained_in_a_subnet_already_present_requires_the_keyword_secondary(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -679,11 +814,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_already_defined_elsewhere_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -706,11 +839,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_already_a_subnet_of_another_ve(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -733,11 +864,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_already_in_this_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -753,11 +882,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_already_in_this_interface_as_a_secondary(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -774,7 +901,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_ip_to_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return([
+            "Error: vlan 1234 is not configured"
+        ])
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.add_ip_to_vlan(1234, IPNetwork("1.2.3.5/25"))
@@ -784,11 +913,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_ip(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -808,11 +935,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_secondary_ip(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -833,11 +958,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_ip_that_has_secondary_ip(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -863,11 +986,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_unknown_ip_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -885,11 +1006,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_known_ip_with_wrong_mask_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
@@ -907,11 +1026,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_ip_fails_if_there_aint_even_a_router_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            "!",
-        ])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_display(1234)
+        )
         with self.assertRaises(UnknownIP) as expect:
             self.switch.remove_ip_from_vlan(1234, IPNetwork("1.2.3.4/24"))
 
@@ -920,7 +1037,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_ip_on_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return([
+            "Error: vlan 1234 is not configured"
+        ])
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.remove_ip_from_vlan(1234, IPNetwork("1.2.3.5/25"))
@@ -930,11 +1049,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_vlan_vrf_success(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").and_return([
             "interface ve 2500",
@@ -954,11 +1071,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_vlan_vrf_incorrect_name(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").and_return([
             "interface ve 2500",
@@ -981,10 +1096,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_vlan_vrf_without_interface_creates_it(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([
-            "vlan 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_display(2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2500").and_return([]).once().ordered()
@@ -1002,8 +1116,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_vlan_vrf_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return([
+            "Error: vlan 2500 is not configured"
+        ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.set_vlan_vrf(2500, "MYVRF")
 
@@ -1012,11 +1127,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vlan_vrf_success(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").and_return([
             "interface ve 2500",
@@ -1038,11 +1151,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vlan_vrf_not_set(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").and_return([
             "interface ve 2500",
@@ -1057,10 +1168,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vlan_vrf_from_known_vlan_with_no_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([
-            "vlan 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_display(2500)
+        )
 
         with self.assertRaises(VlanVrfNotSet) as expect:
             self.switch.remove_vlan_vrf(2500)
@@ -1070,8 +1180,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vlan_vrf_from_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return([
+            "Error: vlan 2500 is not configured"
+        ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.remove_vlan_vrf(2500)
 
@@ -1080,14 +1191,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_group_creates_router_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            "!",
-            "vlan 4000 name some-name",
-            " router-interface ve 4000",
-            "!",
-            "!"
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_display(2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2500").and_return([]).once().ordered()
@@ -1106,11 +1212,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_group_doesnt_creates_router_interface_if_already_created(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            " router-interface ve 3333",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 3333)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 3333").once().ordered().and_return([
             "interface ve 3333",
@@ -1132,11 +1236,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_group_fails_if_switch_says_so(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            " router-interface ve 3333",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 3333)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 3333").once().ordered().and_return([
             "interface ve 3333",
@@ -1160,11 +1262,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_group_needs_to_remove_actual_access_group_to_override_it(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").once().ordered().and_return([
             "interface ve 2500",
@@ -1188,8 +1288,9 @@ class BrocadeTest(unittest.TestCase):
     def test_set_access_group_to_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return([
+            "Error: vlan 2500 is not configured"
+        ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.set_vlan_access_group(2500, IN, "TheAccessGroup")
 
@@ -1198,11 +1299,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_access_group(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").once().ordered().and_return([
             "interface ve 2500",
@@ -1225,11 +1324,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_access_group_out(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").once().ordered().and_return([
             "interface ve 2500",
@@ -1252,11 +1349,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_access_group_unknown_access_group_raises(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            " router-interface ve 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_with_vif_display(2500, 2500)
+        )
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 2500").once().ordered().and_return([
             "interface ve 2500",
@@ -1272,10 +1367,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_access_group_fails_if_there_aint_even_a_router_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([
-            "vlan 2500",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
+            vlan_display(2500)
+        )
 
         with self.assertRaises(UnknownAccessGroup) as expect:
             self.switch.remove_vlan_access_group(2500, OUT)
@@ -1285,7 +1379,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_access_group_on_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 2500").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2500").once().ordered().and_return([
+            "Error: vlan 2500 is not configured"
+        ])
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.remove_vlan_access_group(2500, OUT)
@@ -1397,11 +1493,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_success_single_ip(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1429,11 +1523,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_success_multiple_ip(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1462,8 +1554,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_from_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return([
+            "Error: vlan 1234 is not configured"
+        ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                        track_id="1/1", track_decrement=50)
@@ -1473,11 +1566,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_existing_vrrp_to_same_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1502,11 +1593,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_to_vlan_with_another_vrrp(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1542,11 +1631,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_out_of_range_group_id(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1571,11 +1658,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_hello_interval(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1603,11 +1688,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_dead_interval(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1636,11 +1719,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_priority(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1666,11 +1747,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_priority_type(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1696,11 +1775,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_track_decrement(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1726,11 +1803,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_track_decrement_type(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1756,11 +1831,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_no_ip_on_interface(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             "!",
@@ -1783,11 +1856,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vrrp_with_bad_tracking_id(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1818,11 +1889,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vrrp_success(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1851,11 +1920,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_one_of_two_vrrp_success(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1891,11 +1958,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vrrp_with_invalid_group_id(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -1919,8 +1984,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_vrrp_from_unknown_vlan(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([])
-
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return([
+            "Error: vlan 1234 is not configured"
+        ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.remove_vrrp_group(1234, 2)
 
@@ -2013,11 +2079,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_dhcp_relay_server(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -2036,11 +2100,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_second_dhcp_relay_server(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -2060,11 +2122,9 @@ class BrocadeTest(unittest.TestCase):
     def test_add_same_dhcp_relay_server_fails(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -2080,11 +2140,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_dhcp_relay_server(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -2104,11 +2162,9 @@ class BrocadeTest(unittest.TestCase):
     def test_remove_non_existent_dhcp_relay_server_fails(self):
         self.command_setup()
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan | begin vlan 1234").once().ordered().and_return([
-            "vlan 1234",
-            " router-interface ve 1234",
-            "!",
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 1234)
+        )
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ve 1234").once().ordered().and_return([
             "interface ve 1234",
             " ip address 1.2.3.1/27",
@@ -2119,3 +2175,40 @@ class BrocadeTest(unittest.TestCase):
             self.switch.remove_dhcp_relay_server(1234, IPAddress('10.10.10.1'))
 
         assert_that(str(expect.exception), equal_to("DHCP relay server 10.10.10.1 not found on VLAN 1234"))
+
+
+def vlan_display(vlan_id, name="[None]"):
+    return [
+        "PORT-VLAN {}, Name {}, Priority Level -, Priority Force 0, Creation Type STATIC".format(vlan_id, name),
+        "Topo HW idx    : 81    Topo SW idx: 257    Topo next vlan: 0",
+        "L2 protocols   : STP",
+        "Associated Virtual Interface Id: NONE",
+        "----------------------------------------------------------",
+        "No ports associated with VLAN",
+        "Arp Inspection: 0",
+        "DHCP Snooping: 0",
+        "IPv4 Multicast Snooping: Disabled",
+        "IPv6 Multicast Snooping: Disabled",
+        "No Virtual Interfaces configured for this vlan"
+    ]
+
+def vlan_with_vif_display(vlan_id, vif_id, name="[None]"):
+    return [
+        "PORT-VLAN {}, Name {}, Priority Level -, Priority Force 0, Creation Type STATIC".format(vlan_id, name),
+        "Topo HW idx    : 81    Topo SW idx: 257    Topo next vlan: 0",
+        "L2 protocols   : STP",
+        "Associated Virtual Interface Id: {}".format(vif_id),
+        "----------------------------------------------------------",
+        "No ports associated with VLAN",
+        "Arp Inspection: 0",
+        "DHCP Snooping: 0",
+        "IPv4 Multicast Snooping: Disabled",
+        "IPv6 Multicast Snooping: Disabled",
+        "Ve{} is down, line protocol is down".format(vif_id),
+        "  Type is Vlan (Vlan Id: {})".format(vlan_id),
+        "  Hardware is Virtual Ethernet, address is 748e.f8a7.1b01 (bia 748e.f8a7.1b01)",
+        "  No port name",
+        "  Vlan id: {}".format(vlan_id),
+        "  Internet address is 0.0.0.0/0, IP MTU 1500 bytes, encapsulation ethernet",
+        "  Configured BW 0 kbps",
+    ]

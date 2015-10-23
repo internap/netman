@@ -39,6 +39,9 @@ class SwitchOperations(object):
     def end_transaction(self):
         raise NotImplementedError()
 
+    def get_vlan(self, number):
+        raise NotImplementedError()
+
     def get_vlans(self):
         raise NotImplementedError()
 
