@@ -24,3 +24,6 @@ class Bond(object):
         if isinstance(other, type(self)):
             return self.__dict__ == other.__dict__
         return False
+
+    def __str__(self):
+        return ', '.join(['{} is {}'.format(elem[0], elem[1]) for elem in self.__dict__.items()])
