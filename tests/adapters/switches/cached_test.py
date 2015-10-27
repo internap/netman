@@ -225,6 +225,13 @@ class CacheSwitchTest(unittest.TestCase):
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', trunk_vlans=[])]))
 
+    def test_remove_trunk_vlan_on_interface_not_in_cache(self):
+        self.real_switch_mock.should_receive("remove_trunk_vlan").once() \
+            .with_args('xe-1/0/2', 1)
+
+        self.switch.remove_trunk_vlan('xe-1/0/2', 1)
+
+
     def test_shutdown_interface(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2', shutdown=False)])
@@ -385,7 +392,7 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_edit_interface_spanning_tree(self):
         self.real_switch_mock.should_receive("edit_interface_spanning_tree").once() \
-            .with_args('xe-1/0/2', None)
+            .with_args('xe-1/0/2', edge=None)
 
         self.switch.edit_interface_spanning_tree('xe-1/0/2')
 
@@ -402,7 +409,7 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(self.switch.get_bonds(), is_(all_bonds))
 
     def test_add_bond_after_get_bonds(self):
-        all_bonds = [Bond(1), Bond(2)]
+        all_bonds = [Bond(1, interface=Interface()), Bond(2, interface=Interface())]
 
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
             all_bonds)
@@ -413,7 +420,9 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.add_bond(123)
         assert_that(self.switch.get_bond(123).number, is_(123))
 
-        assert_that(self.switch.get_bonds(), is_(all_bonds+[Bond(123)]))
+        assert_that(
+            self.switch.get_bonds(),
+            is_(all_bonds+[Bond(123, interface=Interface())]))
 
     def test_remove_bond(self):
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
@@ -609,6 +618,12 @@ class CacheSwitchTest(unittest.TestCase):
             ])
         )
 
+    def test_remove_bond_trunk_vlan_on_bond_not_in_cache(self):
+        self.real_switch_mock.should_receive("remove_bond_trunk_vlan").once() \
+            .with_args(1, 2)
+
+        self.switch.remove_bond_trunk_vlan(1, 2)
+
     def test_configure_bond_native_vlan(self):
         self.real_switch_mock.should_receive("get_bonds").once() \
             .and_return([Bond(2, interface=Interface())])
@@ -639,7 +654,7 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_edit_bond_spanning_tree(self):
         self.real_switch_mock.should_receive("edit_bond_spanning_tree").once() \
-            .with_args(2, None)
+            .with_args(2, edge=None)
 
         self.switch.edit_bond_spanning_tree(2)
 
@@ -649,13 +664,14 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.get_vlans()
 
         self.real_switch_mock.should_receive("add_vrrp_group").once() \
-            .with_args(1, 2, None, None, None, None, None, None)
+            .with_args(1, 2, ips=None, priority=23, hello_interval=None,
+                       dead_interval=None, track_id=None, track_decrement=None)
 
-        self.switch.add_vrrp_group(1, 2)
+        self.switch.add_vrrp_group(1, 2, priority=23)
 
         assert_that(
             self.switch.get_vlans(),
-            is_([Vlan(1, vrrp_groups=[VrrpGroup(id=2)])]))
+            is_([Vlan(1, vrrp_groups=[VrrpGroup(id=2, priority=23)])]))
 
     def test_remove_vrrp_group(self):
         self.real_switch_mock.should_receive("get_vlans").once() \
