@@ -21,3 +21,6 @@ class VrrpGroupDescriptor(object):
         self.track_id = track_id
         self.track_decrement = track_decrement
         self.priority_allocation_strategy = priority_allocation_strategy
+
+    def __str__(self):
+        return ', '.join(['{} is {}'.format(elem[0], elem[1]) for elem in self.__dict__.items()])
