@@ -232,7 +232,10 @@ class CachedSwitch(SwitchBase):
 
     def remove_trunk_vlan(self, interface_id, vlan):
         self.real_switch.remove_trunk_vlan(interface_id, vlan)
-        self.interfaces_cache[interface_id].trunk_vlans.remove(vlan)
+        try:
+            self.interfaces_cache[interface_id].trunk_vlans.remove(vlan)
+        except ValueError:
+            pass
 
     def add_bond_trunk_vlan(self, bond_number, vlan):
         self.real_switch.add_bond_trunk_vlan(bond_number, vlan)
@@ -240,7 +243,10 @@ class CachedSwitch(SwitchBase):
 
     def remove_bond_trunk_vlan(self, bond_number, vlan):
         self.real_switch.remove_bond_trunk_vlan(bond_number, vlan)
-        self.bonds_cache[bond_number].interface.trunk_vlans.remove(vlan)
+        try:
+            self.bonds_cache[bond_number].interface.trunk_vlans.remove(vlan)
+        except ValueError:
+            pass
 
     def set_interface_description(self, interface_id, description):
         # No cache to update
@@ -260,7 +266,7 @@ class CachedSwitch(SwitchBase):
 
     def edit_interface_spanning_tree(self, interface_id, edge=None):
         # No cache to update
-        self.real_switch.edit_interface_spanning_tree(interface_id, edge)
+        self.real_switch.edit_interface_spanning_tree(interface_id, edge=edge)
 
     def openup_interface(self, interface_id):
         self.real_switch.openup_interface(interface_id)
@@ -272,7 +278,8 @@ class CachedSwitch(SwitchBase):
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
-        self.bonds_cache[number] = Bond(number=number)
+        self.bonds_cache[number] = Bond(number=number,
+                                        interface=Interface())
 
     def remove_bond(self, number):
         self.real_switch.remove_bond(number)
@@ -297,14 +304,17 @@ class CachedSwitch(SwitchBase):
         self.bonds_cache[number].link_speed = speed
 
     def edit_bond_spanning_tree(self, number, edge=None):
-        self.real_switch.edit_bond_spanning_tree(number, edge)
+        self.real_switch.edit_bond_spanning_tree(number, edge=edge)
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None,
                        hello_interval=None, dead_interval=None ,track_id=None,
                        track_decrement=None):
-        self.real_switch.add_vrrp_group(vlan_number, group_id, ips, priority,
-                                   hello_interval, dead_interval, track_id,
-                                   track_decrement)
+        self.real_switch.add_vrrp_group(vlan_number, group_id, ips=ips,
+                                        priority=priority,
+                                        hello_interval=hello_interval,
+                                        dead_interval=dead_interval,
+                                        track_id=track_id,
+                                        track_decrement=track_decrement)
         self.vlans_cache[vlan_number].vrrp_groups.append(VrrpGroup(
             id=group_id, ips=ips, priority=priority,
             hello_interval=hello_interval, dead_interval=dead_interval,
