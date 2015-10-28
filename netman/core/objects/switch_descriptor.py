@@ -34,3 +34,6 @@ class SwitchDescriptor(object):
 
     def __eq__(self, other):
         return isinstance(other, SwitchDescriptor) and self.__dict__ == other.__dict__
+
+    def __str__(self):
+        return ', '.join(['{} is {}'.format(elem[0], elem[1]) for elem in self.__dict__.items()])
