@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
 
 from netman.core.objects.interface import BaseInterface
 
@@ -21,3 +22,9 @@ class Bond(BaseInterface):
         self.number = number
         self.link_speed = link_speed
         self.members = members or []
+
+    @property
+    def interface(self):
+        warnings.warn('Deprecated: Use directly the members of Bond instead.',
+                      category=DeprecationWarning)
+        return self
