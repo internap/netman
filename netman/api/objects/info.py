@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.objects import Serializable
 
-
-class SerializableInfo(Serializable):
-    def __init__(self, status=None, version=None):
-        super(SerializableInfo, self).__init__(['status', 'version'])
-
-        self.status = status
-        self.version = version
+def to_api(status=None, version=None):
+    return dict(
+        status=status,
+        version=version,
+    )

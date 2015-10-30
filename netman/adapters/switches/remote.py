@@ -23,9 +23,9 @@ from netman import raw_or_json
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.switch_base import SwitchBase
-from netman.api.objects.vlan import SerializableVlan
-from netman.api.objects.interface import SerializableInterface
-from netman.api.objects.bond import SerializableBond
+from netman.api.objects import vlan
+from netman.api.objects import interface
+from netman.api.objects import bond
 
 
 def factory(switch_descriptor):
@@ -87,19 +87,19 @@ class RemoteSwitch(SwitchBase):
         self.logger.info("Ended session %s" % self.session_id)
 
     def get_vlan(self, number):
-        return SerializableVlan.to_core(**self.get("/vlans/{}".format(number)).json())
+        return vlan.to_core(self.get("/vlans/{}".format(number)).json())
 
     def get_vlans(self):
-        return [SerializableVlan.to_core(**row) for row in self.get("/vlans").json()]
+        return [vlan.to_core(row) for row in self.get("/vlans").json()]
 
     def get_interfaces(self):
-        return [SerializableInterface.to_core(**row) for row in self.get("/interfaces").json()]
+        return [interface.to_core(row) for row in self.get("/interfaces").json()]
 
     def get_bond(self, number):
-        return SerializableBond.to_core(**self.get('/bonds/%s' % number).json())
+        return bond.to_core(self.get('/bonds/%s' % number).json())
 
     def get_bonds(self):
-        return [SerializableBond.to_core(**row) for row in self.get("/bonds").json()]
+        return [bond.to_core(row) for row in self.get("/bonds").json()]
 
     def add_vlan(self, number, name=None):
         data = {'number': number}

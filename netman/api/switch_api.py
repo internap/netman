@@ -15,9 +15,7 @@
 from flask import request
 
 from netman.api.api_utils import BadRequest, to_response
-from netman.api.objects.interface import SerializableInterface
-from netman.api.objects.bond import SerializableBond
-from netman.api.objects.vlan import SerializableVlan
+from netman.api.objects import bond, interface, vlan
 from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
@@ -91,7 +89,7 @@ class SwitchApi(SwitchApiBase):
         """
         vlans = sorted(switch.get_vlans(), key=lambda x: x.number)
 
-        return 200, [SerializableVlan(vlan) for vlan in vlans]
+        return 200, [vlan.to_api(v) for v in vlans]
 
     @to_response
     @resource(Switch, Vlan)
@@ -110,7 +108,7 @@ class SwitchApi(SwitchApiBase):
 
         """
 
-        return 200, SerializableVlan(switch.get_vlan(vlan_number))
+        return 200, vlan.to_api(switch.get_vlan(vlan_number))
 
     @to_response
     @content(is_vlan)
@@ -275,7 +273,7 @@ class SwitchApi(SwitchApiBase):
         """
         interfaces = sorted(switch.get_interfaces(), key=lambda x: x.name.lower())
 
-        return 200, [SerializableInterface(i) for i in interfaces]
+        return 200, [interface.to_api(i) for i in interfaces]
 
     @to_response
     @content(is_boolean)
@@ -537,9 +535,7 @@ class SwitchApi(SwitchApiBase):
 
         """
 
-        bond = switch.get_bond(bond_number)
-
-        return 200, SerializableBond(bond)
+        return 200, bond.to_api(switch.get_bond(bond_number))
 
     @to_response
     @resource(Switch)
@@ -558,7 +554,7 @@ class SwitchApi(SwitchApiBase):
         """
         bonds = sorted(switch.get_bonds(), key=lambda x: x.number)
 
-        return 200, [SerializableBond(b) for b in bonds]
+        return 200, [bond.to_api(b) for b in bonds]
 
     @to_response
     @content(is_bond)

@@ -29,7 +29,6 @@ __all__ = ['CachedSwitch']
 class Cache(object):
     object_type = None
     object_key = None
-    object_extra = {}
 
     def __init__(self, *key_value_tuples):
         self.refresh_items = set()
@@ -37,8 +36,6 @@ class Cache(object):
 
     def create_fake_object(self, item):
         params = {self.object_key: item}
-        params.update({k: (v() if callable(v) else v)
-                       for k, v in self.object_extra.iteritems()})
         return self.object_type(**params)
 
     def invalidated(self):
@@ -89,7 +86,6 @@ class InterfaceCache(Cache):
 class BondCache(Cache):
     object_type = Bond
     object_key = 'number'
-    object_extra = dict(interface=Interface)
 
 
 class CachedSwitch(SwitchBase):
@@ -196,11 +192,11 @@ class CachedSwitch(SwitchBase):
 
     def set_bond_access_mode(self, bond_number):
         self.real_switch.set_bond_access_mode(bond_number)
-        self.bonds_cache[bond_number].interface.port_mode = port_modes.ACCESS
+        self.bonds_cache[bond_number].port_mode = port_modes.ACCESS
 
     def set_bond_trunk_mode(self, bond_number):
         self.real_switch.set_bond_trunk_mode(bond_number)
-        self.bonds_cache[bond_number].interface.port_mode = port_modes.TRUNK
+        self.bonds_cache[bond_number].port_mode = port_modes.TRUNK
 
     def set_access_vlan(self, interface_id, vlan):
         self.real_switch.set_access_vlan(interface_id, vlan)
@@ -220,11 +216,11 @@ class CachedSwitch(SwitchBase):
 
     def configure_bond_native_vlan(self, bond_number, vlan):
         self.real_switch.configure_bond_native_vlan(bond_number, vlan)
-        self.bonds_cache[bond_number].interface.trunk_native_vlan = vlan
+        self.bonds_cache[bond_number].trunk_native_vlan = vlan
 
     def remove_bond_native_vlan(self, bond_number):
         self.real_switch.remove_bond_native_vlan(bond_number)
-        self.bonds_cache[bond_number].interface.trunk_native_vlan = None
+        self.bonds_cache[bond_number].trunk_native_vlan = None
 
     def add_trunk_vlan(self, interface_id, vlan):
         self.real_switch.add_trunk_vlan(interface_id, vlan)
@@ -239,12 +235,12 @@ class CachedSwitch(SwitchBase):
 
     def add_bond_trunk_vlan(self, bond_number, vlan):
         self.real_switch.add_bond_trunk_vlan(bond_number, vlan)
-        self.bonds_cache[bond_number].interface.trunk_vlans.append(vlan)
+        self.bonds_cache[bond_number].trunk_vlans.append(vlan)
 
     def remove_bond_trunk_vlan(self, bond_number, vlan):
         self.real_switch.remove_bond_trunk_vlan(bond_number, vlan)
         try:
-            self.bonds_cache[bond_number].interface.trunk_vlans.remove(vlan)
+            self.bonds_cache[bond_number].trunk_vlans.remove(vlan)
         except ValueError:
             pass
 
@@ -278,8 +274,7 @@ class CachedSwitch(SwitchBase):
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
-        self.bonds_cache[number] = Bond(number=number,
-                                        interface=Interface())
+        self.bonds_cache[number] = Bond(number=number)
 
     def remove_bond(self, number):
         self.real_switch.remove_bond(number)

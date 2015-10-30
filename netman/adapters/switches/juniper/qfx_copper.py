@@ -15,7 +15,7 @@
 from ncclient.xml_ import to_ele
 
 from netman.adapters.switches.juniper import JuniperCustomStrategies
-from netman.adapters.switches.juniper.base import interface_replace
+from netman.adapters.switches.juniper.base import interface_replace, bond_name
 
 
 class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
@@ -32,7 +32,7 @@ class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
                 <ieee-802.3ad>
                     <bundle>{0}</bundle>
                 </ieee-802.3ad>
-            """.format(bond.interface.name))]
+            """.format(bond_name(bond.number)))]
 
         update.add_interface(interface_replace(interface, *ether_options))
 

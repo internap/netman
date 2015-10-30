@@ -12,33 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.objects import Serializable
+from netman.api.objects import sub_dict
+from netman.api.objects import base_interface
 from netman.core.objects.interface import Interface
-from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC, BOND_MEMBER
-
-serialized_port_mode = {
-    ACCESS: "access",
-    TRUNK: "trunk",
-    DYNAMIC: "dynamic",
-    BOND_MEMBER: "bond_member"
-}
 
 
-class SerializableInterface(Serializable):
-    def __init__(self, src):
-        super(SerializableInterface, self).__init__(['name', 'shutdown', 'bond_master', 'port_mode', 'access_vlan', 'trunk_native_vlan', 'trunk_vlans'])
+def to_api(interface):
+    return dict(
+        base_interface.to_api(interface),
+        name=interface.name,
+        bond_master=interface.bond_master,
+    )
 
-        self.name = src.name
-        self.shutdown = src.shutdown
-        self.bond_master = src.bond_master
-        self.port_mode = serialized_port_mode[src.port_mode]
-        self.access_vlan = src.access_vlan
-        self.trunk_native_vlan = src.trunk_native_vlan
-        self.trunk_vlans = sorted(src.trunk_vlans)
 
-    @classmethod
-    def to_core(cls, **serialized):
-        return Interface(
-            port_mode=dict((v, k) for k, v in serialized_port_mode.iteritems())[serialized.pop('port_mode')],
-            ** serialized
-        )
+def to_core(serialized):
+    params = dict(vars(base_interface.to_core(serialized)))
+    params.update(sub_dict(serialized, 'name', 'bond_master'))
+    return Interface(**params)

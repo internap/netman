@@ -15,7 +15,7 @@
 from ncclient.xml_ import to_ele
 
 from netman.adapters.switches.juniper.base import interface_speed, interface_replace, interface_speed_update, \
-    first_text
+    first_text, bond_name
 
 
 class JuniperCustomStrategies(object):
@@ -31,7 +31,7 @@ class JuniperCustomStrategies(object):
                 <ieee-802.3ad>
                     <bundle>{0}</bundle>
                 </ieee-802.3ad>
-            """.format(bond.interface.name))]
+            """.format(bond_name(bond.number)))]
 
         if bond.link_speed is not None:
             ether_options.append(interface_speed(bond.link_speed))

@@ -12,23 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.objects import Serializable
+from netman.api.objects import base_interface
+from netman.api.objects import sub_dict
 from netman.core.objects.bond import Bond
-from netman.api.objects.interface import SerializableInterface
 
 
-class SerializableBond(Serializable):
-    def __init__(self, src):
-        super(SerializableBond, self).__init__(['number', 'link_speed', 'interface', 'members'])
+def to_api(bond):
+    return dict(
+        number=bond.number,
+        link_speed=bond.link_speed,
+        members=bond.members,
+        **base_interface.to_api(bond)
+    )
 
-        self.number = src.number
-        self.link_speed = src.link_speed
-        self.interface = SerializableInterface(src.interface)
-        self.members = src.members
 
-    @classmethod
-    def to_core(cls, **serialized):
-        return Bond(
-            interface=SerializableInterface.to_core(**serialized.pop('interface')),
-            ** serialized
-        )
+def to_core(api_bond):
+    params = dict(vars(base_interface.to_core(api_bond)))
+    params.update(sub_dict(api_bond, 'number', 'link_speed', 'members'))
+    return Bond(**params)

@@ -409,7 +409,7 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(self.switch.get_bonds(), is_(all_bonds))
 
     def test_add_bond_after_get_bonds(self):
-        all_bonds = [Bond(1, interface=Interface()), Bond(2, interface=Interface())]
+        all_bonds = [Bond(1), Bond(2)]
 
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
             all_bonds)
@@ -422,7 +422,7 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_(all_bonds+[Bond(123, interface=Interface())]))
+            is_(all_bonds+[Bond(123)]))
 
     def test_remove_bond(self):
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
@@ -462,7 +462,7 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_add_interface_to_bond(self):
         self.real_switch_mock.should_receive("get_bonds").once() \
-            .and_return([Bond(1, interface=Interface())])
+            .and_return([Bond(1)])
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2')])
 
@@ -476,14 +476,14 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_([Bond(1, interface=Interface(), members=['xe-1/0/2'])]))
+            is_([Bond(1, members=['xe-1/0/2'])]))
         assert_that(
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', bond_master=1)]))
 
     def test_remove_interface_from_bond(self):
         self.real_switch_mock.should_receive("get_bonds").once() \
-            .and_return([Bond(1, interface=Interface(), members=['xe-1/0/2'])])
+            .and_return([Bond(1, members=['xe-1/0/2'])])
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2', bond_master=1)])
 
@@ -497,7 +497,7 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_([Bond(1, interface=Interface(), members=[])]))
+            is_([Bond(1, members=[])]))
         assert_that(
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', bond_master=None)]))
@@ -529,7 +529,7 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_set_bond_trunk_mode(self):
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
-            [Bond(1, interface=Interface())])
+            [Bond(1)])
         self.switch.get_bonds()
 
         self.real_switch_mock.should_receive("set_bond_trunk_mode").once() \
@@ -539,12 +539,12 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_([Bond(1, interface=Interface(port_mode=TRUNK))])
+            is_([Bond(1, port_mode=TRUNK)])
         )
 
     def test_set_bond_access_mode(self):
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
-            [Bond(1, interface=Interface())])
+            [Bond(1)])
         self.switch.get_bonds()
 
         self.real_switch_mock.should_receive("set_bond_access_mode").once() \
@@ -554,7 +554,7 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_([Bond(1, interface=Interface(port_mode=ACCESS))])
+            is_([Bond(1, port_mode=ACCESS)])
         )
 
     def test_add_bond_trunk_vlan_first(self):
@@ -569,8 +569,8 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(self.switch.get_bond(1), is_(Bond(1)))
 
     def test_add_bond_trunk_vlan_after_get_bonds(self):
-        all_bonds = [Bond(1, interface=Interface()),
-                     Bond(2, interface=Interface())]
+        all_bonds = [Bond(1),
+                     Bond(2)]
 
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
             all_bonds)
@@ -583,19 +583,19 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bond(1),
-            is_(Bond(1, interface=Interface(trunk_vlans=[2])))
+            is_(Bond(1, trunk_vlans=[2]))
         )
         assert_that(
             self.switch.get_bonds(),
             is_([
-                Bond(1, interface=Interface(trunk_vlans=[2])),
-                Bond(2, interface=Interface())
+                Bond(1, trunk_vlans=[2]),
+                Bond(2)
             ])
         )
 
     def test_remove_bond_trunk_vlan(self):
-        all_bonds = [Bond(1, interface=Interface(trunk_vlans=[2])),
-                     Bond(2, interface=Interface())]
+        all_bonds = [Bond(1, trunk_vlans=[2]),
+                     Bond(2)]
 
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
             all_bonds)
@@ -608,13 +608,13 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bond(1),
-            is_(Bond(1, interface=Interface(trunk_vlans=[])))
+            is_(Bond(1, trunk_vlans=[]))
         )
         assert_that(
             self.switch.get_bonds(),
             is_([
-                Bond(1, interface=Interface(trunk_vlans=[])),
-                Bond(2, interface=Interface())
+                Bond(1, trunk_vlans=[]),
+                Bond(2)
             ])
         )
 
@@ -626,7 +626,7 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_configure_bond_native_vlan(self):
         self.real_switch_mock.should_receive("get_bonds").once() \
-            .and_return([Bond(2, interface=Interface())])
+            .and_return([Bond(2)])
         self.switch.get_bonds()
 
         self.real_switch_mock.should_receive("configure_bond_native_vlan").once() \
@@ -636,11 +636,11 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_([Bond(2, interface=Interface(trunk_native_vlan=20))]))
+            is_([Bond(2, trunk_native_vlan=20)]))
 
     def test_remove_bond_native_vlan(self):
         self.real_switch_mock.should_receive("get_bonds").once() \
-            .and_return([Bond(2, interface=Interface(trunk_native_vlan=20))])
+            .and_return([Bond(2, trunk_native_vlan=20)])
         self.switch.get_bonds()
 
         self.real_switch_mock.should_receive("remove_bond_native_vlan").once() \
@@ -650,7 +650,7 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(
             self.switch.get_bonds(),
-            is_([Bond(2, interface=Interface(trunk_native_vlan=None))]))
+            is_([Bond(2, trunk_native_vlan=None)]))
 
     def test_edit_bond_spanning_tree(self):
         self.real_switch_mock.should_receive("edit_bond_spanning_tree").once() \

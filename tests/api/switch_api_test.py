@@ -956,30 +956,24 @@ class SwitchApiTest(BaseApiTest):
             Bond(
                 number=3,
                 link_speed='1g',
-                interface=Interface(
-                    name="ae3",
-                    shutdown=True,
-                    port_mode=ACCESS,
-                    access_vlan=1999)),
+                shutdown=True,
+                port_mode=ACCESS,
+                access_vlan=1999),
             Bond(
                 number=6,
                 link_speed='10g',
-                interface=Interface(
-                    name="ae6",
-                    shutdown=False,
-                    port_mode=DYNAMIC,
-                    access_vlan=1999,
-                    trunk_native_vlan=2999,
-                    trunk_vlans=[3001, 3000, 3002])),
+                shutdown=False,
+                port_mode=DYNAMIC,
+                access_vlan=1999,
+                trunk_native_vlan=2999,
+                trunk_vlans=[3001, 3000, 3002]),
             Bond(
                 number=4,
                 members=["ge-0/0/1", "ge-1/0/1"],
-                interface=Interface(
-                    name="ae4",
-                    shutdown=False,
-                    port_mode=TRUNK,
-                    trunk_native_vlan=2999,
-                    trunk_vlans=[3001, 3000, 3002])),
+                shutdown=False,
+                port_mode=TRUNK,
+                trunk_native_vlan=2999,
+                trunk_vlans=[3001, 3000, 3002]),
             ])
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -995,11 +989,9 @@ class SwitchApiTest(BaseApiTest):
             Bond(
                 number=3,
                 link_speed='1g',
-                interface=Interface(
-                    name="ae3",
-                    shutdown=True,
-                    port_mode=ACCESS,
-                    access_vlan=1999))
+                shutdown=True,
+                port_mode=ACCESS,
+                access_vlan=1999)
             )
         self.switch_mock.should_receive('disconnect').once().ordered()
 
