@@ -18,7 +18,7 @@ from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
 from netman import regex
-from netman.adapters.switches import SubShell, split_on_bang, split_on_dedent, no_output, \
+from netman.adapters.switches.util import SubShell, split_on_bang, split_on_dedent, no_output, \
     ResultChecker
 from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
@@ -29,16 +29,8 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVla
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
-from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
-
-
-def factory(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Brocade(switch_descriptor=switch_descriptor),
-        lock=lock
-    )
 
 
 class Brocade(SwitchBase):
@@ -99,11 +91,11 @@ class Brocade(SwitchBase):
         interface_vlans = {}
         for if_data in split_on_dedent(self.ssh.do("show interfaces")):
             if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
-                i = Interface(name=regex[0], port_mode=ACCESS, shutdown=regex[1] == "disabled")
+                i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
                 for line in if_data:
                     if regex.match("Port name is (.*)", line): i.description = regex[0]
                 interfaces.append(i)
-                interface_vlans["ethe %s" % i.name] = {
+                interface_vlans[i.name] = {
                     "object": i,
                     "untagged": None,
                     "tagged": []
@@ -114,10 +106,10 @@ class Brocade(SwitchBase):
                 vlan_id = int(regex[0])
                 for line in vlan_data:
                     if regex.match(" untagged (.*)", line):
-                        for name in parse_if_ranges(regex[0]):
+                        for name in _to_real_names(parse_if_ranges(regex[0])):
                             interface_vlans[name]["untagged"] = vlan_id
                     if regex.match(" tagged (.*)", line):
-                        for name in parse_if_ranges(regex[0]):
+                        for name in _to_real_names(parse_if_ranges(regex[0])):
                             interface_vlans[name]["tagged"].append(vlan_id)
 
         for data in interface_vlans.values():
@@ -136,7 +128,7 @@ class Brocade(SwitchBase):
         self._get_vlan(vlan)
 
         with self.config(), self.vlan(vlan):
-            result = self.ssh.do("tagged ethernet %s" % interface_id)
+            result = self.ssh.do("tagged %s" % interface_id)
             if result:
                 raise UnknownInterface(interface_id)
 
@@ -144,7 +136,7 @@ class Brocade(SwitchBase):
         self._get_vlan(vlan)
 
         with self.config(), self.vlan(vlan):
-            result = self.ssh.do("untagged ethernet %s" % interface_id)
+            result = self.ssh.do("untagged %s" % interface_id)
             if result:
                 raise UnknownInterface(interface_id)
 
@@ -160,7 +152,8 @@ class Brocade(SwitchBase):
             self.ssh.do("disable")
 
     def remove_access_vlan(self, interface_id):
-        content = self.ssh.do("show vlan brief | include ethe %s" % interface_id)
+        content = self.ssh.do("show vlan brief | include {}"
+                              .format(_to_short_name(interface_id)))
         if len(content) == 0:
             raise UnknownInterface(interface_id)
 
@@ -168,7 +161,7 @@ class Brocade(SwitchBase):
         matches = re.compile("^(\d+).*").match(content[0])
 
         with self.config(), self.vlan(int(matches.groups()[0])):
-            self.ssh.do("no untagged ethernet %s" % interface_id)
+            self.ssh.do("no untagged %s" % interface_id)
 
     def remove_native_vlan(self, interface_id):
         return self.remove_access_vlan(interface_id)
@@ -177,7 +170,7 @@ class Brocade(SwitchBase):
         self._get_vlan(vlan)
 
         with self.config(), self.vlan(vlan):
-            self.set("no tagged ethernet {}".format(interface_id))\
+            self.set("no tagged {}".format(interface_id))\
                 .on_result_matching("^Error.*", TrunkVlanNotSet, interface_id)\
                 .on_result_matching("^Invalid input.*", UnknownInterface, interface_id)
 
@@ -188,7 +181,7 @@ class Brocade(SwitchBase):
             self.ssh.do("no vlan %s" % number)
 
     def set_access_mode(self, interface_id):
-        result = self.ssh.do("show vlan ethernet %s" % interface_id)
+        result = self.ssh.do("show vlan %s" % interface_id)
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
@@ -203,11 +196,11 @@ class Brocade(SwitchBase):
             with self.config():
                 for operation in operations:
                     self.ssh.do("vlan %s" % operation[0])
-                    self.ssh.do("no %s ethernet %s" % (operation[1], interface_id))
+                    self.ssh.do("no %s %s" % (operation[1], interface_id))
                 self.ssh.do("exit")
 
     def set_trunk_mode(self, interface_id):
-        result = self.ssh.do("show vlan ethernet %s" % interface_id)
+        result = self.ssh.do("show vlan %s" % interface_id)
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
@@ -288,7 +281,7 @@ class Brocade(SwitchBase):
         return SubShell(self.ssh, enter="vlan %s" % vlan_number, exit_cmd='exit')
 
     def interface(self, interface_id):
-        return SubShell(self.ssh, enter="interface ethernet %s" % interface_id, exit_cmd='exit',
+        return SubShell(self.ssh, enter="interface %s" % interface_id, exit_cmd='exit',
                         validate=no_output(UnknownInterface, interface_id))
 
     def interface_vlan(self, vlan):
@@ -332,7 +325,7 @@ class Brocade(SwitchBase):
         self.set('hello-interval {}', hello_interval).on_any_result(BadVrrpTimers)
         self.set('dead-interval {}', dead_interval).on_any_result(BadVrrpTimers)
         self.ssh.do('advertise backup')
-        self.set('track-port ethernet {}', track_id).on_any_result(BadVrrpTracking)
+        self.set('track-port {}', track_id).on_any_result(BadVrrpTracking)
 
     def remove_vrrp_group(self, vlan_number, group_id):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
@@ -452,7 +445,7 @@ def add_interface_vlan_data(target_vlan, int_vlan_data):
             vrrp_group.hello_interval = int(regex[0])
         elif regex.match("^  dead-interval ([^\s]*)", line):
             vrrp_group.dead_interval = int(regex[0])
-        elif regex.match("^  track-port ethernet ([^\s]*)", line):
+        elif regex.match("^  track-port (.*)", line):
             vrrp_group.track_id = regex[0]
         elif regex.match("^  activate", line):
             vrrp_group = None
@@ -476,6 +469,14 @@ def parse_if_ranges(string):
             yield regex[0]
 
         consumed_string = consumed_string[len(parsed_part):].strip()
+
+
+def _to_real_names(if_list):
+    return [i.replace("ethe", "ethernet") for i in if_list]
+
+
+def _to_short_name(interface_id):
+    return interface_id.replace("ethernet", "ethe")
 
 
 class VlanBrocade(Vlan):

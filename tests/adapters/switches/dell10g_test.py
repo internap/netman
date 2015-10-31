@@ -18,11 +18,11 @@ import unittest
 from hamcrest import assert_that, equal_to, is_, instance_of, has_length, none
 import mock
 from flexmock import flexmock, flexmock_teardown
-
 from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.shell.ssh import SshClient
+from netman.adapters.switches.util import SubShell
 from netman.core.objects.port_modes import ACCESS, TRUNK
-from netman.adapters.switches import dell10g, SubShell
+from netman.adapters.switches import dell10g
 from netman.adapters.switches.dell10g import Dell10G
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
