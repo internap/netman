@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 
-from netman.core.objects.interface import BaseInterface
+from netman.core.objects.interface import BaseInterface, Interface
 
 
 class Bond(BaseInterface):
@@ -27,4 +27,10 @@ class Bond(BaseInterface):
     def interface(self):
         warnings.warn('Deprecated: Use directly the members of Bond instead.',
                       category=DeprecationWarning)
-        return self
+        return Interface(
+            shutdown=self.shutdown,
+            port_mode=self.port_mode,
+            access_vlan=self.access_vlan,
+            trunk_native_vlan=self.trunk_native_vlan,
+            trunk_vlans=self.trunk_vlans,
+        )

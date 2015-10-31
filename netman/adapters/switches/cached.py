@@ -15,9 +15,9 @@
 from collections import OrderedDict
 import copy
 
-from netman.core.objects import port_modes
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
+from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
@@ -182,21 +182,21 @@ class CachedSwitch(SwitchBase):
 
     def set_access_mode(self, interface_id):
         self.real_switch.set_access_mode(interface_id)
-        self.interfaces_cache[interface_id].port_mode = port_modes.ACCESS
+        self.interfaces_cache[interface_id].port_mode = ACCESS
         self.interfaces_cache[interface_id].trunk_native_vlan = None
         self.interfaces_cache[interface_id].trunk_vlans = []
 
     def set_trunk_mode(self, interface_id):
         self.real_switch.set_trunk_mode(interface_id)
-        self.interfaces_cache[interface_id].port_mode = port_modes.TRUNK
+        self.interfaces_cache[interface_id].port_mode = TRUNK
 
     def set_bond_access_mode(self, bond_number):
         self.real_switch.set_bond_access_mode(bond_number)
-        self.bonds_cache[bond_number].port_mode = port_modes.ACCESS
+        self.bonds_cache[bond_number].port_mode = ACCESS
 
     def set_bond_trunk_mode(self, bond_number):
         self.real_switch.set_bond_trunk_mode(bond_number)
-        self.bonds_cache[bond_number].port_mode = port_modes.TRUNK
+        self.bonds_cache[bond_number].port_mode = TRUNK
 
     def set_access_vlan(self, interface_id, vlan):
         self.real_switch.set_access_vlan(interface_id, vlan)

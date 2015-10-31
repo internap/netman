@@ -13,11 +13,9 @@
 # limitations under the License.
 
 
-class ModelObject(object):
+class Model(object):
     def __eq__(self, other):
-        if isinstance(other, type(self)):
-            return vars(self) == vars(other)
-        return False
+        return isinstance(other, type(self)) and vars(self) == vars(other)
 
     def __repr__(self):
-        return "{}({})".format(type(self), vars(self))
+        return "<{} {}>".format(type(self).__name__, vars(self))

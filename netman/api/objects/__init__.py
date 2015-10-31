@@ -14,4 +14,32 @@
 
 
 def sub_dict(d, *keys):
-    return {k: v for k, v in d.iteritems() if k in keys}
+    return {k: d[k] for k in keys}
+
+
+class Serializer(object):
+    since_version = 1
+
+    def to_api(self, core_object):
+        raise NotImplementedError()
+
+    def to_core(self, api_dict):
+        raise NotImplementedError()
+
+
+class Serializers(object):
+    def __init__(self, *serializers):
+        self.serializers = sorted(serializers, key=lambda s: s.since_version, reverse=True)
+
+    def at_most(self, version):
+        if version is None:
+            return self.serializers[-1]
+        for s in self.serializers:
+            if s.since_version <= float(version):
+                return s
+
+    def to_api(self, core_object, version=None):
+        return self.at_most(version).to_api(core_object)
+
+    def to_core(self, api_dict, version=None):
+        return self.at_most(version).to_core(api_dict)

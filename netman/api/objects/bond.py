@@ -12,21 +12,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.objects import base_interface
+from netman.api.objects import base_interface, interface, Serializer, \
+    Serializers
 from netman.api.objects import sub_dict
 from netman.core.objects.bond import Bond
+from netman.core.objects.interface import Interface
 
 
-def to_api(bond):
-    return dict(
-        number=bond.number,
-        link_speed=bond.link_speed,
-        members=bond.members,
-        **base_interface.to_api(bond)
-    )
+__all__ = ['to_api', 'to_core']
 
 
-def to_core(api_bond):
-    params = dict(vars(base_interface.to_core(api_bond)))
-    params.update(sub_dict(api_bond, 'number', 'link_speed', 'members'))
-    return Bond(**params)
+class V2(Serializer):
+    since_version = 2
+
+    def to_api(self, bond):
+        return dict(
+            number=bond.number,
+            link_speed=bond.link_speed,
+            members=bond.members,
+            **base_interface.to_api(bond)
+        )
+
+    def to_core(self, api_bond):
+        params = dict(vars(base_interface.to_core(api_bond)))
+        params.update(sub_dict(api_bond, 'number', 'link_speed', 'members'))
+        return Bond(**params)
+
+
+class V1(Serializer):
+    since_version = 1
+
+    def to_api(self, bond):
+        return dict(
+            number=bond.number,
+            link_speed=bond.link_speed,
+            members=bond.members,
+            interface=interface.to_api(Interface(
+                shutdown=bond.shutdown,
+                port_mode=bond.port_mode,
+                access_vlan=bond.access_vlan,
+                trunk_native_vlan=bond.trunk_native_vlan,
+                trunk_vlans=bond.trunk_vlans,
+            ))
+        )
+
+    def to_core(self, api_bond):
+        params = dict(vars(base_interface.to_core(api_bond['interface'])))
+        params.update(sub_dict(api_bond, 'number', 'link_speed', 'members'))
+        return Bond(**params)
+
+
+serializers = Serializers(V1(), V2())
+
+to_api = serializers.to_api
+to_core = serializers.to_core

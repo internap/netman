@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.objects import sub_dict
+from netman.api.objects import sub_dict, Serializer, Serializers
 from netman.core.objects.interface import BaseInterface
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC, BOND_MEMBER
+
+__all__ = ['to_api', 'to_core']
+
 
 serialized_port_mode = {
     ACCESS: "access",
@@ -24,18 +27,26 @@ serialized_port_mode = {
 }
 
 
-def to_core(serialized):
-    return BaseInterface(
-        port_mode=dict((v, k) for k, v in serialized_port_mode.iteritems())[serialized.pop('port_mode')],
-        **sub_dict(serialized, 'shutdown', 'access_vlan', 'trunk_native_vlan', 'trunk_vlans')
-    )
+class V1(Serializer):
+    since_version = 1
+
+    def to_core(self, serialized):
+        return BaseInterface(
+            port_mode=dict((v, k) for k, v in serialized_port_mode.iteritems())[serialized.pop('port_mode')],
+            **sub_dict(serialized, 'shutdown', 'access_vlan', 'trunk_native_vlan', 'trunk_vlans')
+        )
+
+    def to_api(self, base_interface):
+        return dict(
+            shutdown=base_interface.shutdown,
+            port_mode=serialized_port_mode[base_interface.port_mode],
+            access_vlan=base_interface.access_vlan,
+            trunk_native_vlan=base_interface.trunk_native_vlan,
+            trunk_vlans=sorted(base_interface.trunk_vlans)
+        )
 
 
-def to_api(base_interface):
-    return dict(
-        shutdown=base_interface.shutdown,
-        port_mode=serialized_port_mode[base_interface.port_mode],
-        access_vlan=base_interface.access_vlan,
-        trunk_native_vlan=base_interface.trunk_native_vlan,
-        trunk_vlans=sorted(base_interface.trunk_vlans)
-    )
+serializers = Serializers(V1())
+
+to_api = serializers.to_api
+to_core = serializers.to_core

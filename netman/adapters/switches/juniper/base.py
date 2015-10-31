@@ -622,9 +622,9 @@ class Juniper(SwitchBase):
 
     def node_to_interface(self, interface_node, config):
         interface = Interface()
+        interface.name = value_of(interface_node.xpath("name"))
         interface.bond_master = get_bond_master(interface_node)
         self.fill_interface_from_node(interface, interface_node, config)
-        interface.name = value_of(interface_node.xpath("name"))
         return interface
 
     def node_to_bond(self, bond_node, config, member_nodes=None):

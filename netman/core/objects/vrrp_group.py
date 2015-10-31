@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.core.objects import ModelObject
+from netman.core.objects import Model
 
 
-class VrrpGroup(ModelObject):
+class VrrpGroup(Model):
     def __init__(self, id=None, ips=None, priority=None, hello_interval=None, dead_interval=None, track_id=None,
                  track_decrement=None):
         self.id = id

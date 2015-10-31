@@ -60,6 +60,7 @@ class RemoteSwitchTest(unittest.TestCase):
             'Netman-Model': 'juniper',
             'Netman-Password': 'titi',
             'Netman-Username': 'tutu',
+            'Netman-Max-Version': 2,
             'Netman-Verbose-Errors': 'yes',
         }
 
@@ -85,6 +86,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -132,6 +134,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -191,6 +194,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='commit',
             headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -222,6 +226,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='rollback',
             headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -255,6 +260,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 'Netman-Username': 'tutu',
                 'Netman-Verbose-Errors': 'yes',
                 'Netman-Proxy-Server': '1.2.3.4',
+                'Netman-Max-Version': 2,
                 'Netman-Session-Id': '0123456789'
             },
             data=JsonData(hostname="toto")
@@ -266,6 +272,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -296,6 +303,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 'Netman-Username': 'tutu',
                 'Netman-Verbose-Errors': 'yes',
                 'Netman-Proxy-Server': '1.2.3.4,5.6.7.8',
+                'Netman-Max-Version': 2,
                 'Netman-Session-Id': '0123456789'
             },
             data=JsonData(hostname="toto")
@@ -307,6 +315,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -426,13 +435,35 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(if4.shutdown, equal_to(False))
         assert_that(if4.bond_master, equal_to(12))
 
-    def test_get_bond(self):
+    def test_get_bond_v1(self):
         self.requests_mock.should_receive("get").once().with_args(
             url=self.netman_url+'/switches/toto/bonds/3',
             headers=self.headers
         ).and_return(
             Reply(
-                content=open_fixture('get_switch_hostname_bond.json').read(),
+                content=open_fixture('get_switch_hostname_bond_v1.json').read(),
+                status_code=200))
+
+        if1 = self.switch.get_bond(3)
+
+        assert_that(if1.number, equal_to(3))
+        assert_that(if1.link_speed, equal_to('1g'))
+        assert_that(if1.interface.name, equal_to(None))
+        assert_that(if1.interface.shutdown, equal_to(True))
+        assert_that(if1.interface.port_mode, equal_to(ACCESS))
+        assert_that(if1.interface.access_vlan, equal_to(1999))
+        assert_that(if1.interface.trunk_native_vlan, equal_to(None))
+        assert_that(if1.interface.trunk_vlans, equal_to([]))
+        assert_that(if1.members, equal_to([]))
+
+    def test_get_bond_v2(self):
+        self.requests_mock.should_receive("get").once().with_args(
+            url=self.netman_url+'/switches/toto/bonds/3',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                headers={'Netman-Version': '2'},
+                content=open_fixture('get_switch_hostname_bond_v2.json').read(),
                 status_code=200))
 
         if1 = self.switch.get_bond(3)
@@ -446,13 +477,54 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(if1.trunk_vlans, equal_to([]))
         assert_that(if1.members, equal_to([]))
 
-    def test_get_bonds(self):
+    def test_get_bonds_v1(self):
         self.requests_mock.should_receive("get").once().with_args(
             url=self.netman_url+'/switches/toto/bonds',
             headers=self.headers
         ).and_return(
             Reply(
-                content=open_fixture('get_switch_hostname_bonds.json').read(),
+                content=open_fixture('get_switch_hostname_bonds_v1.json').read(),
+                status_code=200))
+
+        if1, if2, if3 = self.switch.get_bonds()
+
+        assert_that(if1.number, equal_to(3))
+        assert_that(if1.link_speed, equal_to('1g'))
+        assert_that(if1.interface.name, equal_to(None))
+        assert_that(if1.interface.shutdown, equal_to(True))
+        assert_that(if1.interface.port_mode, equal_to(ACCESS))
+        assert_that(if1.interface.access_vlan, equal_to(1999))
+        assert_that(if1.interface.trunk_native_vlan, equal_to(None))
+        assert_that(if1.interface.trunk_vlans, equal_to([]))
+        assert_that(if1.members, equal_to([]))
+
+        assert_that(if2.number, equal_to(4))
+        assert_that(if2.members, equal_to(["ge-0/0/1", "ge-1/0/1"]))
+        assert_that(if2.interface.name, equal_to(None))
+        assert_that(if2.interface.shutdown, equal_to(False))
+        assert_that(if2.interface.port_mode, equal_to(TRUNK))
+        assert_that(if2.interface.access_vlan, equal_to(None))
+        assert_that(if2.interface.trunk_native_vlan, equal_to(2999))
+        assert_that(if2.interface.trunk_vlans, equal_to([3000, 3001, 3002]))
+
+        assert_that(if3.number, equal_to(6))
+        assert_that(if3.link_speed, equal_to('10g'))
+        assert_that(if3.interface.name, equal_to(None))
+        assert_that(if3.interface.shutdown, equal_to(False))
+        assert_that(if3.interface.port_mode, equal_to(DYNAMIC))
+        assert_that(if3.interface.access_vlan, equal_to(1999))
+        assert_that(if3.interface.trunk_native_vlan, equal_to(2999))
+        assert_that(if3.interface.trunk_vlans, equal_to([3000, 3001, 3002]))
+        assert_that(if3.members, equal_to([]))
+
+    def test_get_bonds_v2(self):
+        self.requests_mock.should_receive("get").once().with_args(
+            url=self.netman_url+'/switches/toto/bonds',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                headers={'Netman-Version': '2'},
+                content=open_fixture('get_switch_hostname_bonds_v2.json').read(),
                 status_code=200))
 
         if1, if2, if3 = self.switch.get_bonds()
@@ -477,7 +549,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         assert_that(if3.number, equal_to(6))
         assert_that(if3.link_speed, equal_to('10g'))
-        assert_that(if2.shutdown, equal_to(False))
+        assert_that(if3.shutdown, equal_to(False))
         assert_that(if3.port_mode, equal_to(DYNAMIC))
         assert_that(if3.access_vlan, equal_to(1999))
         assert_that(if3.trunk_native_vlan, equal_to(2999))
@@ -1160,9 +1232,10 @@ class RemoteSwitchTest(unittest.TestCase):
 
 
 class Reply:
-    def __init__(self, status_code, content):
+    def __init__(self, status_code, content, headers=None):
         self.status_code = status_code
         self.content = content
+        self.headers = headers or {}
 
     def json(self):
         return json.loads(self.content)

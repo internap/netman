@@ -949,7 +949,7 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_bonds_serialization(self):
+    def test_bonds_serialization_v1(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_bonds').once().ordered().and_return([
@@ -980,9 +980,9 @@ class SwitchApiTest(BaseApiTest):
         result, code = self.get("/switches/my.switch/bonds")
 
         assert_that(code, equal_to(200))
-        assert_that(result, matches_fixture("get_switch_hostname_bonds.json"))
+        assert_that(result, matches_fixture("get_switch_hostname_bonds_v1.json"))
 
-    def test_get_bond_is_correctly_serialized(self):
+    def test_get_bond_is_correctly_serialized_v1(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_bond').with_args(3).once().ordered().and_return(
@@ -992,14 +992,66 @@ class SwitchApiTest(BaseApiTest):
                 shutdown=True,
                 port_mode=ACCESS,
                 access_vlan=1999)
-            )
+        )
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/bonds/3")
 
         assert_that(code, equal_to(200))
-        assert_that(result, matches_fixture("get_switch_hostname_bond.json"))
+        assert_that(result, matches_fixture("get_switch_hostname_bond_v1.json"))
 
+    def test_bonds_serialization_v2(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_bonds').once().ordered().and_return([
+            Bond(
+                number=3,
+                link_speed='1g',
+                shutdown=True,
+                port_mode=ACCESS,
+                access_vlan=1999),
+            Bond(
+                number=6,
+                link_speed='10g',
+                shutdown=False,
+                port_mode=DYNAMIC,
+                access_vlan=1999,
+                trunk_native_vlan=2999,
+                trunk_vlans=[3001, 3000, 3002]),
+            Bond(
+                number=4,
+                members=["ge-0/0/1", "ge-1/0/1"],
+                shutdown=False,
+                port_mode=TRUNK,
+                trunk_native_vlan=2999,
+                trunk_vlans=[3001, 3000, 3002]),
+            ])
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/bonds",
+                                headers={"Netman-Max-Version": "2"})
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_switch_hostname_bonds_v2.json"))
+
+    def test_get_bond_is_correctly_serialized_v2(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_bond').with_args(3).once().ordered().and_return(
+            Bond(
+                number=3,
+                link_speed='1g',
+                shutdown=True,
+                port_mode=ACCESS,
+                access_vlan=1999)
+        )
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/bonds/3",
+                                headers={"Netman-Max-Version": "2"})
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_switch_hostname_bond_v2.json"))
 
     def test_add_bond(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()

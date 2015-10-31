@@ -200,7 +200,8 @@ class CacheSwitchTest(unittest.TestCase):
     def test_add_trunk_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2')])
-        self.switch.get_interfaces()
+        assert_that(self.switch.get_interfaces(),
+            is_([Interface('xe-1/0/2')]))
 
         self.real_switch_mock.should_receive("add_trunk_vlan").once() \
             .with_args('xe-1/0/2', 1)
@@ -410,7 +411,6 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_add_bond_after_get_bonds(self):
         all_bonds = [Bond(1), Bond(2)]
-
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
             all_bonds)
         assert_that(self.switch.get_bonds(), is_(all_bonds))

@@ -22,7 +22,6 @@ from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface,
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
     is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type
 
-
 class SwitchApi(SwitchApiBase):
 
     def hook_to(self, server):
@@ -530,12 +529,14 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bond.json
+        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bond_v2.json
             :language: json
 
         """
 
-        return 200, bond.to_api(switch.get_bond(bond_number))
+        return 200, bond.to_api(
+            switch.get_bond(bond_number),
+            version=request.headers.get("Netman-Max-Version"))
 
     @to_response
     @resource(Switch)
@@ -548,13 +549,15 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bonds.json
+        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bonds_v2.json
             :language: json
 
         """
         bonds = sorted(switch.get_bonds(), key=lambda x: x.number)
 
-        return 200, [bond.to_api(b) for b in bonds]
+        return 200, [bond.to_api(
+            b, version=request.headers.get("Netman-Max-Version")
+        ) for b in bonds]
 
     @to_response
     @content(is_bond)

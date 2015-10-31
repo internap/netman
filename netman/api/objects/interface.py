@@ -12,20 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.api.objects import sub_dict
+from netman.api.objects import sub_dict, Serializer, Serializers
 from netman.api.objects import base_interface
 from netman.core.objects.interface import Interface
 
 
-def to_api(interface):
-    return dict(
-        base_interface.to_api(interface),
-        name=interface.name,
-        bond_master=interface.bond_master,
-    )
+__all__ = ['to_api', 'to_core']
 
 
-def to_core(serialized):
-    params = dict(vars(base_interface.to_core(serialized)))
-    params.update(sub_dict(serialized, 'name', 'bond_master'))
-    return Interface(**params)
+class V1(Serializer):
+    since_version = 1
+
+    def to_api(self, interface):
+        return dict(
+            base_interface.to_api(interface),
+            name=interface.name,
+            bond_master=interface.bond_master,
+        )
+
+    def to_core(self, serialized):
+        params = dict(vars(base_interface.to_core(serialized)))
+        params.update(sub_dict(serialized, 'name', 'bond_master'))
+        return Interface(**params)
+
+
+serializers = Serializers(V1())
+
+to_api = serializers.to_api
+to_core = serializers.to_core

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.core.objects import ModelObject
+from netman.core.objects import Model
 
 
-class SwitchDescriptor(ModelObject):
+class SwitchDescriptor(Model):
     def __init__(self, model, hostname, username=None, password=None, port=None,
                  default_vrf=None, default_lan_acl_in=None, default_lan_acl_out=None,
                  trunked_interfaces=None, parking_vlan=None, netman_server=None, default_port_speed=None,

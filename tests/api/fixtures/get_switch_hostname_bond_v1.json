@@ -1,0 +1,14 @@
+{
+  "number": 3,
+  "link_speed": "1g",
+  "members": [],
+  "interface": {
+    "name": null,
+    "shutdown": true,
+    "bond_master": null,
+    "port_mode": "access",
+    "access_vlan": 1999,
+    "trunk_native_vlan": null,
+    "trunk_vlans": []
+  }
+}
