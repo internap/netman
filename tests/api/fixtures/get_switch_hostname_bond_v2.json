@@ -1,0 +1,10 @@
+{
+   "number": 3,
+   "link_speed": "1g",
+   "members": [],
+   "shutdown": true,
+   "port_mode": "access",
+   "access_vlan": 1999,
+   "trunk_native_vlan": null,
+   "trunk_vlans": []
+}

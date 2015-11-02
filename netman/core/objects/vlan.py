@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from netman.core.objects import Model
 from netman.core.objects.access_groups import OUT, IN
 
 
-class Vlan(object):
+class Vlan(Model):
     def __init__(self, number=None, name=None, ips=None, vrrp_groups=None, vrf_forwarding=None, access_group_in=None,
                  access_group_out=None, dhcp_relay_servers=None):
         self.number = number
@@ -25,8 +26,3 @@ class Vlan(object):
         self.ips = ips or []
         self.vrrp_groups = vrrp_groups or []
         self.dhcp_relay_servers = dhcp_relay_servers or []
-
-    def __eq__(self, other):
-        if isinstance(other, type(self)):
-            return self.__dict__ == other.__dict__
-        return False

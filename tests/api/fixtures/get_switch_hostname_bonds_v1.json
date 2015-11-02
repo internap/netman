@@ -1,0 +1,55 @@
+[
+  {
+    "number": 3,
+    "link_speed": "1g",
+    "members": [],
+    "interface": {
+      "name": null,
+      "shutdown": true,
+      "bond_master": null,
+      "port_mode": "access",
+      "access_vlan": 1999,
+      "trunk_native_vlan": null,
+      "trunk_vlans": []
+    }
+  },
+  {
+    "number": 4,
+    "link_speed": null,
+    "members": [
+      "ge-0/0/1",
+      "ge-1/0/1"
+    ],
+    "interface": {
+      "name": null,
+      "shutdown": false,
+      "bond_master": null,
+      "port_mode": "trunk",
+      "access_vlan": null,
+      "trunk_native_vlan": 2999,
+      "trunk_vlans": [
+        3000,
+        3001,
+        3002
+      ]
+    }
+  },
+  {
+    "number": 6,
+    "link_speed": "10g",
+    "members": [],
+    "interface": {
+      "name": null,
+      "shutdown": false,
+      "bond_master": null,
+      "port_mode": "dynamic",
+      "access_vlan": 1999,
+      "trunk_native_vlan": 2999,
+      "trunk_vlans": [
+        3000,
+        3001,
+        3002
+      ]
+    }
+  }
+]

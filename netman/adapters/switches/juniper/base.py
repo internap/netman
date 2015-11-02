@@ -609,9 +609,7 @@ class Juniper(SwitchBase):
         else:
             return {"access": ACCESS, "trunk": TRUNK}[actual_port_mode_node.text]
 
-    def node_to_interface(self, interface_node, config):
-        interface = Interface()
-        interface.bond_master = get_bond_master(interface_node)
+    def fill_interface_from_node(self, interface, interface_node, config):
         interface.port_mode = self.get_port_mode(interface_node) or ACCESS
         vlans = list_vlan_members(interface_node, config)
         if interface.port_mode is ACCESS:
@@ -619,18 +617,25 @@ class Juniper(SwitchBase):
         else:
             interface.trunk_vlans = vlans
         interface.trunk_native_vlan = value_of(interface_node.xpath("unit/family/ethernet-switching/native-vlan-id"), transformer=int)
-        interface.name = value_of(interface_node.xpath("name"))
         interface.shutdown = first(interface_node.xpath("disable")) is not None
+        return interface
+
+    def node_to_interface(self, interface_node, config):
+        interface = Interface()
+        interface.name = value_of(interface_node.xpath("name"))
+        interface.bond_master = get_bond_master(interface_node)
+        self.fill_interface_from_node(interface, interface_node, config)
         return interface
 
     def node_to_bond(self, bond_node, config, member_nodes=None):
         member_nodes = member_nodes or []
-        return Bond(
+        bond = Bond(
             number=value_of(bond_node.xpath("name"), transformer=bond_number),
-            interface=self.node_to_interface(bond_node, config),
             link_speed=first_text(bond_node.xpath("aggregated-ether-options/link-speed")),
             members=[first_text(member.xpath('name')) for member in member_nodes]
         )
+        self.fill_interface_from_node(bond, bond_node, config)
+        return bond
 
 
 def all_vlans():

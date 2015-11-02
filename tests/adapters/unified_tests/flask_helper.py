@@ -20,6 +20,7 @@ class FlaskResponse(object):
         self.response = response
         self.status_code = response.status_code
         self.data = response.data
+        self.headers = response.headers
 
     def json(self):
         return json.loads(self.response.data)

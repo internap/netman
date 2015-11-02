@@ -19,7 +19,7 @@ from flask import send_from_directory
 from pkg_resources import get_distribution
 
 from netman.api.api_utils import to_response
-from netman.api.objects.info import SerializableInfo
+from netman.api.objects import info
 
 
 class NetmanApi(object):
@@ -53,7 +53,7 @@ class NetmanApi(object):
         """
         logging.getLogger("netman.api").info("/info requested this is a logging test")
 
-        return 200, SerializableInfo(
+        return 200, info.to_api(
             status='running',
             version=self.get_distribution('netman').version
         )
