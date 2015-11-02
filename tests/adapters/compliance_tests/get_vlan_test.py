@@ -32,7 +32,7 @@ class GetVlanTest(ConfiguredTestCase):
         if_available(self.client.set_vlan_access_group, 1000, OUT, "ACL-OUT")
         if_available(self.client.add_vrrp_group, 1000, 1,
                      ips=[IPAddress("10.10.10.1")], priority=110, hello_interval=10,
-                     dead_interval=11, track_id="1/1", track_decrement=50)
+                     dead_interval=11, track_id=self.test_vrrp_track_id, track_decrement=50)
         if_available(self.client.add_dhcp_relay_server, 1000, IPAddress("11.11.11.1"))
 
         assert_that(self.client.get_vlan(1000), is_(self.get_vlan_from_list(1000)))

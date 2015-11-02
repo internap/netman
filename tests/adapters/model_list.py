@@ -31,6 +31,7 @@ available_models = [
         "username": "root",
         "password": "root",
         "test_port_name": "FastEthernet0/3",
+        "test_vrrp_track_id": "101",
         "core_class": CiscoSwitchCore,
         "service_class": SwitchSshService,
         "ports": [
@@ -47,6 +48,7 @@ available_models = [
         "username": "root",
         "password": "root",
         "test_port_name": "1/3",
+        "test_vrrp_track_id": "ethernet 1/1",
         "core_class": BrocadeSwitchCore,
         "service_class": SwitchSshService,
         "ports": [
