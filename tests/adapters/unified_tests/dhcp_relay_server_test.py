@@ -15,7 +15,7 @@
 from hamcrest import assert_that, is_, none, is_not
 from netaddr import IPAddress
 
-from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
+from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_switches
 
 
 class DhcpRelayServerTest(ConfiguredTestCase):

@@ -17,12 +17,13 @@ from functools import wraps
 from unittest import SkipTest
 
 from hamcrest import assert_that, is_
-
 from netman.adapters.switches.cached import CachedSwitch
 from netman.adapters.switches.remote import RemoteSwitch
+from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.main import app
-from .flask_helper import FlaskRequest
+from tests.adapters.flask_helper import FlaskRequest
+from tests.adapters.model_list import available_models
 
 
 def sub_dict(d, *keys):
@@ -57,10 +58,15 @@ class ValidatingCachedSwitch(CachedSwitch):
 
 
 class ConfiguredTestCase(unittest.TestCase):
+    _dev_sample = None
     switch_specs = None
 
     def setUp(self):
-        specs = type(self).switch_specs
+        if self.switch_specs is not None:
+            specs = type(self).switch_specs
+        else:
+            specs = next(s for s in available_models if s["model"] == self._dev_sample)
+
         self.switch_hostname = specs["hostname"]
         self.switch_port = specs["port"]
         self.switch_type = specs["model"]
@@ -74,6 +80,13 @@ class ConfiguredTestCase(unittest.TestCase):
         self.remote_switch.requests = FlaskRequest(app.test_client())
 
         self.client = ValidatingCachedSwitch(self.remote_switch)
+
+        self.client.connect()
+        self.client.start_transaction()
+
+    def tearDown(self):
+        self.client.end_transaction()
+        self.client.disconnect()
 
     def get_vlan_from_list(self, number):
         try:
@@ -97,3 +110,18 @@ def skip_on_switches(*to_skip):
         return wrapper
 
     return resource_decorator
+
+
+def try_to(method, *args, **kwargs):
+    try:
+        return method(*args, **kwargs)
+    except NetmanException:
+        return None
+
+
+def if_available(method, *args, **kwargs):
+    try:
+        return method(*args, **kwargs)
+    except NotImplementedError:
+        return None
+

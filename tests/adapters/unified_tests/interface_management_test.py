@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
+from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_switches
 
 
 class InterfaceManagementTest(ConfiguredTestCase):

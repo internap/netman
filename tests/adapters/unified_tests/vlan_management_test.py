@@ -19,7 +19,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan, UnknownInterface, \
     UnknownResource
 from netman.core.objects.port_modes import ACCESS, TRUNK
-from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
+from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_switches
 
 
 class VlanManagementTest(ConfiguredTestCase):
