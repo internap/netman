@@ -14,7 +14,6 @@
 
 from contextlib import contextmanager
 from functools import wraps
-import logging
 
 from .switch_base import SwitchOperations
 
@@ -35,9 +34,7 @@ class SwitchTransactional(SwitchOperations):
     def __init__(self, impl, lock):
         self.impl = impl
         self.lock = lock
-        self.logger = logging.getLogger("{module}.{hostname}".format(
-            module=self.impl.__module__,
-            hostname=self.switch_descriptor.hostname))
+        self.logger = self.impl.logger
         self.in_transaction = False
 
     @property

@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 from unittest import TestCase
 
 from flexmock import flexmock
 from hamcrest import assert_that, is_
-
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import transactional, \
@@ -28,6 +27,7 @@ class SwitchTransactionalTest(TestCase):
     def setUp(self):
         self.switch_impl = flexmock()
         self.switch_impl.switch_descriptor = SwitchDescriptor(model='', hostname='')
+        self.switch_impl.logger = logging.getLogger()
         self.lock = flexmock()
         self.switch = SwitchTransactional(self.switch_impl, self.lock)
 

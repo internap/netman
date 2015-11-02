@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
-
 from netaddr.ip import IPNetwork, IPAddress
 
 from netman import regex
-from netman.adapters.switches import SubShell, split_on_dedent, split_on_bang, no_output
+from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
 from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \

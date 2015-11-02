@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.adapters.switches import cisco, juniper, brocade, remote, dell, dell10g
+from netman.adapters.switches import cisco, juniper, remote, dell, dell10g, brocade_factory
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
@@ -24,7 +24,7 @@ class SwitchFactory(object):
 
         self.factories = {
             "cisco": cisco.factory,
-            "brocade": brocade.factory,
+            "brocade": brocade_factory,
             "juniper": juniper.standard_factory,
             "juniper_qfx_copper": juniper.qfx_copper_factory,
             "dell": dell.factory_ssh,

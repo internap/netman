@@ -20,7 +20,7 @@ from netman.adapters.switches.cisco import parse_vlan_ranges
 from netman.core.objects.vlan import Vlan
 from netman import regex
 from netman.core.objects.switch_transactional import SwitchTransactional
-from netman.adapters.switches import SubShell, no_output, ResultChecker
+from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription
 from netman.core.objects.switch_base import SwitchBase
