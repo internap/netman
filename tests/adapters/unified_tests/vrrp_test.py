@@ -32,7 +32,7 @@ class VrrpTest(ConfiguredTestCase):
                 group_id=73,
                 ips=[IPAddress("10.10.0.1"), IPAddress("10.10.0.2")],
                 priority=110,
-                track_id=101,
+                track_id=self.test_vrrp_track_id,
                 track_decrement=50,
                 hello_interval=5,
                 dead_interval=15
@@ -45,7 +45,7 @@ class VrrpTest(ConfiguredTestCase):
 
             assert_that([str(ip) for ip in vrrp_group.ips], is_(["10.10.0.1", "10.10.0.2"]))
             assert_that(vrrp_group.priority, is_(110))
-            assert_that(vrrp_group.track_id, is_('101'))
+            assert_that(vrrp_group.track_id, is_(self.test_vrrp_track_id))
             assert_that(vrrp_group.track_decrement, is_(50))
             assert_that(vrrp_group.hello_interval, is_(5))
             assert_that(vrrp_group.dead_interval, is_(15))

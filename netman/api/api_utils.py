@@ -18,7 +18,7 @@ import logging
 
 from flask import make_response, request, Response, current_app
 from werkzeug.routing import BaseConverter
-from netman.api.objects import Serializer
+from netman.api import NETMAN_API_VERSION
 
 from netman.core.objects.exceptions import UnknownResource, Conflict
 
@@ -49,6 +49,10 @@ def to_response(fn):
             response = exception_to_response(e, 500)
 
         self.logger.info("Responding {} : {}".format(response.status_code, response.data))
+        if 'Netman-Max-Version' in request.headers:
+            response.headers['Netman-Version'] = min(
+                float(request.headers['Netman-Max-Version']),
+                NETMAN_API_VERSION)
         return response
 
     return wrapper
@@ -77,7 +81,7 @@ def exception_to_response(exception, code):
 
 def json_response(data, code):
 
-    json_data = json.dumps(data, cls=Serializer, indent=None)
+    json_data = json.dumps(data, indent=None)
     response = current_app.response_class(json_data, mimetype='application/json; charset=UTF-8')
     response.status_code = code
 

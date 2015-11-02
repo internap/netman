@@ -32,7 +32,7 @@ from netman.adapters.switches.juniper import Juniper, JuniperCustomStrategies
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    InterfaceDescriptionNotSet, BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
+    BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -3126,7 +3126,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_remove_interface_description_on_interface_with_no_description_just_ignores_it(self):
-        with self.expecting_failed_transaction():
+        with self.expecting_successful_transaction():
 
             self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
                 <config>
@@ -3146,10 +3146,7 @@ class JuniperTest(unittest.TestCase):
                 <error-message>statement not found: description</error-message>
                 </rpc-error>"""))))
 
-        with self.assertRaises(InterfaceDescriptionNotSet) as expect:
-            self.switch.remove_interface_description("ge-0/0/99")
-
-        assert_that(str(expect.exception), contains_string("Description is not set on interface ge-0/0/99"))
+        self.switch.remove_interface_description("ge-0/0/99")
 
     def test_edit_interface_spanning_tree_enable_edge_from_nothing(self):
         with self.expecting_successful_transaction():
@@ -4312,11 +4309,10 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(if3.number, equal_to(3))
         assert_that(if3.link_speed, equal_to('1g'))
-        assert_that(if3.interface.name, equal_to("ae3"))
-        assert_that(if3.interface.port_mode, equal_to(TRUNK))
-        assert_that(if3.interface.access_vlan, equal_to(None))
-        assert_that(if3.interface.trunk_native_vlan, equal_to(2000))
-        assert_that(if3.interface.trunk_vlans, equal_to([999, 1000, 1001]))
+        assert_that(if3.port_mode, equal_to(TRUNK))
+        assert_that(if3.access_vlan, equal_to(None))
+        assert_that(if3.trunk_native_vlan, equal_to(2000))
+        assert_that(if3.trunk_vlans, equal_to([999, 1000, 1001]))
         assert_that(if3.members, equal_to(['ge-1/0/1']))
 
     def test_get_unknown_bond(self):
@@ -4439,31 +4435,28 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(if1.number, equal_to(1))
         assert_that(if1.link_speed, equal_to(None))
-        assert_that(if1.interface.name, equal_to("ae1"))
-        assert_that(if1.interface.shutdown, equal_to(False))
-        assert_that(if1.interface.port_mode, equal_to(ACCESS))
-        assert_that(if1.interface.access_vlan, equal_to(None))
-        assert_that(if1.interface.trunk_native_vlan, equal_to(None))
-        assert_that(if1.interface.trunk_vlans, equal_to([]))
+        assert_that(if1.shutdown, equal_to(False))
+        assert_that(if1.port_mode, equal_to(ACCESS))
+        assert_that(if1.access_vlan, equal_to(None))
+        assert_that(if1.trunk_native_vlan, equal_to(None))
+        assert_that(if1.trunk_vlans, equal_to([]))
         assert_that(if1.members, equal_to([]))
 
         assert_that(if2.number, equal_to(2))
         assert_that(if2.link_speed, equal_to('10g'))
-        assert_that(if2.interface.name, equal_to("ae2"))
-        assert_that(if2.interface.shutdown, equal_to(True))
-        assert_that(if2.interface.port_mode, equal_to(ACCESS))
-        assert_that(if2.interface.access_vlan, equal_to(1000))
-        assert_that(if2.interface.trunk_native_vlan, equal_to(None))
-        assert_that(if2.interface.trunk_vlans, equal_to([]))
+        assert_that(if2.shutdown, equal_to(True))
+        assert_that(if2.port_mode, equal_to(ACCESS))
+        assert_that(if2.access_vlan, equal_to(1000))
+        assert_that(if2.trunk_native_vlan, equal_to(None))
+        assert_that(if2.trunk_vlans, equal_to([]))
         assert_that(if2.members, equal_to([]))
 
         assert_that(if3.number, equal_to(3))
         assert_that(if3.link_speed, equal_to('1g'))
-        assert_that(if3.interface.name, equal_to("ae3"))
-        assert_that(if3.interface.port_mode, equal_to(TRUNK))
-        assert_that(if3.interface.access_vlan, equal_to(None))
-        assert_that(if3.interface.trunk_native_vlan, equal_to(2000))
-        assert_that(if3.interface.trunk_vlans, equal_to([999, 1000, 1001]))
+        assert_that(if3.port_mode, equal_to(TRUNK))
+        assert_that(if3.access_vlan, equal_to(None))
+        assert_that(if3.trunk_native_vlan, equal_to(2000))
+        assert_that(if3.trunk_vlans, equal_to([999, 1000, 1001]))
         assert_that(if3.members, equal_to(['ge-1/0/1']))
 
     def test_enable_lldp_from_nothing(self):

@@ -14,26 +14,23 @@
 
 from netaddr import IPAddress
 
-from netman.api.objects import Serializable
 from netman.core.objects.vrrp_group import VrrpGroup
 
 
-class SerializableVrrpGroup(Serializable):
-    def __init__(self, src):
-        super(SerializableVrrpGroup, self).__init__(['id', 'ips', 'hello_interval', 'dead_interval', 'priority',
-                                                     'track_id', 'track_decrement'])
-        self.id = src.id
-        self.ips = sorted([str(i) for i in src.ips])
-        self.priority = src.priority
-        self.track_id = src.track_id
-        self.track_decrement = src.track_decrement
-        self.hello_interval = src.hello_interval
-        self.dead_interval = src.dead_interval
+def to_api(vrrp):
+    return dict(
+        id=vrrp.id,
+        ips=sorted([str(i) for i in vrrp.ips]),
+        priority=vrrp.priority,
+        track_id=vrrp.track_id,
+        track_decrement=vrrp.track_decrement,
+        hello_interval=vrrp.hello_interval,
+        dead_interval=vrrp.dead_interval,
+    )
 
-    @classmethod
-    def to_core(cls, **serialized):
-        ips = serialized.pop('ips')
-        return VrrpGroup(
-            ips=[IPAddress(ip) for ip in ips],
-            ** serialized
-        )
+
+def to_core(serialized):
+    return VrrpGroup(
+        ips=[IPAddress(ip) for ip in serialized.pop('ips')],
+        ** serialized
+    )

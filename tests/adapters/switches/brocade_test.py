@@ -19,8 +19,8 @@ from hamcrest import assert_that, has_length, equal_to, is_, instance_of, none, 
 import mock
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
-
-from netman.adapters.switches import brocade, SubShell
+from netman.adapters.switches import brocade_factory
+from netman.adapters.switches.util import SubShell
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.brocade import Brocade, parse_if_ranges
 from netman.core.objects.access_groups import IN, OUT
@@ -33,7 +33,7 @@ from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 def test_factory():
     lock = mock.Mock()
-    switch = brocade.factory(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=22), lock)
+    switch = brocade_factory(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=22), lock)
 
     assert_that(switch, instance_of(SwitchTransactional))
     assert_that(switch.impl, instance_of(Brocade))
@@ -49,7 +49,7 @@ class BrocadeTest(unittest.TestCase):
 
     def setUp(self):
         self.lock = mock.Mock()
-        self.switch = brocade.factory(SwitchDescriptor(model='brocade', hostname="my.hostname"), self.lock)
+        self.switch = brocade_factory(SwitchDescriptor(model='brocade', hostname="my.hostname"), self.lock)
         SubShell.debug = True
 
     def tearDown(self):
@@ -146,7 +146,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vrrp_group1.hello_interval, equal_to(5))
         assert_that(vrrp_group1.dead_interval, equal_to(15))
         assert_that(vrrp_group1.priority, equal_to(110))
-        assert_that(vrrp_group1.track_id, equal_to('1/1'))
+        assert_that(vrrp_group1.track_id, equal_to('ethernet 1/1'))
         assert_that(vrrp_group1.track_decrement, equal_to(50))
         assert_that(len(vrrp_group2.ips), equal_to(2))
         assert_that(vrrp_group2.ips[0], equal_to(IPAddress('1.1.1.3')))
@@ -154,7 +154,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vrrp_group2.hello_interval, equal_to(5))
         assert_that(vrrp_group2.dead_interval, equal_to(15))
         assert_that(vrrp_group2.priority, equal_to(110))
-        assert_that(vrrp_group2.track_id, equal_to('1/1'))
+        assert_that(vrrp_group2.track_id, equal_to('ethernet 1/1'))
         assert_that(vrrp_group2.track_decrement, equal_to(50))
 
         assert_that(len(vlan201.dhcp_relay_servers), equal_to(2))
@@ -255,7 +255,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vrrp_group1.hello_interval, equal_to(5))
         assert_that(vrrp_group1.dead_interval, equal_to(15))
         assert_that(vrrp_group1.priority, equal_to(110))
-        assert_that(vrrp_group1.track_id, equal_to('1/1'))
+        assert_that(vrrp_group1.track_id, equal_to('ethernet 1/1'))
         assert_that(vrrp_group1.track_decrement, equal_to(50))
         assert_that(len(vrrp_group2.ips), equal_to(2))
         assert_that(vrrp_group2.ips[0], equal_to(IPAddress('1.1.1.3')))
@@ -263,7 +263,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vrrp_group2.hello_interval, equal_to(5))
         assert_that(vrrp_group2.dead_interval, equal_to(15))
         assert_that(vrrp_group2.priority, equal_to(110))
-        assert_that(vrrp_group2.track_id, equal_to('1/1'))
+        assert_that(vrrp_group2.track_id, equal_to('ethernet 1/1'))
         assert_that(vrrp_group2.track_decrement, equal_to(50))
 
         assert_that(len(vlan.dhcp_relay_servers), equal_to(2))
@@ -371,7 +371,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.set_access_vlan("1/4", vlan=2999)
+        self.switch.set_access_vlan("ethernet 1/4", vlan=2999)
 
     def test_set_access_vlan_invalid_vlan_raises(self):
         self.command_setup()
@@ -381,7 +381,7 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.set_access_vlan("1/4", vlan=2999)
+            self.switch.set_access_vlan("ethernet 1/4", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
@@ -401,9 +401,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_access_vlan("9/999", vlan=2999)
+            self.switch.set_access_vlan("ethernet 9/999", vlan=2999)
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_remove_access_vlan(self):
         self.command_setup()
@@ -418,7 +418,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.remove_access_vlan("1/4")
+        self.switch.remove_access_vlan("ethernet 1/4")
 
     def test_remove_access_vlan_invalid_interface_raises(self):
         self.command_setup()
@@ -426,9 +426,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan brief | include ethe 9/999").once().ordered().and_return([])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_access_vlan("9/999")
+            self.switch.remove_access_vlan("ethernet 9/999")
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_set_access_mode_does_nothing_if_nothing_is_set(self):
         self.command_setup()
@@ -440,7 +440,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.set_access_mode("1/4")
+        self.switch.set_access_mode("ethernet 1/4")
 
     def test_set_access_mode_invalid_interface_raises(self):
         self.command_setup()
@@ -451,9 +451,9 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_access_mode("9/999")
+            self.switch.set_access_mode("ethernet 9/999")
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_set_access_mode_does_nothing_if_only_an_untagged_vlan_not_knowing_if_it_is_an_access_or_native(self):
         self.command_setup()
@@ -465,7 +465,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.set_access_mode("1/4")
+        self.switch.set_access_mode("ethernet 1/4")
 
     def test_set_access_mode_removes_all_tagged_vlans_and_the_untagged_because_it_is_a_native_vlan(self):
         self.command_setup()
@@ -483,7 +483,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.set_access_mode("1/4")
+        self.switch.set_access_mode("ethernet 1/4")
 
     def test_set_trunk_mode(self):
         self.command_setup()
@@ -495,7 +495,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.set_trunk_mode("1/4")
+        self.switch.set_trunk_mode("ethernet 1/4")
 
     def test_set_trunk_mode_invalid_interface_raises(self):
         self.command_setup()
@@ -506,9 +506,9 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_trunk_mode("9/999")
+            self.switch.set_trunk_mode("ethernet 9/999")
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_add_trunk_vlan(self):
         self.command_setup()
@@ -523,7 +523,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.add_trunk_vlan("1/1", vlan=2999)
+        self.switch.add_trunk_vlan("ethernet 1/1", vlan=2999)
 
     def test_add_trunk_vlan_invalid_interface_raises(self):
         self.command_setup()
@@ -531,7 +531,6 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
         )
-
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
@@ -542,9 +541,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.add_trunk_vlan("9/999", vlan=2999)
+            self.switch.add_trunk_vlan("ethernet 9/999", vlan=2999)
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_add_trunk_vlan_invalid_vlan_raises(self):
         self.command_setup()
@@ -555,7 +554,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.add_trunk_vlan("1/1", vlan=2999)
+            self.switch.add_trunk_vlan("ethernet 1/1", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
@@ -572,7 +571,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.remove_trunk_vlan("1/11", vlan=2999)
+        self.switch.remove_trunk_vlan("ethernet 1/11", vlan=2999)
 
     def test_remove_trunk_vlan_invalid_vlan_raises(self):
         self.command_setup()
@@ -581,7 +580,7 @@ class BrocadeTest(unittest.TestCase):
             "Error: vlan 2999 is not configured"
         ])
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.remove_trunk_vlan("1/2", vlan=2999)
+            self.switch.remove_trunk_vlan("ethernet 1/2", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
@@ -600,9 +599,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(TrunkVlanNotSet) as expect:
-            self.switch.remove_trunk_vlan("1/14", vlan=2999)
+            self.switch.remove_trunk_vlan("ethernet 1/14", vlan=2999)
 
-        assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface 1/14"))
+        assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface ethernet 1/14"))
 
     def test_remove_trunk_vlan_invalid_interface_raises(self):
         self.command_setup()
@@ -620,9 +619,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_trunk_vlan("9/999", vlan=2999)
+            self.switch.remove_trunk_vlan("ethernet 9/999", vlan=2999)
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_shutdown_interface(self):
         self.command_setup()
@@ -633,7 +632,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.shutdown_interface("1/4")
+        self.switch.shutdown_interface("ethernet 1/4")
 
     def test_shutdown_interface_invalid_interface_raises(self):
         self.command_setup()
@@ -646,9 +645,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("9/999")
+            self.switch.shutdown_interface("ethernet 9/999")
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_openup_interface(self):
         self.command_setup()
@@ -659,7 +658,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.openup_interface("1/4")
+        self.switch.openup_interface("ethernet 1/4")
 
     def test_openup_interface_invalid_interface_raises(self):
         self.command_setup()
@@ -672,9 +671,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("9/999")
+            self.switch.openup_interface("ethernet 9/999")
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_configure_native_vlan_on_trunk(self):
         self.command_setup()
@@ -689,7 +688,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.configure_native_vlan("1/4", vlan=2999)
+        self.switch.configure_native_vlan("ethernet 1/4", vlan=2999)
 
     def test_configure_native_vlan_on_trunk_invalid_interface_raises(self):
         self.command_setup()
@@ -707,9 +706,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.configure_native_vlan("9/999", vlan=2999)
+            self.switch.configure_native_vlan("ethernet 9/999", vlan=2999)
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_configure_native_vlan_on_trunk_invalid_vlan_raises(self):
         self.command_setup()
@@ -721,7 +720,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").never()
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.configure_native_vlan("1/4", vlan=2999)
+            self.switch.configure_native_vlan("ethernet 1/4", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
@@ -738,7 +737,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
-        self.switch.remove_native_vlan("1/4")
+        self.switch.remove_native_vlan("ethernet 1/4")
 
     def test_remove_native_vlan_on_trunk_invalid_interface_raises(self):
         self.command_setup()
@@ -746,9 +745,9 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan brief | include ethe 9/999").once().ordered().and_return([])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_native_vlan("9/999")
+            self.switch.remove_native_vlan("ethernet 9/999")
 
-        assert_that(str(expect.exception), equal_to("Unknown interface 9/999"))
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
     def test_add_ip_creates_router_interface(self):
         self.command_setup()
@@ -1460,27 +1459,27 @@ class BrocadeTest(unittest.TestCase):
 
         if1, if2, if3, if4, if5, if6 = result
 
-        assert_that(if1.name, equal_to("1/1"))
+        assert_that(if1.name, equal_to("ethernet 1/1"))
         assert_that(if1.shutdown, equal_to(False))
         assert_that(if1.port_mode, equal_to(ACCESS))
         assert_that(if1.access_vlan, equal_to(1999))
         assert_that(if1.trunk_native_vlan, equal_to(None))
         assert_that(if1.trunk_vlans, equal_to([]))
 
-        assert_that(if2.name, equal_to("1/2"))
+        assert_that(if2.name, equal_to("ethernet 1/2"))
         assert_that(if2.shutdown, equal_to(True))
         assert_that(if2.port_mode, equal_to(TRUNK))
         assert_that(if2.access_vlan, equal_to(None))
         assert_that(if2.trunk_native_vlan, equal_to(2999))
         assert_that(if2.trunk_vlans, equal_to([100, 200, 300]))
 
-        assert_that(if3.name, equal_to("1/3"))
+        assert_that(if3.name, equal_to("ethernet 1/3"))
         assert_that(if3.port_mode, equal_to(ACCESS))
         assert_that(if3.access_vlan, equal_to(None))
         assert_that(if3.trunk_native_vlan, equal_to(None))
         assert_that(if3.trunk_vlans, equal_to([]))
 
-        assert_that(if4.name, equal_to("1/4"))
+        assert_that(if4.name, equal_to("ethernet 1/4"))
         assert_that(if4.port_mode, equal_to(TRUNK))
         assert_that(if4.access_vlan, equal_to(None))
         assert_that(if4.trunk_native_vlan, equal_to(None))
@@ -1518,7 +1517,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                   track_id="1/1", track_decrement=50)
+                                   track_id="ethernet 1/1", track_decrement=50)
 
     def test_add_vrrp_success_multiple_ip(self):
         self.command_setup()
@@ -1549,7 +1548,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4"), IPAddress("1.2.3.5")], priority=110,
-                                   hello_interval=5, dead_interval=15, track_id="1/1", track_decrement=50)
+                                   hello_interval=5, dead_interval=15, track_id="ethernet 1/1", track_decrement=50)
 
     def test_add_vrrp_from_unknown_vlan(self):
         self.command_setup()
@@ -1559,7 +1558,7 @@ class BrocadeTest(unittest.TestCase):
         ])
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
@@ -1586,7 +1585,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(VrrpAlreadyExistsForVlan) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("Vrrp group 1 is already in use on vlan 1234"))
 
@@ -1626,7 +1625,7 @@ class BrocadeTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vrrp_group(1234, 2, ips=[IPAddress("1.2.3.5")], priority=110, hello_interval=5, dead_interval=15,
-                                   track_id="1/1", track_decrement=50)
+                                   track_id="ethernet 1/1", track_decrement=50)
 
     def test_add_vrrp_with_out_of_range_group_id(self):
         self.command_setup()
@@ -1651,7 +1650,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpGroupNumber) as expect:
             self.switch.add_vrrp_group(1234, 256, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP group number is invalid, must be contained between 1 and 255"))
 
@@ -1681,7 +1680,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpTimers) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=100, dead_interval=15,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP timers values are invalid"))
 
@@ -1712,7 +1711,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpTimers) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=100,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP timers values are invalid"))
 
@@ -1740,7 +1739,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpPriorityNumber) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=256, hello_interval=5, dead_interval=100,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP priority value is invalid, must be contained between 1 and 255"))
 
@@ -1768,7 +1767,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpPriorityNumber) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority='testvalue', hello_interval=5, dead_interval=15,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP priority value is invalid, must be contained between 1 and 255"))
 
@@ -1796,7 +1795,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpTracking) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                       track_id="1/1", track_decrement=255)
+                                       track_id="ethernet 1/1", track_decrement=255)
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
 
@@ -1824,7 +1823,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpTracking) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                       track_id="1/1", track_decrement='testvalue')
+                                       track_id="ethernet 1/1", track_decrement='testvalue')
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
 
@@ -1849,7 +1848,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(NoIpOnVlanForVrrp) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=100,
-                                       track_id="1/1", track_decrement=50)
+                                       track_id="ethernet 1/1", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("Vlan 1234 needs an IP before configuring VRRP"))
 
@@ -1882,7 +1881,7 @@ class BrocadeTest(unittest.TestCase):
 
         with self.assertRaises(BadVrrpTracking) as expect:
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
-                                       track_id="not_an_interface", track_decrement=50)
+                                       track_id="ethernet not_an_interface", track_decrement=50)
 
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
 
@@ -2009,7 +2008,7 @@ class BrocadeTest(unittest.TestCase):
 
     @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_connect(self, ssh_client_class_mock):
-        self.switch = Brocade(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade"))
+        self.switch = brocade_factory(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade"), mock.Mock())
 
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
@@ -2029,7 +2028,7 @@ class BrocadeTest(unittest.TestCase):
 
     @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_auto_enabled_switch_doesnt_require_enable(self, ssh_client_class_mock):
-        self.switch = Brocade(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade", port=8000))
+        self.switch = brocade_factory(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade", port=8000), mock.Mock())
 
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client

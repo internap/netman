@@ -11,16 +11,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
+
+from netman.core.objects.interface import BaseInterface, Interface
 
 
-class Bond(object):
-    def __init__(self, number=None, interface=None, link_speed=None, members=None):
+class Bond(BaseInterface):
+    def __init__(self, number=None, link_speed=None, members=None, **interface):
+        super(Bond, self).__init__(**interface)
         self.number = number
-        self.interface = interface
         self.link_speed = link_speed
         self.members = members or []
 
-    def __eq__(self, other):
-        if isinstance(other, type(self)):
-            return self.__dict__ == other.__dict__
-        return False
+    @property
+    def interface(self):
+        warnings.warn('Deprecated: Use directly the members of Bond instead.',
+                      category=DeprecationWarning)
+        return Interface(
+            shutdown=self.shutdown,
+            port_mode=self.port_mode,
+            access_vlan=self.access_vlan,
+            trunk_native_vlan=self.trunk_native_vlan,
+            trunk_vlans=self.trunk_vlans,
+        )

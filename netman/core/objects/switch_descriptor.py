@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-class SwitchDescriptor(object):
+from netman.core.objects import Model
+
+
+class SwitchDescriptor(Model):
     def __init__(self, model, hostname, username=None, password=None, port=None,
                  default_vrf=None, default_lan_acl_in=None, default_lan_acl_out=None,
                  trunked_interfaces=None, parking_vlan=None, netman_server=None, default_port_speed=None,
@@ -31,6 +34,3 @@ class SwitchDescriptor(object):
         self.parking_vlan = parking_vlan
         self.netman_server = netman_server
         self.vrrp_tracking_object = vrrp_tracking_object
-
-    def __eq__(self, other):
-        return isinstance(other, SwitchDescriptor) and self.__dict__ == other.__dict__

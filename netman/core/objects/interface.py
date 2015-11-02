@@ -12,20 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from netman.core.objects import Model
 
-class Interface(object):
-    def __init__(self, name=None, shutdown=None, port_mode=None, access_vlan=None, trunk_native_vlan=None,
-                 trunk_vlans=None, bond_master=None):
-        self.name = name
+
+class BaseInterface(Model):
+    def __init__(self,  shutdown=None, port_mode=None,
+                 access_vlan=None, trunk_native_vlan=None, trunk_vlans=None):
         self.shutdown = shutdown
         self.port_mode = port_mode
         self.access_vlan = access_vlan
         self.trunk_native_vlan = trunk_native_vlan
         self.trunk_vlans = trunk_vlans or []
+
+
+class Interface(BaseInterface):
+    def __init__(self, name=None, bond_master=None, **interface):
+        super(Interface, self).__init__(**interface)
+        self.name = name
         self.bond_master = bond_master
-
-    def __eq__(self, other):
-        if isinstance(other, type(self)):
-            return self.__dict__ == other.__dict__
-        return False
-

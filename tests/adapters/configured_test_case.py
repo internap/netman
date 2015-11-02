@@ -73,6 +73,7 @@ class ConfiguredTestCase(unittest.TestCase):
         self.switch_username = specs["username"]
         self.switch_password = specs["password"]
         self.test_port = specs["test_port_name"]
+        self.test_vrrp_track_id = specs.get("test_vrrp_track_id")
 
         self.remote_switch = RemoteSwitch(SwitchDescriptor(
             netman_server='', **sub_dict(

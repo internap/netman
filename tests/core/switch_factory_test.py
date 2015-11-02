@@ -16,8 +16,7 @@ import unittest
 
 from hamcrest import assert_that, equal_to, instance_of, is_, is_not
 import mock
-
-from netman.adapters.switches import cisco, brocade, juniper, dell, dell10g
+from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade_factory
 from netman.core.objects.switch_base import SwitchBase
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -52,7 +51,7 @@ class SwitchFactoryTest(unittest.TestCase):
 
         assert_that(self.factory.factories, is_({
             "cisco": cisco.factory,
-            "brocade": brocade.factory,
+            "brocade": brocade_factory,
             "juniper": juniper.standard_factory,
             "juniper_qfx_copper": juniper.qfx_copper_factory,
             "dell": dell.factory_ssh,
