@@ -47,7 +47,7 @@ available_models = [
         "port": 11003,
         "username": "root",
         "password": "root",
-        "test_port_name": "1/3",
+        "test_port_name": "ethernet 1/3",
         "test_vrrp_track_id": "ethernet 1/1",
         "core_class": BrocadeSwitchCore,
         "service_class": SwitchSshService,
