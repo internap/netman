@@ -21,7 +21,6 @@ from netman import regex
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    InterfaceDescriptionNotSet, \
     BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
@@ -367,9 +366,7 @@ class Juniper(SwitchBase):
         try:
             self._push(update)
         except RPCError as e:
-            if e.severity == "warning":
-                raise InterfaceDescriptionNotSet(interface_id)
-            else:
+            if e.severity != "warning":
                 raise UnknownInterface(interface_id)
 
     def edit_interface_spanning_tree(self, interface_id, edge=None):

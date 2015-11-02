@@ -32,7 +32,7 @@ from netman.adapters.switches.juniper import Juniper, JuniperCustomStrategies
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    InterfaceDescriptionNotSet, BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
+    BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -3126,7 +3126,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_remove_interface_description_on_interface_with_no_description_just_ignores_it(self):
-        with self.expecting_failed_transaction():
+        with self.expecting_successful_transaction():
 
             self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
                 <config>
@@ -3146,10 +3146,7 @@ class JuniperTest(unittest.TestCase):
                 <error-message>statement not found: description</error-message>
                 </rpc-error>"""))))
 
-        with self.assertRaises(InterfaceDescriptionNotSet) as expect:
-            self.switch.remove_interface_description("ge-0/0/99")
-
-        assert_that(str(expect.exception), contains_string("Description is not set on interface ge-0/0/99"))
+        self.switch.remove_interface_description("ge-0/0/99")
 
     def test_edit_interface_spanning_tree_enable_edge_from_nothing(self):
         with self.expecting_successful_transaction():

@@ -99,11 +99,6 @@ class NativeVlanNotSet(UnknownResource):
         super(NativeVlanNotSet, self).__init__("Trunk native Vlan is not set on interface %s" % interface)
 
 
-class InterfaceDescriptionNotSet(UnknownResource):
-    def __init__(self, interface=None):
-        super(InterfaceDescriptionNotSet, self).__init__("Description is not set on interface %s" % interface)
-
-
 class InterfaceSpanningTreeNotEnabled(UnknownResource):
     def __init__(self, interface=None):
         super(InterfaceSpanningTreeNotEnabled, self).__init__("Spanning tree is not enabled on interface %s" % interface)
