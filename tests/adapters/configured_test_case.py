@@ -81,6 +81,8 @@ class ConfiguredTestCase(unittest.TestCase):
         self.remote_switch.requests = FlaskRequest(app.test_client())
 
         self.client = ValidatingCachedSwitch(self.remote_switch)
+        self.try_to = ExceptionIgnoringProxy(self.client, [NotImplementedError])
+        self.janitor = ExceptionIgnoringProxy(self.client, [NetmanException])
 
         self.client.connect()
         self.client.start_transaction()
@@ -113,16 +115,16 @@ def skip_on_switches(*to_skip):
     return resource_decorator
 
 
-def try_to(method, *args, **kwargs):
-    try:
-        return method(*args, **kwargs)
-    except NetmanException:
-        return None
+class ExceptionIgnoringProxy(object):
+    def __init__(self, target, exceptions):
+        self.target = target
+        self.exceptions = tuple(exceptions)
 
+    def __getattr__(self, item):
+        def wrapper(*args, **kwargs):
+            try:
+                return getattr(self.target, item)(*args, **kwargs)
+            except self.exceptions:
+                return None
 
-def if_available(method, *args, **kwargs):
-    try:
-        return method(*args, **kwargs)
-    except NotImplementedError:
-        return None
-
+        return wrapper
