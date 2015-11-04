@@ -26,7 +26,8 @@ from netman.adapters.switches.brocade import Brocade, parse_if_ranges
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
-    BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists
+    BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
+    VlanAlreadyExist
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -130,7 +131,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vlan1.ips, has_length(0))
         assert_that(vlan1.vrf_forwarding, is_(none()))
         assert_that(vlan201.number, equal_to(201))
-        assert_that(vlan201.name, equal_to(""))
+        assert_that(vlan201.name, equal_to(None))
         assert_that(vlan201.ips, has_length(3))
         assert_that(vlan201.vrf_forwarding, is_("SHIZZLE"))
         assert_that(vlan2222.number, equal_to(2222))
@@ -171,7 +172,7 @@ class BrocadeTest(unittest.TestCase):
         vlan = self.switch.get_vlan(1750)
 
         assert_that(vlan.number, is_(1750))
-        assert_that(vlan.name, is_(""))
+        assert_that(vlan.name, is_(None))
         assert_that(vlan.access_groups[IN], is_(none()))
         assert_that(vlan.access_groups[OUT], is_(none()))
         assert_that(vlan.vrf_forwarding, is_(none()))
@@ -285,6 +286,10 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vlan(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").and_return([
+            "Error: vlan 2999 is not configured"
+        ])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999 name Gertrude").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
@@ -294,6 +299,10 @@ class BrocadeTest(unittest.TestCase):
 
     def test_add_vlan_bad_number(self):
         self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 5000").and_return([
+            "Error: vlan 5000 is not configured"
+        ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 5000 name Gertrude").once().ordered().and_return([
@@ -309,6 +318,10 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vlan_bad_name(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 5000").and_return([
+            "Error: vlan 5000 is not configured"
+        ])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 5000 name Gertr ude").once().ordered().and_return([
             "Invalid input -> ude"
@@ -323,12 +336,28 @@ class BrocadeTest(unittest.TestCase):
     def test_add_vlan_no_name(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").and_return([
+            "Error: vlan 2999 is not configured"
+        ])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vlan(2999)
+
+    def test_add_vlan_already_exist_fails(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").and_return(
+            vlan_display(2999)
+        )
+
+        with self.assertRaises(VlanAlreadyExist) as expect:
+            self.switch.add_vlan(2999)
+
+        assert_that(str(expect.exception), equal_to("Vlan 2999 already exists"))
 
     def test_remove_vlan(self):
         self.command_setup()
@@ -2061,6 +2090,10 @@ class BrocadeTest(unittest.TestCase):
 
     def test_transactions_commit_write_memory(self):
         self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan 2999").and_return([
+            "Error: vlan 2999 is not configured"
+        ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999 name Gertrude").and_return([]).once().ordered()

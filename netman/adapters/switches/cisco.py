@@ -20,7 +20,8 @@ from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
-    BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists
+    BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
+    VlanAlreadyExist
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
@@ -90,7 +91,7 @@ class Cisco(SwitchBase):
                 number, name = regex
 
                 if name == ("VLAN%s" % number):
-                    name = ''
+                    name = None
 
                 vlans[number] = Vlan(int(number), name)
 
@@ -106,6 +107,9 @@ class Cisco(SwitchBase):
         return vlans.values()
 
     def add_vlan(self, number, name=None):
+        if self._show_run_vlan(number):
+            raise VlanAlreadyExist(number)
+
         with self.config():
             result = self.ssh.do('vlan %s' % number)
             if len(result) > 0:
@@ -294,10 +298,13 @@ class Cisco(SwitchBase):
         return SubShell(self.ssh, enter=["interface vlan %s" % interface_id, "no shutdown"], exit_cmd='exit')
 
     def _get_vlan_run_conf(self, vlan_number):
-        run_config = self.ssh.do('show running-config vlan {} | begin vlan'.format(vlan_number))
+        run_config = self._show_run_vlan(vlan_number)
         if not run_config:
             raise UnknownVlan(vlan_number)
         return run_config
+
+    def _show_run_vlan(self, vlan_number):
+        return self.ssh.do('show running-config vlan {} | begin vlan'.format(vlan_number))
 
     def get_vlan_interface_data(self, vlan_number):
         run_int_vlan_data = self.ssh.do('show running-config interface vlan %s' % vlan_number)
@@ -435,7 +442,6 @@ def apply_interface_running_config_data(vlan, data):
 
 
 def apply_vlan_running_config_data(vlan, data):
-    vlan.name = ""
     for line in data:
         if regex.match("^ name ([^\s]*)", line):
             vlan.name = regex[0]

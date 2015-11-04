@@ -22,7 +22,8 @@ from netman import regex
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
-    BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription
+    BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
+    VlanAlreadyExist
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -103,9 +104,15 @@ class Dell(SwitchBase):
         return [self.read_interface(name) for name in name_list]
 
     def add_vlan(self, number, name=None):
+        result = self.shell.do("show vlan id {}".format(number))
+        if regex.match(".*\^.*", result[0]):
+            raise BadVlanNumber()
+        elif regex.match("^VLAN", result[0]):
+            raise VlanAlreadyExist(number)
+
         with self.config():
             with self.vlan_database():
-                self.set('vlan {}', number).on_result_matching(".*Failure.*", BadVlanNumber)
+                self.set('vlan {}', number)
 
             if name is not None:
                 with self.interface("vlan {}".format(number)):

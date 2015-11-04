@@ -146,8 +146,11 @@ class CachedSwitch(SwitchBase):
         return copy.deepcopy(self.bonds_cache.values())
 
     def add_vlan(self, number, name=None):
-        result = self.real_switch.add_vlan(number, name)
-        self.vlans_cache[number] = Vlan(number, name=name)
+        extras = {}
+        if name is not None:
+            extras["name"] = name
+        result = self.real_switch.add_vlan(number, **extras)
+        self.vlans_cache[number] = Vlan(number, name or "")
         return result
 
     def remove_vlan(self, number):

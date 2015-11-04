@@ -25,7 +25,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
-    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer
+    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
@@ -76,6 +76,10 @@ class Brocade(SwitchBase):
         return self._get_vlan(number, include_vif_data=True)
 
     def add_vlan(self, number, name=None):
+        result = self._show_vlan(number)
+        if not result[0].startswith("Error"):
+            raise VlanAlreadyExist(number)
+
         with self.config():
             result = self.ssh.do('vlan %s%s' % (number, (" name %s" % name) if name else ""))
             if len(result) > 0:
@@ -383,20 +387,23 @@ class Brocade(SwitchBase):
         return vlans
 
     def _get_vlan(self, vlan_number, include_vif_data=False):
-        result = self.ssh.do("show vlan {}".format(vlan_number))
+        result = self._show_vlan(vlan_number)
         if result[0].startswith("Error"):
             raise UnknownVlan(vlan_number)
 
         vlan = VlanBrocade(vlan_number)
         for line in result:
             if regex.match(".*PORT-VLAN \d*, Name ([^,]+),.*", line):
-                vlan.name = regex[0] if regex[0] != "[None]" else ""
+                vlan.name = regex[0] if regex[0] != "[None]" else None
             elif regex.match(".*Associated Virtual Interface Id: (\d+).*", line):
                 vlan.vlan_interface_name = regex[0]
                 if include_vif_data:
                     add_interface_vlan_data(vlan, self.ssh.do("show running-config interface ve {}".format(regex[0])))
 
         return vlan
+
+    def _show_vlan(self, vlan_number):
+        return self.ssh.do("show vlan {}".format(vlan_number))
 
 
 def parse_vlan(vlan_data):
@@ -406,7 +413,7 @@ def parse_vlan(vlan_data):
     if regex.match("^vlan \d+ name ([^\s]*)", vlan_data[0]):
         current_vlan.name = regex[0] if regex[0] != "DEFAULT-VLAN" else "default"
     else:
-        current_vlan.name = ''
+        current_vlan.name = None
 
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):

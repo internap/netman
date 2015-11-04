@@ -154,9 +154,7 @@ class VlanManagementTest(ConfiguredTestCase):
         # TODO(jprovost) Unify switch adapters to raise the same exception
         with self.assertRaises(UnknownResource):
             self.client.remove_trunk_vlan(self.test_port, vlan=2999)
-        self.client.remove_vlan(2999)
 
-        self.client.set_access_mode(self.test_port)
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_invalid_interface_parameter_fails(self):
@@ -208,8 +206,6 @@ class VlanManagementTest(ConfiguredTestCase):
         with self.assertRaises(UnknownInterface):
             self.client.configure_native_vlan('42/9999', 2999)
 
-        self.client.remove_vlan(2999)
-
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_vrf_management(self):
 
@@ -225,4 +221,9 @@ class VlanManagementTest(ConfiguredTestCase):
         vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_(none()))
 
-        self.client.remove_vlan(2999)
+    def tearDown(self):
+        self.janitor.remove_vlan(2999)
+        self.janitor.set_access_mode(self.test_port)
+        super(VlanManagementTest, self).tearDown()
+
+
