@@ -21,7 +21,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist
+    VlanAlreadyExist, UnknownBond
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
@@ -35,6 +35,10 @@ def factory(switch_descriptor, lock):
         impl=Cisco(switch_descriptor=switch_descriptor),
         lock=lock
     )
+
+
+def bond_name(number):
+    return "Port-channel{}".format(number)
 
 
 class Cisco(SwitchBase):
@@ -287,6 +291,18 @@ class Cisco(SwitchBase):
         with self.config(), self.interface_vlan(vlan_number):
             self.ssh.do("no ip helper-address {}".format(ip_address))
 
+    def add_bond_trunk_vlan(self, number, vlan):
+        try:
+            return self.add_trunk_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def remove_bond_trunk_vlan(self, number, vlan):
+        try:
+            return self.remove_trunk_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
     def config(self):
         return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')
 
@@ -373,7 +389,8 @@ class Cisco(SwitchBase):
 
 
 def parse_interface(data):
-    if data and regex.match("interface (\w*Ethernet[^\s]*)", data[0]):
+    if data and (regex.match("interface (\w*Ethernet[^\s]*)", data[0])
+                 or regex.match("interface (Port-channel[^\s]*)", data[0])):
         i = Interface(name=regex[0], shutdown=False)
         port_mode = access_vlan = native_vlan = trunk_vlans = None
         for line in data:

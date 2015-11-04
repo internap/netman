@@ -23,7 +23,7 @@ from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist
+    VlanAlreadyExist, UnknownBond
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -39,6 +39,10 @@ def factory_telnet(switch_descriptor, lock):
         impl=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
         lock=lock,
     )
+
+
+def bond_name(number):
+    return "port-channel {}".format(number)
 
 
 class Dell(SwitchBase):
@@ -213,6 +217,18 @@ class Dell(SwitchBase):
             self.set("{}lldp receive", "" if enabled else "no ")
             self.set("{}lldp med transmit-tlv capabilities", "" if enabled else "no ")
             self.set("{}lldp med transmit-tlv network-policy", "" if enabled else "no ")
+
+    def add_bond_trunk_vlan(self, number, vlan):
+        try:
+            return self.add_trunk_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def remove_bond_trunk_vlan(self, number, vlan):
+        try:
+            return self.remove_trunk_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
 
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')
