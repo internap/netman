@@ -113,9 +113,10 @@ class Juniper(SwitchBase):
         config = self.query(all_interfaces, all_vlans)
 
         interface_list = []
-        for if_node in config.xpath("data/configuration/interfaces/interface"):
-            if value_of(if_node.xpath("name")) != "vlan":
-                interface_list.append(self.node_to_interface(if_node, config))
+        for interface_node in config.xpath("data/configuration/interfaces/interface"):
+            interface_name = value_of(interface_node.xpath("name"))
+            if interface_name != "vlan" and not interface_name.startswith("ae"):
+                interface_list.append(self.node_to_interface(interface_node, config))
 
         return interface_list
 
