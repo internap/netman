@@ -17,12 +17,13 @@ from functools import wraps
 from unittest import SkipTest
 
 from hamcrest import assert_that, is_
-
 from netman.adapters.switches.cached import CachedSwitch
 from netman.adapters.switches.remote import RemoteSwitch
+from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.main import app
-from .flask_helper import FlaskRequest
+from tests.adapters.flask_helper import FlaskRequest
+from tests.adapters.model_list import available_models
 
 
 def sub_dict(d, *keys):
@@ -57,16 +58,21 @@ class ValidatingCachedSwitch(CachedSwitch):
 
 
 class ConfiguredTestCase(unittest.TestCase):
+    _dev_sample = None
     switch_specs = None
 
     def setUp(self):
-        specs = type(self).switch_specs
-        self.switch_hostname = specs.get("hostname")
-        self.switch_port = specs.get("port")
-        self.switch_type = specs.get("model")
-        self.switch_username = specs.get("username")
-        self.switch_password = specs.get("password")
-        self.test_port = specs.get("test_port_name")
+        if self.switch_specs is not None:
+            specs = type(self).switch_specs
+        else:
+            specs = next(s for s in available_models if s["model"] == self._dev_sample)
+
+        self.switch_hostname = specs["hostname"]
+        self.switch_port = specs["port"]
+        self.switch_type = specs["model"]
+        self.switch_username = specs["username"]
+        self.switch_password = specs["password"]
+        self.test_port = specs["test_port_name"]
         self.test_vrrp_track_id = specs.get("test_vrrp_track_id")
 
         self.remote_switch = RemoteSwitch(SwitchDescriptor(
@@ -75,6 +81,15 @@ class ConfiguredTestCase(unittest.TestCase):
         self.remote_switch.requests = FlaskRequest(app.test_client())
 
         self.client = ValidatingCachedSwitch(self.remote_switch)
+        self.try_to = ExceptionIgnoringProxy(self.client, [NotImplementedError])
+        self.janitor = ExceptionIgnoringProxy(self.client, [NetmanException])
+
+        self.client.connect()
+        self.client.start_transaction()
+
+    def tearDown(self):
+        self.client.end_transaction()
+        self.client.disconnect()
 
     def get_vlan_from_list(self, number):
         try:
@@ -98,3 +113,18 @@ def skip_on_switches(*to_skip):
         return wrapper
 
     return resource_decorator
+
+
+class ExceptionIgnoringProxy(object):
+    def __init__(self, target, exceptions):
+        self.target = target
+        self.exceptions = tuple(exceptions)
+
+    def __getattr__(self, item):
+        def wrapper(*args, **kwargs):
+            try:
+                return getattr(self.target, item)(*args, **kwargs)
+            except self.exceptions:
+                return None
+
+        return wrapper

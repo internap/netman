@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from netaddr import IPAddress, IPNetwork
 
+from tests.adapters.model_list import available_models
+from netaddr import IPNetwork
 from tests.adapters.shell.terminal_client_test import telnet_hook_to_reactor, ssh_hook_to_reactor
-from tests.adapters.unified_tests import available_models
 from global_reactor import ThreadedReactor
 
 

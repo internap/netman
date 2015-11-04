@@ -15,7 +15,7 @@
 from hamcrest import assert_that, has_item, is_not, has_properties
 from netman.core.objects.exceptions import UnknownBond
 
-from tests.adapters.unified_tests.configured_test_case import ConfiguredTestCase, skip_on_switches
+from tests.adapters.configured_test_case import skip_on_switches, ConfiguredTestCase
 
 
 class BondManagementTest(ConfiguredTestCase):
