@@ -102,9 +102,9 @@ available_models = [
         "ports": [
             Port("ethernet 1/g1"),
             Port("ethernet 1/g2"),
+            Port("ethernet 1/xg1"),
             Port("ethernet 2/g1"),
             Port("ethernet 2/g2"),
-            Port("ethernet 1/xg1"),
             Port("ethernet 2/xg1")
         ]
     },
@@ -120,9 +120,9 @@ available_models = [
         "ports": [
             Port("ethernet 1/g1"),
             Port("ethernet 1/g2"),
+            Port("ethernet 1/xg1"),
             Port("ethernet 2/g1"),
             Port("ethernet 2/g2"),
-            Port("ethernet 1/xg1"),
             Port("ethernet 2/xg1")
         ]
     },

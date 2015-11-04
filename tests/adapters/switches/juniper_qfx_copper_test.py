@@ -130,6 +130,21 @@ class JuniperTest(unittest.TestCase):
                   <name>40</name>
                 </unit>
               </interface>
+              <interface>
+                <name>ae10</name>
+                <aggregated-ether-options>
+                  <lacp>
+                    <active/>
+                    <periodic>slow</periodic>
+                  </lacp>
+                </aggregated-ether-options>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching />
+                  </family>
+                </unit>
+              </interface>
             </interfaces>
             <vlans/>
         """))

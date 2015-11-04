@@ -15,6 +15,7 @@
 
 from unittest import SkipTest
 
+from tests.adapters.compliance_tests.get_interfaces_test import GetInterfacesTest
 from tests.adapters.compliance_tests.add_vlan_test import AddVlanTest
 from tests.adapters.model_list import available_models
 from tests.adapters.compliance_tests.get_vlan_test import GetVlanTest
@@ -22,6 +23,7 @@ from tests.adapters.compliance_tests.get_vlan_test import GetVlanTest
 _test_classes = [
     GetVlanTest,
     AddVlanTest,
+    GetInterfacesTest
 ]
 
 # compliance rule of thumb:

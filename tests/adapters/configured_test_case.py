@@ -73,6 +73,7 @@ class ConfiguredTestCase(unittest.TestCase):
         self.switch_username = specs["username"]
         self.switch_password = specs["password"]
         self.test_port = specs["test_port_name"]
+        self.test_ports = specs["ports"]
         self.test_vrrp_track_id = specs.get("test_vrrp_track_id")
 
         self.remote_switch = RemoteSwitch(SwitchDescriptor(
@@ -82,7 +83,7 @@ class ConfiguredTestCase(unittest.TestCase):
 
         self.client = ValidatingCachedSwitch(self.remote_switch)
         self.try_to = ExceptionIgnoringProxy(self.client, [NotImplementedError])
-        self.janitor = ExceptionIgnoringProxy(self.client, [NetmanException])
+        self.janitor = ExceptionIgnoringProxy(self.client, [NotImplementedError, NetmanException])
 
         self.client.connect()
         self.client.start_transaction()
