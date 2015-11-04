@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, VrrpAlreadyExistsForVlan, BadVrrpTimers, \
-    BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer
+    BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -156,7 +156,7 @@ class CiscoTest(unittest.TestCase):
 
         v3 = vlan_list[3]
         assert_that(v3.number, equal_to(2998))
-        assert_that(v3.name, equal_to(""))
+        assert_that(v3.name, equal_to(None))
         assert_that(v3.vrf_forwarding, equal_to("patate"))
         assert_that(v3.access_groups[IN], equal_to(None))
         assert_that(v3.access_groups[OUT], equal_to("GAGA"))
@@ -210,7 +210,7 @@ class CiscoTest(unittest.TestCase):
         vlan = self.switch.get_vlan(1750)
 
         assert_that(vlan.number, is_(1750))
-        assert_that(vlan.name, is_(""))
+        assert_that(vlan.name, is_(None))
         assert_that(vlan.access_groups[IN], is_(none()))
         assert_that(vlan.access_groups[OUT], is_(none()))
         assert_that(vlan.vrf_forwarding, is_(none()))
@@ -312,6 +312,8 @@ class CiscoTest(unittest.TestCase):
     def test_add_vlan(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -324,6 +326,8 @@ class CiscoTest(unittest.TestCase):
 
     def test_add_vlan_refused_number(self):
         self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -341,6 +345,8 @@ class CiscoTest(unittest.TestCase):
 
     def test_add_vlan_refused_name(self):
         self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -362,6 +368,8 @@ class CiscoTest(unittest.TestCase):
     def test_add_vlan_no_name(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -370,6 +378,20 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vlan(2999)
+
+    def test_add_vlan_already_exist_fails(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
+            "vlan 2999",
+            "end"
+        ])
+
+        with self.assertRaises(VlanAlreadyExist) as expect:
+            self.switch.add_vlan(2999)
+
+        assert_that(str(expect.exception), equal_to("Vlan 2999 already exists"))
+
 
     def test_remove_vlan_also_removes_associated_vlan_interface(self):
         self.command_setup()
@@ -1694,6 +1716,7 @@ class CiscoTest(unittest.TestCase):
     def test_transactions_commit_write_memory(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])

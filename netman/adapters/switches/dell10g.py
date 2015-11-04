@@ -17,7 +17,7 @@ from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.switches.cisco import parse_vlan_ranges
 from netman.adapters.switches.dell import Dell, resolve_port_mode
 from netman.core.objects.exceptions import InterfaceInWrongPortMode, UnknownVlan, UnknownInterface, BadVlanName, \
-    BadVlanNumber, TrunkVlanNotSet
+    BadVlanNumber, TrunkVlanNotSet, VlanAlreadyExist
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import TRUNK, ACCESS
 from netman.core.objects.switch_transactional import SwitchTransactional
@@ -54,6 +54,12 @@ class Dell10G(Dell):
         return [self.read_interface(name) for name in parse_interface_names(result)]
 
     def add_vlan(self, number, name=None):
+        result = self.shell.do("show vlan id {}".format(number))
+        if regex.match(".*\^.*", result[0]):
+            raise BadVlanNumber()
+        elif regex.match("^VLAN", result[0]):
+            raise VlanAlreadyExist(number)
+
         with self.config():
             result = self.shell.do('vlan {}'.format(number))
             if len(result) > 0:

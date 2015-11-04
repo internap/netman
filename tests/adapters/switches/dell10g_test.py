@@ -26,7 +26,7 @@ from netman.adapters.switches import dell10g
 from netman.adapters.switches.dell10g import Dell10G
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
-    BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet
+    BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyExist
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
@@ -262,6 +262,10 @@ class Dell10GTest(unittest.TestCase):
     def test_add_vlan(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+            "ERROR: This VLAN does not exist."
+        ])
+
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("vlan 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
@@ -270,6 +274,10 @@ class Dell10GTest(unittest.TestCase):
 
     def test_add_vlan_and_name(self):
         self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+            "ERROR: This VLAN does not exist."
+        ])
 
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("vlan 1000").once().ordered().and_return([])
@@ -281,16 +289,10 @@ class Dell10GTest(unittest.TestCase):
     def test_add_vlan_invalid_number(self):
         self.command_setup()
 
-        with self.configuring():
-            self.mocked_ssh_client.should_receive("do").with_args("vlan 5000").once().ordered().and_return([
-                "          Failure Information",
-                "---------------------------------------",
-                "   VLANs failed to be configured : 1",
-                "---------------------------------------",
-                "   VLAN             Error",
-                "---------------------------------------",
-                "VLAN 5000      ERROR: VLAN ID is out of range",
-            ])
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000").and_return([
+            "                     ^",
+            "Invalid input. Please specify an integer in the range 1 to 4093."
+        ])
 
         with self.assertRaises(BadVlanNumber) as expect:
             self.switch.add_vlan(5000, name="Gertrude")
@@ -299,6 +301,10 @@ class Dell10GTest(unittest.TestCase):
 
     def test_add_vlan_and_bad_name(self):
         self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+            "ERROR: This VLAN does not exist."
+        ])
 
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("vlan 1000").once().ordered().and_return([])
@@ -312,6 +318,21 @@ class Dell10GTest(unittest.TestCase):
             self.switch.add_vlan(1000, name="Gertr dude")
 
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
+
+
+    def test_add_vlan_fails_when_already_exist(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000                                                   Static    Required     "
+        ])
+
+        with self.assertRaises(VlanAlreadyExist) as expect:
+            self.switch.add_vlan(1000)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1000 already exists"))
 
     def test_remove_vlan(self):
         self.command_setup()
