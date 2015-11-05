@@ -27,7 +27,8 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, VrrpAlreadyExistsForVlan, BadVrrpTimers, \
-    BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
+    BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, \
+    UnknownBond
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -838,6 +839,125 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_trunk_vlan("FastEthernet0/4", vlan=303)
+
+    def test_add_bond_trunk_vlan(self):
+        self.command_setup()
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
+            "vlan 2999",
+            "end"]).once().ordered()
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 2999").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.add_bond_trunk_vlan(4, vlan=2999)
+
+    def test_add_bond_trunk_vlan_invalid_vlan_raises(self):
+        self.command_setup()
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
+        ]).once().ordered()
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.add_bond_trunk_vlan(4, vlan=2999)
+
+        assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
+
+    def test_add_bond_trunk_vlan_invalid_interface_raises(self):
+        self.command_setup()
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
+            "vlan 2999",
+            "end"]).once().ordered()
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel9999").once().ordered().and_return([
+            "        ^",
+            "% Invalid input detected at '^' marker."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.add_bond_trunk_vlan(9999, vlan=2999)
+
+        assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
+
+    def test_remove_bond_trunk_vlan(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4 | begin interface").once().ordered().and_return([
+            "interface Port-channel4",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304,2998-3000",
+            " switchport mode trunk",
+            "end",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 2999").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.remove_bond_trunk_vlan(4, vlan=2999)
+
+    def test_remove_bond_trunk_vlan_invalid_vlan_raises(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4 | begin interface").once().ordered().and_return([
+            "interface Port-channel4",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            " switchport mode trunk",
+            "end",
+            ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.remove_bond_trunk_vlan(4, vlan=2999)
+
+        assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
+
+    def test_remove_bond_trunk_vlan_invalid_interface_raises(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel9999 | begin interface").once().ordered().and_return([
+            "        ^",
+            "% Invalid input detected at '^' marker."
+        ])
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.remove_bond_trunk_vlan(9999, vlan=2999)
+
+        assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
+
+    def test_remove_bond_trunk_vlan_no_port_mode_still_working(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4 | begin interface").once().ordered().and_return([
+            "interface Port-channel4",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            "end",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 303").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.remove_bond_trunk_vlan(4, vlan=303)
 
     def test_shutdown_interface(self):
         self.command_setup()

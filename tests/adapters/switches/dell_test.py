@@ -27,7 +27,7 @@ from netman.adapters.switches.dell import Dell
 from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist
+    VlanAlreadyExist, UnknownBond
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
@@ -968,6 +968,187 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
         self.switch.remove_trunk_vlan("ethernet 1/g10", 1000)
+
+    def test_add_bond_trunk_vlan(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1000").once().ordered().and_return([
+                "Warning: The use of large numbers of VLANs or interfaces may cause significant",
+                "delays in applying the configuration."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.add_bond_trunk_vlan(10, 1000)
+
+    def test_add_bond_trunk_vlan_unknown_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99").and_return([
+            "ERROR: Invalid input!",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.add_bond_trunk_vlan(99, 1000)
+
+        assert_that(str(expect.exception), equal_to("Bond 99 not found"))
+
+    def test_add_bond_trunk_vlan_unknown_vlan(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            ])
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1000").once().ordered().and_return([
+                "Warning: The use of large numbers of VLANs or interfaces may cause significant",
+                "delays in applying the configuration.",
+                "          Failure Information",
+                "---------------------------------------",
+                "   VLANs failed to be configured : 1",
+                "---------------------------------------",
+                "   VLAN             Error",
+                "---------------------------------------",
+                "VLAN      1000 ERROR: This VLAN does not exist.",
+                ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.add_bond_trunk_vlan(10, 1000)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
+
+    def test_add_bond_trunk_vlan_to_general_mode(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general allowed vlan add 1000").once().ordered().and_return([
+                "Warning: The use of large numbers of VLANs or interfaces may cause significant",
+                "delays in applying the configuration."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.add_bond_trunk_vlan(10, 1000)
+
+    def test_add_bond_trunk_vlan_without_mode_and_access_vlan_assume_no_mode_set_trunk_mode(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1000").once().ordered().and_return([
+                "Warning: The use of large numbers of VLANs or interfaces may cause significant",
+                "delays in applying the configuration."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.add_bond_trunk_vlan(10, 1000)
+
+    def test_add_bond_trunk_vlan_without_mode_with_access_vlan_assume_access_mode_and_fails(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport access vlan 2000",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(InterfaceInWrongPortMode) as expect:
+            self.switch.add_bond_trunk_vlan(10, 1000)
+
+        assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
+
+    def test_remove_bond_trunk_vlan(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            "switchport trunk allowed vlan add 1000",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 1000").once().ordered().and_return([
+                "Warning: The use of large numbers of VLANs or interfaces may cause significant",
+                "delays in applying the configuration."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.remove_bond_trunk_vlan(10, 1000)
+
+    def test_remove_bond_trunk_vlan_unknown_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99").and_return([
+            "ERROR: Invalid input!",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.remove_bond_trunk_vlan(99, 1000)
+
+        assert_that(str(expect.exception), equal_to("Bond 99 not found"))
+
+    def test_remove_bond_trunk_vlan_not_set_at_all(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            ])
+
+        with self.assertRaises(TrunkVlanNotSet) as expect:
+            self.switch.remove_bond_trunk_vlan(10, 1000)
+
+        assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface port-channel 10"))
+
+    def test_remove_bond_trunk_vlan_not_set_in_ranges(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            "switchport trunk allowed vlan add 999,1001",
+            ])
+
+        with self.assertRaises(TrunkVlanNotSet) as expect:
+            self.switch.remove_bond_trunk_vlan(10, 1000)
+
+        assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface port-channel 10"))
+
+    def test_remove_bond_trunk_vlan_general_mode_and_in_range(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            "switchport general allowed vlan add 999-1001",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general allowed vlan remove 1000").once().ordered().and_return([
+                "Warning: The use of large numbers of VLANs or interfaces may cause significant",
+                "delays in applying the configuration."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.remove_bond_trunk_vlan(10, 1000)
 
     def test_edit_interface_spanning_tree_enable_edge(self):
         self.command_setup()
