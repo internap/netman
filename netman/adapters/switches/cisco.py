@@ -90,7 +90,7 @@ class Cisco(SwitchBase):
             if regex.match('^(\d+)\s+(\S+).*', line):
                 number, name = regex
 
-                if name == ("VLAN%s" % number):
+                if name == ("VLAN{}".format(number)):
                     name = None
 
                 vlans[number] = Vlan(int(number), name)
@@ -101,7 +101,7 @@ class Cisco(SwitchBase):
                 if current_vlan:
                     apply_interface_running_config_data(
                         current_vlan,
-                        self.ssh.do("show running-config interface vlan %s" % current_vlan.number)
+                        self.ssh.do("show running-config interface vlan {}".format(current_vlan.number))
                     )
 
         return vlans.values()
@@ -111,12 +111,12 @@ class Cisco(SwitchBase):
             raise VlanAlreadyExist(number)
 
         with self.config():
-            result = self.ssh.do('vlan %s' % number)
+            result = self.ssh.do('vlan {}'.format(number))
             if len(result) > 0:
                 raise BadVlanNumber()
             else:
                 if name:
-                    result = self.ssh.do('name %s' % name)
+                    result = self.ssh.do('name {}'.format(name))
 
                 self.ssh.do('exit')
 
@@ -127,8 +127,8 @@ class Cisco(SwitchBase):
         self._get_vlan_run_conf(number)
 
         with self.config():
-            self.ssh.do('no interface vlan %s' % number)
-            self.ssh.do('no vlan %s' % number)
+            self.ssh.do('no interface vlan {}'.format(number))
+            self.ssh.do('no vlan {}'.format(number))
 
     def get_interfaces(self):
         interfaces = []
@@ -142,7 +142,7 @@ class Cisco(SwitchBase):
         self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
-            self.ssh.do('switchport access vlan %s' % vlan)
+            self.ssh.do('switchport access vlan {}'.format(vlan))
 
     def remove_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
@@ -166,7 +166,7 @@ class Cisco(SwitchBase):
         self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
-            self.ssh.do('switchport trunk allowed vlan add %s' % vlan)
+            self.ssh.do('switchport trunk allowed vlan add {}'.format(vlan))
 
     def remove_trunk_vlan(self, interface_id, vlan):
         interface = self.get_interface(interface_id)
@@ -174,7 +174,7 @@ class Cisco(SwitchBase):
             raise UnknownVlan(vlan)
 
         with self.config(), self.interface(interface_id):
-            self.ssh.do('switchport trunk allowed vlan remove %s' % vlan)
+            self.ssh.do('switchport trunk allowed vlan remove {}'.format(vlan))
 
     def shutdown_interface(self, interface_id):
         with self.config(), self.interface(interface_id):
@@ -188,7 +188,7 @@ class Cisco(SwitchBase):
         self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
-            self.ssh.do('switchport trunk native vlan %s' % vlan)
+            self.ssh.do('switchport trunk native vlan {}'.format(vlan))
 
     def remove_native_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
@@ -203,7 +203,7 @@ class Cisco(SwitchBase):
             with self.config(), self.interface_vlan(vlan_number):
                 if has_ips:
                     self.ssh.do('no ip redirects')
-                result = self.ssh.do('ip address %s %s%s' % (ip_network.ip, ip_network.netmask,
+                result = self.ssh.do('ip address {} {}{}'.format(ip_network.ip, ip_network.netmask,
                                                              " secondary" if has_ips else ""))
                 if len(result) > 0:
                     raise IPNotAvailable(ip_network, reason="; ".join(result))
@@ -219,16 +219,16 @@ class Cisco(SwitchBase):
             with self.config(), self.interface_vlan(vlan_number):
                 if ip_index == 0:
                     if len(vlan.ips) == 1:
-                        self.ssh.do('no ip address %s %s' % (ip_network.ip, ip_network.netmask))
+                        self.ssh.do('no ip address {} {}'.format(ip_network.ip, ip_network.netmask))
                     else:
-                        self.ssh.do('ip address %s %s' % (vlan.ips[1].ip, vlan.ips[1].netmask))
+                        self.ssh.do('ip address {} {}'.format(vlan.ips[1].ip, vlan.ips[1].netmask))
                 else:
-                    self.ssh.do('no ip address %s %s secondary' % (ip_network.ip, ip_network.netmask))
+                    self.ssh.do('no ip address {} {} secondary'.format(ip_network.ip, ip_network.netmask))
         else:
             raise UnknownIP(ip_network)
 
     def has_trunk_allowed_set(self, interface_id):
-        for line in self.ssh.do('show running-config interface %s' % interface_id):
+        for line in self.ssh.do('show running-config interface {}'.format(interface_id)):
             if 'Invalid input detected' in line:
                 raise UnknownInterface(interface_id)
             if 'switchport trunk allowed' in line:
@@ -239,9 +239,9 @@ class Cisco(SwitchBase):
         self.get_vlan_interface_data(vlan_number)
 
         with self.config(), self.interface_vlan(vlan_number):
-            result = self.ssh.do("ip access-group %s %s" % (name, 'in' if direction == IN else 'out'))
+            result = self.ssh.do("ip access-group {} {}".format(name, 'in' if direction == IN else 'out'))
             if len(result) > 0:
-                raise ValueError("Access group name \"%s\" is invalid" % name)
+                raise ValueError("Access group name \"{}\" is invalid".format(name))
 
     def remove_vlan_access_group(self, vlan_number, direction):
         vlan = self.get_vlan_interface_data(vlan_number)
@@ -250,13 +250,13 @@ class Cisco(SwitchBase):
             raise UnknownAccessGroup(direction)
         else:
             with self.config(), self.interface_vlan(vlan_number):
-                self.ssh.do("no ip access-group %s" % ('in' if direction == IN else 'out'))
+                self.ssh.do("no ip access-group {}".format(('in' if direction == IN else 'out')))
 
     def set_vlan_vrf(self, vlan_number, vrf_name):
         self.get_vlan_interface_data(vlan_number)
 
         with self.config(), self.interface_vlan(vlan_number):
-            result = self.ssh.do("ip vrf forwarding %s" % vrf_name)
+            result = self.ssh.do("ip vrf forwarding {}".format(vrf_name))
             if len(result) > 0:
                 raise UnknownVrf(vrf_name)
 
@@ -291,11 +291,11 @@ class Cisco(SwitchBase):
         return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')
 
     def interface(self, interface_id):
-        return SubShell(self.ssh, enter="interface %s" % interface_id, exit_cmd='exit',
+        return SubShell(self.ssh, enter="interface {}".format(interface_id), exit_cmd='exit',
                         validate=no_output(UnknownInterface, interface_id))
 
     def interface_vlan(self, interface_id):
-        return SubShell(self.ssh, enter=["interface vlan %s" % interface_id, "no shutdown"], exit_cmd='exit')
+        return SubShell(self.ssh, enter=["interface vlan {}".format(interface_id), "no shutdown"], exit_cmd='exit')
 
     def _get_vlan_run_conf(self, vlan_number):
         run_config = self._show_run_vlan(vlan_number)
@@ -307,7 +307,7 @@ class Cisco(SwitchBase):
         return self.ssh.do('show running-config vlan {} | begin vlan'.format(vlan_number))
 
     def get_vlan_interface_data(self, vlan_number):
-        run_int_vlan_data = self.ssh.do('show running-config interface vlan %s' % vlan_number)
+        run_int_vlan_data = self.ssh.do('show running-config interface vlan {}'.format(vlan_number))
         if not run_int_vlan_data[0].startswith("Building configuration..."):
             self._get_vlan_run_conf(vlan_number)
 
@@ -316,7 +316,7 @@ class Cisco(SwitchBase):
         return vlan
 
     def get_interface(self, interface_id):
-        data = self.ssh.do("show running-config interface %s | begin interface" % interface_id)
+        data = self.ssh.do("show running-config interface {} | begin interface".format(interface_id))
         interface = parse_interface(data)
         if not interface:
             raise UnknownInterface(interface_id)
@@ -403,7 +403,7 @@ def parse_interface(data):
 def apply_interface_running_config_data(vlan, data):
     for line in data:
         if regex.match("^ ip address ([^\s]*) ([^\s]*)(.*)", line):
-            ip = IPNetwork("%s/%s" % (regex[0], regex[1]))
+            ip = IPNetwork("{}/{}".format(regex[0], regex[1]))
             if "secondary" not in regex[2]:
                 vlan.ips.insert(0, ip)
             else:

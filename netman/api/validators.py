@@ -15,6 +15,7 @@
 from functools import wraps
 import json
 import logging
+from os.path import join
 import re
 
 from netaddr import IPNetwork, AddrFormatError, IPAddress
@@ -183,7 +184,7 @@ class Direction:
         elif direction.lower() == 'out':
             self.direction = OUT
         else:
-            raise UnknownResource("Unknown direction : %s" % direction)
+            raise UnknownResource("Unknown direction : {}".format(direction))
 
     def __enter__(self):
         return self.direction
@@ -248,11 +249,11 @@ def is_vlan_number(vlan_number, **_):
     try:
         vlan_int = int(vlan_number)
     except ValueError:
-        logging.getLogger("netman.api").info("Rejected vlan content : %s" % repr(vlan_number))
+        logging.getLogger("netman.api").info("Rejected vlan content : {}".format(repr(vlan_number)))
         raise BadVlanNumber()
 
     if not 1 <= vlan_int <= 4094:
-        logging.getLogger("netman.api").info("Rejected vlan number : %d" % vlan_number)
+        logging.getLogger("netman.api").info("Rejected vlan number : {}".format(vlan_number))
         raise BadVlanNumber()
 
     return {'vlan_number': vlan_int}
@@ -262,7 +263,7 @@ def is_ip_network(data, **_):
     try:
         try:
             json_addr = json.loads(data)
-            ip = IPNetwork("%s/%s" % (json_addr["address"], json_addr["mask"]))
+            ip = IPNetwork("{}/{}".format(json_addr["address"], json_addr["mask"]))
         except ValueError:
             ip = IPNetwork(data)
     except (KeyError, AddrFormatError):
@@ -290,7 +291,7 @@ def is_vrrp_group(data, **_):
 def is_boolean(option, **_):
     option = option.lower()
     if option not in ['true', 'false']:
-        raise BadRequest('Unreadable content "%s". Should be either "true" or "false"' % option)
+        raise BadRequest('Unreadable content "{}". Should be either "true" or "false"'.format(option))
 
     return {'state': option == 'true'}
 
@@ -313,7 +314,7 @@ def is_bond_number(bond_number, **_):
     try:
         bond_number_int = int(bond_number)
     except ValueError:
-        logging.getLogger("netman.api").info("Rejected number content : %s" % repr(bond_number))
+        logging.getLogger("netman.api").info("Rejected number content : {}".format(repr(bond_number)))
         raise BadBondNumber()
 
     return {'bond_number': bond_number_int}

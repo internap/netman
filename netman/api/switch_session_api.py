@@ -103,6 +103,6 @@ class SwitchSessionApi(SwitchApiBase):
         elif action == 'rollback':
             self.sessions_manager.rollback_session(session_id)
         else:
-            raise BadRequest('Unknown action %s' % action)
+            raise BadRequest('Unknown action {}'.format(action))
 
         return 204, None

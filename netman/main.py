@@ -35,9 +35,9 @@ app.url_map.converters['regex'] = RegexConverter
 @app.before_request
 def log_request():
     logger = getLogger("netman.api")
-    logger.info("%s : %s" % (request.method, request.url))
+    logger.info("{} : {}".format(request.method, request.url))
     if logger.isEnabledFor(DEBUG):
-        logging.getLogger("netman.api").debug("body : %s" % (repr(request.data) if request.data else "<<empty>>"))
+        logging.getLogger("netman.api").debug("body : {}".format(repr(request.data) if request.data else "<<empty>>"))
         logging.getLogger("netman.api").debug("Headers : " + ", ".join(["{0}={1}".format(h[0], h[1]) for h in request.headers]))
 
 switch_factory = SwitchFactory(MemoryStorage(), ThreadingLockFactory())

@@ -221,7 +221,7 @@ class Dell(SwitchBase):
         return SubShell(self.shell, enter="vlan database", exit_cmd='exit')
 
     def interface(self, interface_id):
-        return SubShell(self.shell, enter="interface %s" % interface_id, exit_cmd='exit',
+        return SubShell(self.shell, enter="interface {}".format(interface_id), exit_cmd='exit',
                         validate=no_output(UnknownInterface, interface_id))
 
     def set(self, command, *arguments):

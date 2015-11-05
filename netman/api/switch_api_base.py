@@ -49,7 +49,7 @@ class SwitchApiBase(object):
             if netman_server is not None and "," in netman_server:
                 netman_server = [e.strip() for e in netman_server.split(",")]
 
-            self.logger.info("Anonymous Switch Access (%s) %s@%s" % (request.headers['Netman-Model'], request.headers['Netman-Username'], hostname))
+            self.logger.info("Anonymous Switch Access ({}) {}@{}".format(request.headers['Netman-Model'], request.headers['Netman-Username'], hostname))
             return self.switch_factory.get_anonymous_switch(
                 hostname=hostname,
                 model=request.headers['Netman-Model'],

@@ -44,19 +44,19 @@ class SshClient(TerminalClient):
         self._open_channel(host, port, username, password, connect_timeout)
 
     def do(self, command, wait_for=None, include_last_line=False):
-        self.logger.debug("[SSH][%s@%s:%d] Send >> %s" % (self.username, self.host, self.port, command))
+        self.logger.debug("[SSH][{}@{}:{}] Send >> {}".format(self.username, self.host, self.port, command))
 
         self.channel.send(command + '\n')
         return self._read_until(wait_for, include_last_line)
 
     def send_key(self, key, wait_for=None, include_last_line=False):
-        self.logger.debug("[SSH][%s@%s:%d] Send KEY >> %s" % (self.username, self.host, self.port, key))
+        self.logger.debug("[SSH][{}@{}:{}] Send KEY >> {}".format(self.username, self.host, self.port, key))
 
         self.channel.send(key)
         return self._read_until(wait_for, include_last_line)
 
     def quit(self, command):
-        self.logger.debug("[SSH][%s@%s:%d] Quit >> %s" % (self.username, self.host, self.port, command))
+        self.logger.debug("[SSH][{}@{}:{}] Quit >> {}".format(self.username, self.host, self.port, command))
 
         self.channel.send(command + '\n')
 
@@ -103,6 +103,6 @@ class SshClient(TerminalClient):
                 time.sleep(self.reading_interval)
 
             read = self.channel.recv(self.reading_chunk_size)
-            self.logger.debug("[SSH][%s@%s:%d] Recv << %s" % (self.username, self.host, self.port, repr(read)))
+            self.logger.debug("[SSH][{}@{}:{}] Recv << {}".format(self.username, self.host, self.port, repr(read)))
             self.full_log += read
             self.current_buffer += read
