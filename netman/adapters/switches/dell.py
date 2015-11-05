@@ -218,6 +218,24 @@ class Dell(SwitchBase):
             self.set("{}lldp med transmit-tlv capabilities", "" if enabled else "no ")
             self.set("{}lldp med transmit-tlv network-policy", "" if enabled else "no ")
 
+    def set_bond_description(self, number, description):
+        try:
+            return self.set_interface_description(bond_name(number), description)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def set_bond_trunk_mode(self, number):
+        try:
+            return self.set_trunk_mode(bond_name(number))
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def set_bond_access_mode(self, number):
+        try:
+            return self.set_access_mode(bond_name(number))
+        except UnknownInterface:
+            raise UnknownBond(number)
+
     def add_bond_trunk_vlan(self, number, vlan):
         try:
             return self.add_trunk_vlan(bond_name(number), vlan)
@@ -227,6 +245,18 @@ class Dell(SwitchBase):
     def remove_bond_trunk_vlan(self, number, vlan):
         try:
             return self.remove_trunk_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def configure_bond_native_vlan(self, number, vlan):
+        try:
+            return self.configure_native_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def remove_bond_native_vlan(self, number):
+        try:
+            return self.remove_native_vlan(bond_name(number))
         except UnknownInterface:
             raise UnknownBond(number)
 

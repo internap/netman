@@ -482,6 +482,29 @@ class DellTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
+    def test_set_bond_access_mode(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode access").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.set_bond_access_mode(10)
+
+    def test_set_bond_access_mode_invalid_interface(self):
+        self.command_setup()
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 99999").once().ordered().and_return([
+                "An invalid interface has been used for this function."
+            ])
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.set_bond_access_mode(99999)
+
+        assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
+
     def test_set_trunk_mode(self):
         self.command_setup()
 
@@ -534,6 +557,59 @@ class DellTest(unittest.TestCase):
             self.switch.set_trunk_mode("ethernet 1/g99")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
+
+    def test_set_bond_trunk_mode(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.set_bond_trunk_mode(10)
+
+    def test_set_bond_trunk_mode_stays_in_bond_trunk(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
+
+        self.switch.set_bond_trunk_mode(10)
+
+    def test_set_bond_trunk_mode_stays_in_general(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
+
+        self.switch.set_bond_trunk_mode(10)
+
+    def test_configure_set_bond_trunk_mode_unknown_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 999999").and_return([
+            "ERROR: Invalid input!",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.set_bond_trunk_mode(999999)
+
+        assert_that(str(expect.exception), equal_to("Bond 999999 not found"))
 
     def test_set_access_vlan(self):
         self.command_setup()
@@ -787,6 +863,233 @@ class DellTest(unittest.TestCase):
             self.switch.remove_native_vlan("ethernet 1/g10")
 
         assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface ethernet 1/g10"))
+
+    def test_remove_bond_native_vlan_reverts_to_trunk_mode(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            "switchport general pvid 1000"
+        ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.remove_bond_native_vlan(10)
+
+    def test_remove_bond_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            "switchport general pvid 1000",
+            "switchport general allowed vlan add 1201-1203,1205",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1201-1203,1205").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.remove_bond_native_vlan(10)
+
+    def test_remove_bond_native_vlan_inknown_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
+            "ERROR: Invalid input!",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.remove_bond_native_vlan(99999)
+
+        assert_that(str(expect.exception), equal_to("Unknown interface port-channel 99999"))
+
+    def test_remove_bond_native_vlan_not_set(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(NativeVlanNotSet) as expect:
+            self.switch.remove_bond_native_vlan(10)
+
+        assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface port-channel 10"))
+
+    def test_configure_bond_native_vlan_on_a_general_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general"
+        ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.configure_bond_native_vlan(10, 1000)
+
+    def test_configure_bond_native_vlan_unknown_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
+            "ERROR: Invalid input!",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.configure_bond_native_vlan(99999, 1000)
+
+        assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
+
+    def test_configure_bond_native_vlan_unknown_vlan(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            ])
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([
+                "Could not configure pvid."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.configure_bond_native_vlan(10, 1000)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
+
+    def test_configure_bond_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode general").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.configure_bond_native_vlan(10, 1000)
+
+    def test_configure_bond_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport access vlan 2000",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(InterfaceInWrongPortMode) as expect:
+            self.switch.configure_bond_native_vlan(10, 1000)
+
+        assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
+
+    def test_configure_bond_native_vlan_on_a_trunk_mode_swithes_to_general(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode general").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.configure_bond_native_vlan(10, 1000)
+
+    def test_configure_bond_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode trunk",
+            "switchport trunk allowed vlan add 1201-1203,1205",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode general").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general allowed vlan add 1201-1203,1205").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.configure_bond_native_vlan(10, 1000)
+
+    def test_remove_bond_native_vlan_reverts_to_trunk_mode(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            "switchport general pvid 1000"
+        ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.remove_bond_native_vlan(10)
+
+    def test_remove_bond_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general",
+            "switchport general pvid 1000",
+            "switchport general allowed vlan add 1201-1203,1205",
+            ])
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1201-1203,1205").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.remove_bond_native_vlan(10)
+
+    def test_remove_bond_native_vlan_inknown_interface(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
+            "ERROR: Invalid input!",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.remove_bond_native_vlan(99999)
+
+        assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
+
+    def test_remove_bond_native_vlan_not_set(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+            "switchport mode general"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure").never()
+
+        with self.assertRaises(NativeVlanNotSet) as expect:
+            self.switch.remove_bond_native_vlan(10)
+
+        assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface port-channel 10"))
 
     def test_add_trunk_vlan(self):
         self.command_setup()
@@ -1242,6 +1545,45 @@ class DellTest(unittest.TestCase):
 
         with self.assertRaises(BadInterfaceDescription) as expect:
             self.switch.set_interface_description("ethernet 1/g10", 'Hey "you"')
+
+        assert_that(str(expect.exception), equal_to("Invalid description : Hey \"you\""))
+
+    def test_set_bond_description(self):
+        self.command_setup()
+
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("description \"Hey\"").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.set_bond_description(10, "Hey")
+
+    def test_set_bond_description_invalid_bond(self):
+        self.command_setup()
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 99999").once().ordered().and_return([
+                "An invalid interface has been used for this function."
+            ])
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.set_bond_description(99999, "Hey")
+
+        assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
+
+    def test_set_bond_description_invalid_description(self):
+        self.command_setup()
+
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("description \"Hey \"you\"\"").once().ordered().and_return([
+                "                       ^",
+                "% Invalid input detected at '^' marker."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        with self.assertRaises(BadInterfaceDescription) as expect:
+            self.switch.set_bond_description(10, 'Hey "you"')
 
         assert_that(str(expect.exception), equal_to("Invalid description : Hey \"you\""))
 

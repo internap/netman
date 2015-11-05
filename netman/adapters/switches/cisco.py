@@ -291,6 +291,18 @@ class Cisco(SwitchBase):
         with self.config(), self.interface_vlan(vlan_number):
             self.ssh.do("no ip helper-address {}".format(ip_address))
 
+    def set_bond_trunk_mode(self, number):
+        try:
+            return self.set_trunk_mode(bond_name(number))
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def set_bond_access_mode(self, number):
+        try:
+            return self.set_access_mode(bond_name(number))
+        except UnknownInterface:
+            raise UnknownBond(number)
+
     def add_bond_trunk_vlan(self, number, vlan):
         try:
             return self.add_trunk_vlan(bond_name(number), vlan)
@@ -300,6 +312,18 @@ class Cisco(SwitchBase):
     def remove_bond_trunk_vlan(self, number, vlan):
         try:
             return self.remove_trunk_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def configure_bond_native_vlan(self, number, vlan):
+        try:
+            return self.configure_native_vlan(bond_name(number), vlan)
+        except UnknownInterface:
+            raise UnknownBond(number)
+
+    def remove_bond_native_vlan(self, number):
+        try:
+            return self.remove_native_vlan(bond_name(number))
         except UnknownInterface:
             raise UnknownBond(number)
 
