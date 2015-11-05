@@ -30,15 +30,14 @@ from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
 
 
+__all__ = ['factory', 'Cisco']
+
+
 def factory(switch_descriptor, lock):
     return SwitchTransactional(
         impl=Cisco(switch_descriptor=switch_descriptor),
         lock=lock
     )
-
-
-def bond_name(number):
-    return "Port-channel{}".format(number)
 
 
 class Cisco(SwitchBase):
@@ -292,40 +291,28 @@ class Cisco(SwitchBase):
             self.ssh.do("no ip helper-address {}".format(ip_address))
 
     def set_bond_trunk_mode(self, number):
-        try:
-            return self.set_trunk_mode(bond_name(number))
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.set_trunk_mode(bond.name)
 
     def set_bond_access_mode(self, number):
-        try:
-            return self.set_access_mode(bond_name(number))
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.set_access_mode(bond.name)
 
     def add_bond_trunk_vlan(self, number, vlan):
-        try:
-            return self.add_trunk_vlan(bond_name(number), vlan)
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.add_trunk_vlan(bond.name, vlan)
 
     def remove_bond_trunk_vlan(self, number, vlan):
-        try:
-            return self.remove_trunk_vlan(bond_name(number), vlan)
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.remove_trunk_vlan(bond.name, vlan)
 
     def configure_bond_native_vlan(self, number, vlan):
-        try:
-            return self.configure_native_vlan(bond_name(number), vlan)
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.configure_native_vlan(bond.name, vlan)
 
     def remove_bond_native_vlan(self, number):
-        try:
-            return self.remove_native_vlan(bond_name(number))
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.remove_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')
@@ -505,3 +492,23 @@ def parse(single_range):
         return range(int(regex[0]), int(regex[1]) + 1)
     else:
         return [int(single_range)]
+
+
+def bond_name(number):
+    return "Port-channel{}".format(number)
+
+
+class NamedBond(object):
+    def __init__(self, number):
+        self.number = number
+
+    @property
+    def name(self):
+        return bond_name(self.number)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is UnknownInterface:
+            raise UnknownBond(self.number), None, exc_tb
