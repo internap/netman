@@ -66,30 +66,30 @@ class RemoteSwitch(SwitchBase):
         )
 
     def commit_transaction(self):
-        self.logger.info("Commiting %s" % self.session_id)
+        self.logger.info("Commiting {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                             'Netman-Max-Version': self.max_version,
                                                             'Netman-Session-Id': self.session_id}, data='commit'))
-        self.logger.info("Commited %s" % self.session_id)
+        self.logger.info("Commited {}".format(self.session_id))
 
     def rollback_transaction(self):
-        self.logger.info("Rollbacking %s" % self.session_id)
+        self.logger.info("Rollbacking {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                             'Netman-Max-Version': self.max_version,
                                                             'Netman-Session-Id': self.session_id}, data='rollback'))
-        self.logger.info("Rollbacked %s" % self.session_id)
+        self.logger.info("Rollbacked {}".format(self.session_id))
 
     def end_transaction(self):
-        self.logger.info("Ending session %s" % self.session_id)
+        self.logger.info("Ending session {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
         session_id = self.session_id
         self.session_id = None
         self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
                                                               'Netman-Max-Version': self.max_version,
                                                               'Netman-Session-Id': session_id}))
-        self.logger.info("Ended session %s" % self.session_id)
+        self.logger.info("Ended session {}".format(self.session_id))
 
     def get_vlan(self, number):
         return vlan.to_core(self.get("/vlans/{}".format(number)).json())
@@ -101,7 +101,7 @@ class RemoteSwitch(SwitchBase):
         return [interface.to_core(row) for row in self.get("/interfaces").json()]
 
     def get_bond(self, number):
-        reply = self.get('/bonds/%s' % number)
+        reply = self.get('/bonds/{}'.format(number))
         return bond.to_core(reply.json(), version=reply.headers.get('Netman-Version'))
 
     def get_bonds(self):

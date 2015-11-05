@@ -46,32 +46,32 @@ class OperationNotCompleted(NetmanException):
 
 class UnknownVlan(UnknownResource):
     def __init__(self, vlan_number=None):
-        super(UnknownVlan, self).__init__("Vlan %s not found" % vlan_number)
+        super(UnknownVlan, self).__init__("Vlan {} not found".format(vlan_number))
 
 
 class UnknownInterface(UnknownResource):
     def __init__(self, interface=None):
-        super(UnknownInterface, self).__init__("Unknown interface %s" % interface)
+        super(UnknownInterface, self).__init__("Unknown interface {}".format(interface))
 
 
 class UnknownIP(UnknownResource):
     def __init__(self, ip_network=None):
-        super(UnknownIP, self).__init__("IP %s not found" % ip_network)
+        super(UnknownIP, self).__init__("IP {} not found".format(ip_network))
 
 
 class UnknownAccessGroup(UnknownResource):
     def __init__(self, direction=None):
-        super(UnknownAccessGroup, self).__init__("%s IP access group not found" % ({IN: "Inbound", OUT: "Outgoing"}[direction] if direction else ""))
+        super(UnknownAccessGroup, self).__init__("{} IP access group not found".format({IN: "Inbound", OUT: "Outgoing"}[direction] if direction else ""))
 
 
 class UnknownSession(UnknownResource):
     def __init__(self, session_id=None):
-        super(UnknownSession, self).__init__("Session \"%s\" not found." % session_id)
+        super(UnknownSession, self).__init__("Session \"{}\" not found.".format(session_id))
 
 
 class UnknownVrf(UnknownResource):
     def __init__(self, name=None):
-        super(UnknownVrf, self).__init__("VRF name \"%s\" was not configured." % name)
+        super(UnknownVrf, self).__init__("VRF name \"{}\" was not configured.".format(name))
 
 
 class UnknownDhcpRelayServer(UnknownResource):
@@ -86,27 +86,27 @@ class DhcpRelayServerAlreadyExists(UnknownResource):
 
 class AccessVlanNotSet(UnknownResource):
     def __init__(self, interface=None):
-        super(AccessVlanNotSet, self).__init__("Access Vlan is not set on interface %s" % interface)
+        super(AccessVlanNotSet, self).__init__("Access Vlan is not set on interface {}".format(interface))
 
 
 class TrunkVlanNotSet(UnknownResource):
     def __init__(self, interface=None):
-        super(TrunkVlanNotSet, self).__init__("Trunk Vlan is not set on interface %s" % interface)
+        super(TrunkVlanNotSet, self).__init__("Trunk Vlan is not set on interface {}".format(interface))
 
 
 class NativeVlanNotSet(UnknownResource):
     def __init__(self, interface=None):
-        super(NativeVlanNotSet, self).__init__("Trunk native Vlan is not set on interface %s" % interface)
+        super(NativeVlanNotSet, self).__init__("Trunk native Vlan is not set on interface {}".format(interface))
 
 
 class InterfaceSpanningTreeNotEnabled(UnknownResource):
     def __init__(self, interface=None):
-        super(InterfaceSpanningTreeNotEnabled, self).__init__("Spanning tree is not enabled on interface %s" % interface)
+        super(InterfaceSpanningTreeNotEnabled, self).__init__("Spanning tree is not enabled on interface {}".format(interface))
 
 
 class VlanVrfNotSet(UnknownResource):
     def __init__(self, vlan=None):
-        super(VlanVrfNotSet, self).__init__("VRF is not set on vlan %s" % vlan)
+        super(VlanVrfNotSet, self).__init__("VRF is not set on vlan {}".format(vlan))
 
 
 class IPNotAvailable(Conflict):
@@ -116,22 +116,22 @@ class IPNotAvailable(Conflict):
 
 class IPAlreadySet(Conflict):
     def __init__(self, ip_network=None, present_ip_network=None):
-        super(IPAlreadySet, self).__init__("IP %s is already present in this vlan as %s" % (ip_network, present_ip_network))
+        super(IPAlreadySet, self).__init__("IP {} is already present in this vlan as {}".format(ip_network, present_ip_network))
 
 
 class VlanAlreadyExist(Conflict):
     def __init__(self, vlan_number=None):
-        super(VlanAlreadyExist, self).__init__("Vlan %s already exists" % vlan_number)
+        super(VlanAlreadyExist, self).__init__("Vlan {} already exists".format(vlan_number))
 
 
 class InterfaceInWrongPortMode(Conflict):
     def __init__(self, mode=None):
-        super(InterfaceInWrongPortMode, self).__init__("Operation cannot be performed on a %s mode interface" % mode)
+        super(InterfaceInWrongPortMode, self).__init__("Operation cannot be performed on a {} mode interface".format(mode))
 
 
 class VlanAlreadyInTrunk(Conflict):
     def __init__(self, vlan=None):
-        super(VlanAlreadyInTrunk, self).__init__("Vlan %s cannot be set as native vlan because it is already a member of the trunk" % vlan)
+        super(VlanAlreadyInTrunk, self).__init__("Vlan {} cannot be set as native vlan because it is already a member of the trunk".format(vlan))
 
 
 class VrrpAlreadyExistsForVlan(Conflict):
@@ -211,12 +211,12 @@ class InterfaceNotInBond(UnknownResource):
 
 class BondAlreadyExist(Conflict):
     def __init__(self, number=None):
-        super(BondAlreadyExist, self).__init__("Bond %s already exists" % number)
+        super(BondAlreadyExist, self).__init__("Bond {} already exists".format(number))
 
 
 class UnknownBond(UnknownResource):
     def __init__(self, number=None):
-        super(UnknownBond, self).__init__("Bond %s not found" % number)
+        super(UnknownBond, self).__init__("Bond {} not found".format(number))
 
 
 class BadBondLinkSpeed(ValueError):

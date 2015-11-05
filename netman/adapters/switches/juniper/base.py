@@ -81,7 +81,7 @@ class Juniper(SwitchBase):
         try:
             self.netconf.commit()
         except RPCError as e:
-            self.logger.info("An RPCError was raised : %s" % e)
+            self.logger.info("An RPCError was raised : {}".format(e))
             raise OperationNotCompleted(str(e).strip())
 
     def get_vlans(self):
@@ -229,8 +229,8 @@ class Juniper(SwitchBase):
 
         if interface.access_vlan != vlan:
             for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
-                update_vlan_members.append(to_ele('<members operation="delete">%s</members>' % members.text))
-            update_vlan_members.append(to_ele("<members>%s</members>" % vlan))
+                update_vlan_members.append(to_ele('<members operation="delete">{}</members>'.format(members.text)))
+            update_vlan_members.append(to_ele("<members>{}</members>".format(vlan)))
 
         if update_attributes or update_vlan_members:
             update = Update()
@@ -277,7 +277,7 @@ class Juniper(SwitchBase):
         if vlan in interface.trunk_vlans:
             raise VlanAlreadyInTrunk(vlan)
         elif interface.trunk_native_vlan != vlan:
-            update_attributes.append(to_ele("<native-vlan-id>%s</native-vlan-id>" % vlan))
+            update_attributes.append(to_ele("<native-vlan-id>{}</native-vlan-id>".format(vlan)))
 
         if update_attributes:
 
@@ -321,7 +321,7 @@ class Juniper(SwitchBase):
             update.add_interface(interface_update(
                 interface_id, "0",
                 [self.custom_strategies.set_interface_port_mode_update_element("trunk")] if actual_port_mode is None else None,
-                [to_ele("<members>%s</members>" % vlan)]
+                [to_ele("<members>{}</members>".format(vlan))]
             ))
 
             self._push(update)
@@ -349,13 +349,13 @@ class Juniper(SwitchBase):
     def set_interface_description(self, interface_id, description):
         update = Update()
         update.add_interface(interface_main_update(interface_id, [
-            to_ele("<description>%s</description>" % description)
+            to_ele("<description>{}</description>".format(description))
         ]))
 
         try:
             self._push(update)
         except RPCError as e:
-            self.logger.info("actual setting error was %s" % e)
+            self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
     def remove_interface_description(self, interface_id):
@@ -397,7 +397,7 @@ class Juniper(SwitchBase):
         try:
             self._push(update)
         except RPCError as e:
-            self.logger.info("actual setting error was %s" % e)
+            self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
     def openup_interface(self, interface_id):
@@ -409,7 +409,7 @@ class Juniper(SwitchBase):
         try:
             self._push(update)
         except RPCError as e:
-            self.logger.info("actual setting error was %s" % e)
+            self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
     def enable_lldp(self, interface_id, enabled):
@@ -550,11 +550,11 @@ class Juniper(SwitchBase):
         config = new_ele('config')
         config.append(configuration.root)
 
-        self.logger.info("Sending edit : %s" % to_xml(config))
+        self.logger.info("Sending edit : {}".format(to_xml(config)))
         try:
             self.netconf.edit_config(target="candidate", config=config)
         except RPCError as e:
-            self.logger.info("An RPCError was raised : %s" % e)
+            self.logger.info("An RPCError was raised : {}".format(e))
             raise
 
     def query(self, *args):
@@ -579,13 +579,13 @@ class Juniper(SwitchBase):
         return interface_node
 
     def get_vlan_config(self, number, config):
-        vlan_node = first(config.xpath("data/configuration/vlans/vlan/vlan-id[text()=\"%s\"]/.." % number))
+        vlan_node = first(config.xpath("data/configuration/vlans/vlan/vlan-id[text()=\"{}\"]/..".format(number)))
         if vlan_node is None:
             raise UnknownVlan(number)
         return vlan_node
 
     def get_bond_config(self, number, config):
-        interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"%s\"]/.." % bond_name(number)))
+        interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/..".format(bond_name(number))))
         if interface_node is None:
             raise UnknownBond(number)
         return interface_node
@@ -649,10 +649,10 @@ def one_interface(interface_id):
         return to_ele("""
             <interfaces>
                 <interface>
-                    <name>%s</name>
+                    <name>{}</name>
                 </interface>
             </interfaces>
-        """ % interface_id)
+        """.format(interface_id))
 
     return m
 
@@ -662,10 +662,10 @@ def one_vlan(vlan_name):
         return to_ele("""
             <vlans>
                 <vlan>
-                    <name>%s</name>
+                    <name>{}</name>
                 </vlan>
             </vlans>
-        """ % vlan_name)
+        """.format(vlan_name))
 
     return m
 
@@ -764,22 +764,22 @@ def vlan_update(number, description):
     """.format(number))
 
     if description is not None:
-        content.append(to_ele("<description>%s</description>" % description))
+        content.append(to_ele("<description>{}</description>".format(description)))
     return content
 
 
 def interface_removal(name):
     return to_ele("""
         <interface operation="delete">
-            <name>%s</name>
-        </interface>""" % name)
+            <name>{}</name>
+        </interface>""".format(name))
 
 
 def vlan_removal(name):
     return to_ele("""
         <vlan operation="delete">
-            <name>%s</name>
-        </vlan>""" % name)
+            <name>{}</name>
+        </vlan>""".format(name))
 
 
 def interface_unit_interface_removal(interface, unit):
@@ -796,17 +796,17 @@ def interface_unit_interface_removal(interface, unit):
 def rstp_interface_removal(interface_id):
     return to_ele("""
         <interface operation="delete" >
-            <name>%s</name>
+            <name>{}</name>
         </interface>
-        """ % interface_id)
+        """.format(interface_id))
 
 
 def interface_vlan_members_update(name, unit, members_modification):
     content = to_ele("""
         <interface>
-            <name>%s</name>
+            <name>{}</name>
             <unit>
-                <name>%s</name>
+                <name>{}</name>
                 <family>
                     <ethernet-switching>
                         <vlan />
@@ -814,7 +814,7 @@ def interface_vlan_members_update(name, unit, members_modification):
                 </family>
             </unit>
         </interface>
-        """ % (name, unit))
+        """.format(name, unit))
 
     vlan_node = first(content.xpath("//vlan"))
     for m in members_modification:
@@ -826,16 +826,16 @@ def interface_vlan_members_update(name, unit, members_modification):
 def interface_update(name, unit, attributes=None, vlan_members=None):
     content = to_ele("""
         <interface>
-            <name>%s</name>
+            <name>{}</name>
             <unit>
-                <name>%s</name>
+                <name>{}</name>
                 <family>
                     <ethernet-switching>
                     </ethernet-switching>
                 </family>
             </unit>
         </interface>
-        """ % (name, unit))
+        """.format(name, unit))
     ethernet_switching_node = first(content.xpath("//ethernet-switching"))
 
     for attribute in (attributes if attributes is not None else []):
@@ -853,9 +853,9 @@ def interface_update(name, unit, attributes=None, vlan_members=None):
 def interface_main_update(name, attributes):
     content = to_ele("""
         <interface>
-            <name>%s</name>
+            <name>{}</name>
         </interface>
-        """ % name)
+        """.format(name))
 
     for attribute in (attributes if attributes is not None else []):
         content.append(attribute)
@@ -881,7 +881,7 @@ def parse_range(r):
 
 def to_range(number_list):
     if len(number_list) > 1:
-        return "%s-%s" % (number_list[0], number_list[-1])
+        return "{}-{}".format(number_list[0], number_list[-1])
     else:
         return str(number_list[0])
 
@@ -903,7 +903,7 @@ def parse_ips(interface_unit_node):
 
 def parse_inet_filter(interface_unit_node, direction):
     val = None
-    ac_in_node = first(interface_unit_node.xpath("family/inet/filter/%s/filter-name" % direction))
+    ac_in_node = first(interface_unit_node.xpath("family/inet/filter/{}/filter-name".format(direction)))
     if ac_in_node is not None:
         val = ac_in_node.text
     return val
@@ -921,19 +921,19 @@ def craft_members_modification_to_remove_vlan(interface_node, vlan_name, number)
     members_modifications = []
     for vlan_members_node in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
         if vlan_members_node.text == vlan_name:
-            members_modifications.append(to_ele("<members operation=\"delete\">%s</members>" % vlan_members_node.text))
+            members_modifications.append(to_ele("<members operation=\"delete\">{}</members>".format(vlan_members_node.text)))
         else:
             vlan_list = parse_range(vlan_members_node.text)
             if number in vlan_list:
-                members_modifications.append(to_ele("<members operation=\"delete\">%s</members>" % vlan_members_node.text))
+                members_modifications.append(to_ele("<members operation=\"delete\">{}</members>".format(vlan_members_node.text)))
 
                 below = vlan_list[:vlan_list.index(number)]
                 if len(below) > 0:
-                    members_modifications.append(to_ele("<members>%s</members>" % to_range(below)))
+                    members_modifications.append(to_ele("<members>{}</members>".format(to_range(below))))
 
                 above = vlan_list[vlan_list.index(number) + 1:]
                 if len(above) > 0:
-                    members_modifications.append(to_ele("<members>%s</members>" % to_range(above)))
+                    members_modifications.append(to_ele("<members>{}</members>".format(to_range(above))))
 
     return members_modifications
 
@@ -994,7 +994,7 @@ def protocol_interface_update(name):
 def list_vlan_members(interface_node, config):
     vlans = set()
     for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
-        vlan_id = value_of(config.xpath('data/configuration/vlans/vlan/name[text()="%s"]/../vlan-id' % members.text), transformer=int)
+        vlan_id = value_of(config.xpath('data/configuration/vlans/vlan/name[text()="{}"]/../vlan-id'.format(members.text)), transformer=int)
         if vlan_id:
             vlans = vlans.union([vlan_id])
         else:

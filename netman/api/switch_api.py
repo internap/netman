@@ -312,7 +312,7 @@ class SwitchApi(SwitchApiBase):
         elif mode == 'access':
             switch.set_access_mode(interface_id)
         else:
-            raise BadRequest('Unknown port mode detected %s' % mode)
+            raise BadRequest('Unknown port mode detected {}'.format(mode))
 
         return 204, None
 
@@ -334,7 +334,7 @@ class SwitchApi(SwitchApiBase):
         elif mode == 'access':
             switch.set_bond_access_mode(bond_number)
         else:
-            raise BadRequest('Unknown port mode detected %s' % mode)
+            raise BadRequest('Unknown port mode detected {}'.format(mode))
 
         return 204, None
 
