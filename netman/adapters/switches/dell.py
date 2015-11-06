@@ -27,6 +27,9 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
 from netman.core.objects.switch_base import SwitchBase
 
 
+__all__ = ['factory_ssh', 'factory_telnet', 'Dell']
+
+
 def factory_ssh(switch_descriptor, lock):
     return SwitchTransactional(
         impl=Dell(switch_descriptor=switch_descriptor, shell_factory=SshClient),
@@ -39,10 +42,6 @@ def factory_telnet(switch_descriptor, lock):
         impl=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
         lock=lock,
     )
-
-
-def bond_name(number):
-    return "port-channel {}".format(number)
 
 
 class Dell(SwitchBase):
@@ -218,17 +217,33 @@ class Dell(SwitchBase):
             self.set("{}lldp med transmit-tlv capabilities", "" if enabled else "no ")
             self.set("{}lldp med transmit-tlv network-policy", "" if enabled else "no ")
 
+    def set_bond_description(self, number, description):
+        with NamedBond(number) as bond:
+            return self.set_interface_description(bond.name, description)
+
+    def set_bond_trunk_mode(self, number):
+        with NamedBond(number) as bond:
+            return self.set_trunk_mode(bond.name)
+
+    def set_bond_access_mode(self, number):
+        with NamedBond(number) as bond:
+            return self.set_access_mode(bond.name)
+
     def add_bond_trunk_vlan(self, number, vlan):
-        try:
-            return self.add_trunk_vlan(bond_name(number), vlan)
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.add_trunk_vlan(bond.name, vlan)
 
     def remove_bond_trunk_vlan(self, number, vlan):
-        try:
-            return self.remove_trunk_vlan(bond_name(number), vlan)
-        except UnknownInterface:
-            raise UnknownBond(number)
+        with NamedBond(number) as bond:
+            return self.remove_trunk_vlan(bond.name, vlan)
+
+    def configure_bond_native_vlan(self, number, vlan):
+        with NamedBond(number) as bond:
+            return self.configure_native_vlan(bond.name, vlan)
+
+    def remove_bond_native_vlan(self, number):
+        with NamedBond(number) as bond:
+            return self.remove_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')
@@ -319,3 +334,23 @@ def resolve_trunk_vlans(interface_data):
         if regex.match("switchport \S+ allowed vlan add (\S+)", line):
             return parse_vlan_ranges(regex[0])
     return []
+
+
+def bond_name(number):
+    return "port-channel {}".format(number)
+
+
+class NamedBond(object):
+    def __init__(self, number):
+        self.number = number
+
+    @property
+    def name(self):
+        return bond_name(self.number)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is UnknownInterface:
+            raise UnknownBond(self.number), None, exc_tb
