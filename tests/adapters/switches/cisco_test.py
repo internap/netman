@@ -28,7 +28,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, VrrpAlreadyExistsForVlan, BadVrrpTimers, \
     BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, \
-    UnknownBond
+    UnknownBond, BadBondNumber, BondAlreadyExist
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -53,12 +53,12 @@ class CiscoTest(unittest.TestCase):
         self.lock = mock.Mock()
         self.switch = cisco.factory(SwitchDescriptor(model='cisco', hostname="my.hostname", password="the_password"), self.lock)
         SubShell.debug = True
+        self.mocked_ssh_client = flexmock()
 
     def tearDown(self):
         flexmock_teardown()
 
     def command_setup(self):
-        self.mocked_ssh_client = flexmock()
         self.switch.impl.ssh = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("do").with_args("terminal length 0").never()
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=": ").never()
@@ -1972,7 +1972,6 @@ class CiscoTest(unittest.TestCase):
     def test_connect(self, ssh_client_class_mock):
         self.switch = Cisco(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="cisco"))
 
-        self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("get_current_prompt").and_return("hostname>").once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=": ").and_return([]).once().ordered()
@@ -1993,7 +1992,6 @@ class CiscoTest(unittest.TestCase):
     def test_auto_enabled_switch_doesnt_require_enable(self, ssh_client_class_mock):
         self.switch = Cisco(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="cisco", port=8000))
 
-        self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("get_current_prompt").and_return("hostname#").once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=": ").never()
@@ -2429,3 +2427,311 @@ class CiscoTest(unittest.TestCase):
             self.switch.remove_dhcp_relay_server(1234, IPAddress('10.10.10.1'))
 
         assert_that(str(expect.exception), equal_to("DHCP relay server 10.10.10.1 not found on VLAN 1234"))
+
+    def test_get_bonds(self):
+        self.command_setup()
+        self.mocked_ssh_client.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Flags:  D - down        P - bundled in port-channel",
+            "        I - stand-alone s - suspended",
+            "        H - Hot-standby (LACP only)",
+            "        R - Layer3      S - Layer2",
+            "        U - in use      f - failed to allocate aggregator",
+            "",
+            "        M - not in use, minimum links not met",
+            "        u - unsuitable for bundling",
+            "        w - waiting to be aggregated",
+            "        d - default port",
+            "",
+            "",
+            "Number of channel-groups in use: 1",
+            "Number of aggregators:           1",
+            "",
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "1      Po1(SU)         LACP      Fa0/1(P)",
+            "2      Po2(SU)         LACP      Gi1/1(P) Gi1/2(P)",
+            "3      Po3(S)          LACP      ",
+            "",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Po1 | begin interface").once().ordered().and_return([
+            "interface Port-channel1",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            " switchport mode access",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Fa0/1 | begin interface").once().ordered().and_return([
+            "interface FastEthernet0/1",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Po2 | begin interface").once().ordered().and_return([
+            "interface Port-channel2",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            " switchport mode trunk",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Gi1/1 | begin interface").once().ordered().and_return([
+            "interface GigabitEthernet1/1",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Gi1/2 | begin interface").once().ordered().and_return([
+            "interface GigabitEthernet1/2",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Po3 | begin interface").once().ordered().and_return([
+            "interface Port-channel3",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            "end"
+        ])
+
+        result = self.switch.get_bonds()
+        if1, if2, if3 = result
+
+        assert_that(if1.number, equal_to(1))
+        assert_that(if1.port_mode, equal_to(ACCESS))
+        assert_that(if1.access_vlan, equal_to(100))
+        assert_that(if1.trunk_native_vlan, equal_to(None))
+        assert_that(if1.trunk_vlans, equal_to([]))
+        assert_that(if1.members, equal_to(['FastEthernet0/1']))
+
+        assert_that(if2.number, equal_to(2))
+        assert_that(if2.port_mode, equal_to(TRUNK))
+        assert_that(if2.access_vlan, equal_to(None))
+        assert_that(if2.trunk_native_vlan, equal_to(200))
+        assert_that(if2.trunk_vlans, equal_to([300, 302, 303, 304]))
+        assert_that(if2.members, equal_to(['GigabitEthernet1/1', 'GigabitEthernet1/2']))
+
+        assert_that(if3.number, equal_to(3))
+        assert_that(if3.port_mode, equal_to(DYNAMIC))
+        assert_that(if3.access_vlan, equal_to(100))
+        assert_that(if3.trunk_native_vlan, equal_to(200))
+        assert_that(if3.trunk_vlans, equal_to([300, 302, 303, 304]))
+        assert_that(if3.members, equal_to([]))
+
+    def test_get_bond(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "1      Po1(SU)         LACP      Fa0/1(P)",
+            "2      Po2(SU)         LACP      Gi1/1(P) Gi1/2(P)",
+            "3      Po3(S)          LACP      ",
+            "",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Po2 | begin interface").once().ordered().and_return([
+            "interface Port-channel2",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            " switchport mode trunk",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Gi1/1 | begin interface").once().ordered().and_return([
+            "interface GigabitEthernet1/1",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Gi1/2 | begin interface").once().ordered().and_return([
+            "interface GigabitEthernet1/2",
+            "end"
+        ])
+
+        result = self.switch.get_bond(2)
+
+        assert_that(result.number, equal_to(2))
+        assert_that(result.port_mode, equal_to(TRUNK))
+        assert_that(result.access_vlan, equal_to(None))
+        assert_that(result.trunk_native_vlan, equal_to(200))
+        assert_that(result.trunk_vlans, equal_to([300, 302, 303, 304]))
+        assert_that(result.members, equal_to(['GigabitEthernet1/1', 'GigabitEthernet1/2']))
+
+    def test_add_bond(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "",
+            ])
+
+        ssh.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        ssh.should_receive("do").with_args("interface port-channel 9").and_return([]).once().ordered()
+        ssh.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        ssh.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.add_bond(9)
+
+    def test_add_bond_refused_number(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "",
+            ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 9000").once().ordered().and_return([
+            "Command rejected: Bad port-channel list - character #5 (EOL) delimits a port-channel",
+            "number which is out of the range 1..4094."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered()
+
+        with self.assertRaises(BadBondNumber) as expect:
+            self.switch.add_bond(9000)
+
+        assert_that(str(expect.exception), equal_to("Bond number is invalid"))
+
+    def test_add_bond_already_exist_fails(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "9      Po9(SU)         LACP      Fa0/1(P)",
+            "",
+            ])
+
+
+        with self.assertRaises(BondAlreadyExist) as expect:
+            self.switch.add_bond(9)
+
+        assert_that(str(expect.exception), equal_to("Bond 9 already exists"))
+
+    def test_remove_bond(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "9      Po1(SU)         LACP      Fa0/1(P)",
+            "",
+        ])
+        ssh.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+
+        ssh.should_receive("do").with_args("no interface port-channel 9").and_return([]).once().ordered()
+        ssh.should_receive("do").with_args("exit").and_return([]).once().ordered()
+        ssh.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.remove_bond(9)
+
+    def test_remove_bond_invalid_bond_raises(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "",
+        ])
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.remove_bond(9)
+
+        assert_that(str(expect.exception), equal_to("Bond 9 not found"))
+
+    def test_add_interface_to_bond(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "9      Po1(SU)         LACP      Fa0/1(P)",
+            "",
+        ])
+
+        ssh.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        ssh.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
+        ssh.should_receive("do").with_args("channel-protocol lacp").and_return([]).once().ordered()
+        ssh.should_receive("do").with_args("channel-group 9 mode active").and_return([]).once().ordered()
+        ssh.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        ssh.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.add_interface_to_bond("FastEthernet0/4", bond_number=9)
+
+    def test_add_interface_to_bond_invalid_bond_raises(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "",
+        ])
+
+        with self.assertRaises(UnknownBond) as expect:
+            self.switch.add_interface_to_bond("FastEthernet0/4", bond_number=9)
+
+        assert_that(str(expect.exception), equal_to("Bond 9 not found"))
+
+    def test_add_interface_to_bond_invalid_interface_raises(self):
+        self.command_setup()
+        ssh = self.mocked_ssh_client
+        ssh.should_receive("do").with_args("show etherchannel summary").once().ordered().and_return([
+            "Group  Port-channel  Protocol    Ports",
+            "------+-------------+-----------+-----------------------------------------------",
+            "9      Po1(SU)         LACP      Fa0/1(P)",
+            "",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface SlowEthernet42/9999").and_return([
+            "        ^",
+            "% Invalid input detected at '^' marker."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.add_interface_to_bond("SlowEthernet42/9999", bond_number=9)
+
+        assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
+
+    def test_remove_interface_from_bond(self):
+        self.command_setup()
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no channel-group").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.remove_interface_from_bond("FastEthernet0/4")
+
+    def test_remove_interface_from_bond_invalid_interface_raises(self):
+        self.command_setup()
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface SlowEthernet42/9999").and_return([
+            "        ^",
+            "% Invalid input detected at '^' marker."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.remove_interface_from_bond("SlowEthernet42/9999")
+
+        assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))

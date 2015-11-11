@@ -15,13 +15,15 @@
 from netaddr.ip import IPNetwork, IPAddress
 
 from netman import regex
-from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
+from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output, \
+    split_lines_after
 from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.bond import Bond
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, UnknownBond
+    VlanAlreadyExist, UnknownBond, BondAlreadyExist, BadBondNumber
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
@@ -137,9 +139,59 @@ class Cisco(SwitchBase):
         interfaces = []
         for data in split_on_bang(self.ssh.do("show running-config | begin interface")):
             interface = parse_interface(data)
-            if interface:
+            if interface is not None and isinstance(interface, Interface):
                 interfaces.append(interface)
         return interfaces
+
+    def get_bonds(self):
+        bonds = []
+        for bond_summary in self._show_etherchannel_summary():
+            if bond_summary:
+                bonds.append(self._bond_from_summary(bond_summary))
+        return bonds
+
+    def get_bond(self, number):
+        for bond_summary in self._show_etherchannel_summary():
+            if bond_summary and int(bond_summary[0]) == number:
+                return self._bond_from_summary(bond_summary)
+        raise UnknownBond(number)
+
+    def add_bond(self, number):
+        if self._has_bond(number):
+            raise BondAlreadyExist(number)
+        with self.config():
+            result = self.ssh.do('interface port-channel {}'.format(number))
+            if len(result) > 0:
+                raise BadBondNumber()
+            else:
+                self.ssh.do('exit')
+
+    def remove_bond(self, number):
+        if not self._has_bond(number):
+            raise UnknownBond(number)
+        with self.config():
+            self.ssh.do('no interface port-channel {}'.format(number))
+
+    def add_interface_to_bond(self, interface, bond_number):
+        if not self._has_bond(bond_number):
+            raise UnknownBond(bond_number)
+        with self.config():
+            result = self.ssh.do('interface {}'.format(interface))
+            if len(result) > 0:
+                raise UnknownInterface(interface)
+            self.ssh.do('channel-protocol lacp')
+            self.ssh.do('channel-group {} mode active'.format(bond_number))
+            if len(result) > 0:
+                raise BadBondNumber()
+            self.ssh.do('exit')
+
+    def remove_interface_from_bond(self, interface):
+        with self.config():
+            result = self.ssh.do('interface {}'.format(interface))
+            if len(result) > 0:
+                raise UnknownInterface(interface)
+            self.ssh.do('no channel-group')
+            self.ssh.do('exit')
 
     def set_access_vlan(self, interface_id, vlan):
         self._get_vlan_run_conf(vlan)
@@ -398,34 +450,53 @@ class Cisco(SwitchBase):
             if len(result) > 0:
                 raise VrrpDoesNotExistForVlan(vlan=vlan_number, vrrp_group_id=group_id)
 
+    def _show_etherchannel_summary(self):
+        return split_lines_after('---', self.ssh.do("show etherchannel summary"))
+
+    def _bond_from_summary(self, bond_summary):
+        bond = self.get_interface(bond_summary[1].rsplit('(')[0])
+        bond.members = [self.get_interface(m.rsplit('(')[0]).name for m in bond_summary[3:]]
+        return bond
+
+    def _has_bond(self, number):
+        for bond_summary in self._show_etherchannel_summary():
+            if bond_summary and int(bond_summary[0]) == number:
+                return True
+        return False
+
 
 def parse_interface(data):
-    if data and (regex.match("interface (\w*Ethernet[^\s]*)", data[0])
-                 or regex.match("interface (Port-channel[^\s]*)", data[0])):
+    if not data:
+        return None
+    if regex.match("interface Port-channel *([^\s]*)", data[0]):
+        i = Bond(number=int(regex[0]), shutdown=False)
+    elif regex.match("interface (\w*Ethernet[^\s]*)", data[0]):
         i = Interface(name=regex[0], shutdown=False)
-        port_mode = access_vlan = native_vlan = trunk_vlans = None
-        for line in data:
-            if regex.match(" switchport mode (.*)", line): port_mode = regex[0]
-            if regex.match(" switchport access vlan (\d*)", line): access_vlan = int(regex[0])
-            if regex.match(" switchport trunk native vlan (\d*)", line): native_vlan = int(regex[0])
-            if regex.match(" switchport trunk allowed vlan (.*)", line): trunk_vlans = regex[0]
-            if regex.match(" shutdown", line): i.shutdown = True
-
-        if not port_mode:
-            i.port_mode = DYNAMIC
-            i.access_vlan = access_vlan
-            i.trunk_native_vlan = native_vlan
-            i.trunk_vlans = parse_vlan_ranges(trunk_vlans) if trunk_vlans else []
-        elif port_mode == 'access':
-            i.port_mode = ACCESS
-            i.access_vlan = access_vlan
-        elif port_mode == 'trunk':
-            i.port_mode = TRUNK
-            i.trunk_native_vlan = native_vlan
-            i.trunk_vlans = parse_vlan_ranges(trunk_vlans) if trunk_vlans else []
-
-        return i
-    return None
+    else:
+        return None
+    port_mode = access_vlan = native_vlan = trunk_vlans = None
+    for line in data:
+        if regex.match(" switchport mode (.*)", line): port_mode = regex[0]
+        if regex.match(" switchport access vlan (\d*)", line): access_vlan = int(regex[0])
+        if regex.match(" switchport trunk native vlan (\d*)", line): native_vlan = int(regex[0])
+        if regex.match(" switchport trunk allowed vlan (.*)", line): trunk_vlans = regex[0]
+        if regex.match(" shutdown", line): i.shutdown = True
+        if isinstance(i, Interface):
+            if regex.match(" channel-group (\d+).*", line):
+                i.bond_master = int(regex[0])
+    if not port_mode:
+        i.port_mode = DYNAMIC
+        i.access_vlan = access_vlan
+        i.trunk_native_vlan = native_vlan
+        i.trunk_vlans = parse_vlan_ranges(trunk_vlans) if trunk_vlans else []
+    elif port_mode == 'access':
+        i.port_mode = ACCESS
+        i.access_vlan = access_vlan
+    elif port_mode == 'trunk':
+        i.port_mode = TRUNK
+        i.trunk_native_vlan = native_vlan
+        i.trunk_vlans = parse_vlan_ranges(trunk_vlans) if trunk_vlans else []
+    return i
 
 
 def apply_interface_running_config_data(vlan, data):

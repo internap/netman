@@ -73,6 +73,15 @@ def split_on_dedent(data):
     yield current_chunk
 
 
+def split_lines_after(start_mark, data):
+    splitter_found = False
+    for line in data:
+        if start_mark in line:
+            splitter_found = True
+        elif splitter_found:
+            yield line.split()
+
+
 class ResultChecker(object):
     def __init__(self, result=None):
         self.result = result
