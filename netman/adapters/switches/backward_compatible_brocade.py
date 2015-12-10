@@ -18,8 +18,8 @@ import re
 
 
 class BackwardCompatibleBrocade(Brocade):
-    def __init__(self, switch_descriptor):
-        super(BackwardCompatibleBrocade, self).__init__(switch_descriptor)
+    def __init__(self, switch_descriptor, shell_factory):
+        super(BackwardCompatibleBrocade, self).__init__(switch_descriptor, shell_factory)
 
         self.logger = logging.getLogger(
             "{module}.{hostname}".format(module=Brocade.__module__,

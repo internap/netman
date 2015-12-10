@@ -11,13 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from netman.adapters.shell.ssh import SshClient
+from netman.adapters.shell.telnet import TelnetClient
 
 from netman.adapters.switches.backward_compatible_brocade import BackwardCompatibleBrocade
 from netman.core.objects.switch_transactional import SwitchTransactional
 
 
-def brocade_factory(switch_descriptor, lock):
+def brocade_factory_ssh(switch_descriptor, lock):
     return SwitchTransactional(
-        impl=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor),
+        impl=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=SshClient),
+        lock=lock
+    )
+
+def brocade_factory_telnet(switch_descriptor, lock):
+    return SwitchTransactional(
+        impl=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
         lock=lock
     )

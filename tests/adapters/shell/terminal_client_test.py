@@ -26,7 +26,8 @@ from netman.adapters.shell.telnet import TelnetClient
 from netman.core.objects.exceptions import CouldNotConnect, CommandTimeout, ConnectTimeout
 from tests.adapters.shell.mock_telnet import MockTelnet
 from tests.adapters.shell.mock_terminal_commands import passwd_change_protocol_prompt, passwd_write_password_to_transport, \
-    HangingCommand, MultiAsyncWriteCommand, SkippingLineCommand, exit_command_success, KeystrokeAnsweredCommand
+    HangingCommand, MultiAsyncWriteCommand, SkippingLineCommand, exit_command_success, KeystrokeAnsweredCommand, \
+    AmbiguousCommand
 
 command_passwd = MockSSH.PromptingCommand(
     name='passwd',
@@ -53,9 +54,12 @@ command_exit = MockSSH.ArgumentValidatingCommand('exit',
 
 command_question = KeystrokeAnsweredCommand('keystroke')
 
+abiguous_command = AmbiguousCommand('ambiguous')
+
 commands = [command_passwd, command_hello, command_hang, command_flush,
-            command_skips, command_exit, command_question]
+            command_skips, command_exit, command_question, abiguous_command]
 users = {'admin': '1234'}
+
 
 class TerminalClientTest(unittest.TestCase):
     __test__ = False
@@ -173,6 +177,13 @@ class TerminalClientTest(unittest.TestCase):
             K pressed
             hostname>""")))
 
+    def test_support_regex(self):
+        client = self.client("127.0.0.1", "admin", "1234", port=self.port)
+        res = client.do('ambiguous', wait_for=('>', '#'))
+        client.quit('exit')
+
+        assert_that(res, equal_to(['working -> done!']))
+
 
 class SshClientTest(TerminalClientTest):
     __test__ = True
@@ -195,6 +206,7 @@ class SwitchTelnetFactory(Factory):
 
     def protocol(self):
         return MockTelnet(prompt=self.prompt, commands=self.commands)
+
 
 def telnet_hook_to_reactor(reactor):
     reactor.listenTCP(interface="127.0.0.1", port=TelnetClientTest.port, factory=SwitchTelnetFactory("hostname>", commands))

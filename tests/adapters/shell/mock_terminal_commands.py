@@ -32,6 +32,19 @@ class HangingCommand(SSHCommand):
         self.write("Done!\n")
         self.exit()
 
+class AmbiguousCommand(SSHCommand):
+    def __init__(self, name, *args):
+        self.name = name
+        self.protocol = None  # set in __call__
+
+    def __call__(self, protocol, *args):
+        SSHCommand.__init__(self, protocol, self.name, *args)
+        return self
+
+    def start(self):
+        self.write("working -> done!\n")
+        self.exit()
+
 
 class MultiAsyncWriteCommand(SSHCommand):
     def __init__(self, name, count, interval, *args):

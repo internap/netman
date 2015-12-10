@@ -59,6 +59,23 @@ available_models = [
         ]
     },
     {
+        "model": "brocade_telnet",
+        "hostname": "127.0.0.1",
+        "port": 11012,
+        "username": "root",
+        "password": "root",
+        "test_port_name": "ethernet 1/3",
+        "test_vrrp_track_id": "ethernet 1/1",
+        "core_class": BrocadeSwitchCore,
+        "service_class": SwitchTelnetService,
+        "ports": [
+            Port("ethernet 1/1"),
+            Port("ethernet 1/2"),
+            Port("ethernet 1/3"),
+            Port("ethernet 1/4")
+        ]
+    },
+    {
         "model": "juniper",
         "hostname": "127.0.0.1",
         "port": 11004,
