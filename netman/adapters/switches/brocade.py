@@ -34,26 +34,27 @@ from netman.core.objects.vrrp_group import VrrpGroup
 
 
 class Brocade(SwitchBase):
-    def __init__(self, switch_descriptor):
+    def __init__(self, switch_descriptor, shell_factory):
         super(Brocade, self).__init__(switch_descriptor)
-        self.ssh = None
+        self.shell_factory = shell_factory
+        self.shell = None
 
     def connect(self):
-        self.ssh = ssh.SshClient(
+        self.shell = self.shell_factory(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
             port=self.switch_descriptor.port or 22
         )
-        if self.ssh.get_current_prompt().endswith(">"):
-            self.ssh.do("enable", wait_for=":")
-            self.ssh.do(self.switch_descriptor.password)
+        if self.shell.get_current_prompt().endswith(">"):
+            self.shell.do("enable", wait_for=":")
+            self.shell.do(self.switch_descriptor.password)
 
-        self.ssh.do("skip-page-display")
+        self.shell.do("skip-page-display")
 
     def disconnect(self):
-        self.ssh.quit("exit")
-        self.logger.info(self.ssh.full_log)
+        self.shell.quit("exit")
+        self.logger.info(self.shell.full_log)
 
     def end_transaction(self):
         pass
@@ -62,7 +63,7 @@ class Brocade(SwitchBase):
         pass
 
     def commit_transaction(self):
-        self.ssh.do("write memory")
+        self.shell.do("write memory")
 
     def rollback_transaction(self):
         pass
@@ -81,19 +82,19 @@ class Brocade(SwitchBase):
             raise VlanAlreadyExist(number)
 
         with self.config():
-            result = self.ssh.do('vlan {}{}'.format(number, " name {}".format(name) if name else ""))
+            result = self.shell.do('vlan {}{}'.format(number, " name {}".format(name) if name else ""))
             if len(result) > 0:
                 if result[0].startswith("Error:"):
                     raise BadVlanNumber()
                 else:
                     raise BadVlanName()
             else:
-                self.ssh.do('exit')
+                self.shell.do('exit')
 
     def get_interfaces(self):
         interfaces = []
         interface_vlans = {}
-        for if_data in split_on_dedent(self.ssh.do("show interfaces")):
+        for if_data in split_on_dedent(self.shell.do("show interfaces")):
             if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
                 i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
                 for line in if_data:
@@ -105,7 +106,7 @@ class Brocade(SwitchBase):
                     "tagged": []
                 }
 
-        for vlan_data in split_on_bang(self.ssh.do("show running-config vlan")):
+        for vlan_data in split_on_bang(self.shell.do("show running-config vlan")):
             if regex.match("^vlan (\d*)", vlan_data[0]):
                 vlan_id = int(regex[0])
                 for line in vlan_data:
@@ -132,7 +133,7 @@ class Brocade(SwitchBase):
         self._get_vlan(vlan)
 
         with self.config(), self.vlan(vlan):
-            result = self.ssh.do("tagged {}".format(interface_id))
+            result = self.shell.do("tagged {}".format(interface_id))
             if result:
                 raise UnknownInterface(interface_id)
 
@@ -140,7 +141,7 @@ class Brocade(SwitchBase):
         self._get_vlan(vlan)
 
         with self.config(), self.vlan(vlan):
-            result = self.ssh.do("untagged {}".format(interface_id))
+            result = self.shell.do("untagged {}".format(interface_id))
             if result:
                 raise UnknownInterface(interface_id)
 
@@ -149,14 +150,14 @@ class Brocade(SwitchBase):
 
     def openup_interface(self, interface_id):
         with self.config(), self.interface(interface_id):
-            self.ssh.do("enable")
+            self.shell.do("enable")
 
     def shutdown_interface(self, interface_id):
         with self.config(), self.interface(interface_id):
-            self.ssh.do("disable")
+            self.shell.do("disable")
 
     def remove_access_vlan(self, interface_id):
-        content = self.ssh.do("show vlan brief | include {}"
+        content = self.shell.do("show vlan brief | include {}"
                               .format(_to_short_name(interface_id)))
         if len(content) == 0:
             raise UnknownInterface(interface_id)
@@ -165,7 +166,7 @@ class Brocade(SwitchBase):
         matches = re.compile("^(\d+).*").match(content[0])
 
         with self.config(), self.vlan(int(matches.groups()[0])):
-            self.ssh.do("no untagged {}".format(interface_id))
+            self.shell.do("no untagged {}".format(interface_id))
 
     def remove_native_vlan(self, interface_id):
         return self.remove_access_vlan(interface_id)
@@ -182,10 +183,10 @@ class Brocade(SwitchBase):
         self._get_vlan(number)
 
         with self.config():
-            self.ssh.do("no vlan {}".format(number))
+            self.shell.do("no vlan {}".format(number))
 
     def set_access_mode(self, interface_id):
-        result = self.ssh.do("show vlan {}".format(interface_id))
+        result = self.shell.do("show vlan {}".format(interface_id))
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
@@ -199,12 +200,12 @@ class Brocade(SwitchBase):
         if len(operations) > 0 and not (len(operations) == 1 and operations[0][1] == "untagged"):
             with self.config():
                 for operation in operations:
-                    self.ssh.do("vlan {}".format(operation[0]))
-                    self.ssh.do("no {} {}".format(operation[1], interface_id))
-                self.ssh.do("exit")
+                    self.shell.do("vlan {}".format(operation[0]))
+                    self.shell.do("no {} {}".format(operation[1], interface_id))
+                self.shell.do("exit")
 
     def set_trunk_mode(self, interface_id):
-        result = self.ssh.do("show vlan {}".format(interface_id))
+        result = self.shell.do("show vlan {}".format(interface_id))
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
@@ -217,7 +218,7 @@ class Brocade(SwitchBase):
 
         with self.config(), self.interface_vlan(vlan):
             ip_is_in_an_existing_network = any(ip_network in existing_ip for existing_ip in vlan.ips)
-            result = self.ssh.do("ip address {}{}".format(ip_network, " secondary" if ip_is_in_an_existing_network else ""))
+            result = self.shell.do("ip address {}{}".format(ip_network, " secondary" if ip_is_in_an_existing_network else ""))
             if len(result) > 0:
                 raise IPNotAvailable(ip_network)
 
@@ -235,22 +236,22 @@ class Brocade(SwitchBase):
                 for ip in vlan.ips:
                     if ip.is_secondary and ip in existing_ip:
                         on_hold.append(ip)
-                        self.ssh.do("no ip address {}".format(ip))
+                        self.shell.do("no ip address {}".format(ip))
 
-            self.ssh.do("no ip address {}".format(existing_ip))
+            self.shell.do("no ip address {}".format(existing_ip))
 
             if len(on_hold) > 0:
-                self.ssh.do("ip address {}".format(on_hold[0]))
+                self.shell.do("ip address {}".format(on_hold[0]))
                 for ip in on_hold[1:]:
-                    self.ssh.do("ip address {} secondary".format(ip))
+                    self.shell.do("ip address {} secondary".format(ip))
 
     def set_vlan_access_group(self, vlan_number, direction, name):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
         with self.config(), self.interface_vlan(vlan):
             if vlan.access_groups[direction] is not None:
-                self.ssh.do("no ip access-group {} {}".format(vlan.access_groups[direction], {IN: 'in', OUT: 'out'}[direction]))
-            result = self.ssh.do("ip access-group {} {}".format(name, {IN: 'in', OUT: 'out'}[direction]))
+                self.shell.do("no ip access-group {} {}".format(vlan.access_groups[direction], {IN: 'in', OUT: 'out'}[direction]))
+            result = self.shell.do("ip access-group {} {}".format(name, {IN: 'in', OUT: 'out'}[direction]))
             if len(result) > 0 and not result[0].startswith("Warning:"):
                 raise ValueError("Access group name \"{}\" is invalid".format(name))
 
@@ -261,12 +262,12 @@ class Brocade(SwitchBase):
             raise UnknownAccessGroup(direction)
         else:
             with self.config(), self.interface_vlan(vlan):
-                self.ssh.do("no ip access-group {} {}".format(vlan.access_groups[direction], {IN: 'in', OUT: 'out'}[direction]))
+                self.shell.do("no ip access-group {} {}".format(vlan.access_groups[direction], {IN: 'in', OUT: 'out'}[direction]))
 
     def set_vlan_vrf(self, vlan_number, vrf_name):
         vlan = self._get_vlan(vlan_number)
         with self.config(), self.interface_vlan(vlan):
-            result = self.ssh.do("vrf forwarding {}".format(vrf_name))
+            result = self.shell.do("vrf forwarding {}".format(vrf_name))
             if regex.match("^Error.*", result[0]):
                 raise UnknownVrf(vrf_name)
 
@@ -276,25 +277,25 @@ class Brocade(SwitchBase):
             raise VlanVrfNotSet(vlan_number)
         else:
             with self.config(), self.interface_vlan(vlan):
-                self.ssh.do("no vrf forwarding {}".format(vlan.vrf_forwarding))
+                self.shell.do("no vrf forwarding {}".format(vlan.vrf_forwarding))
 
     def config(self):
-        return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')
+        return SubShell(self.shell, enter="configure terminal", exit_cmd='exit')
 
     def vlan(self, vlan_number):
-        return SubShell(self.ssh, enter="vlan {}".format(vlan_number), exit_cmd='exit')
+        return SubShell(self.shell, enter="vlan {}".format(vlan_number), exit_cmd='exit')
 
     def interface(self, interface_id):
-        return SubShell(self.ssh, enter="interface {}".format(interface_id), exit_cmd='exit',
+        return SubShell(self.shell, enter="interface {}".format(interface_id), exit_cmd='exit',
                         validate=no_output(UnknownInterface, interface_id))
 
     def interface_vlan(self, vlan):
         if vlan.vlan_interface_name is None:
-            self.ssh.do("vlan {}".format(vlan.number))
-            self.ssh.do("router-interface ve {}".format(vlan.number))
+            self.shell.do("vlan {}".format(vlan.number))
+            self.shell.do("router-interface ve {}".format(vlan.number))
             vlan.vlan_interface_name = str(vlan.number)
 
-        return SubShell(self.ssh, enter=["interface ve {}".format(vlan.vlan_interface_name), "enable"], exit_cmd='exit')
+        return SubShell(self.shell, enter=["interface ve {}".format(vlan.vlan_interface_name), "enable"], exit_cmd='exit')
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
                        track_id=None, track_decrement=None):
@@ -312,9 +313,9 @@ class Brocade(SwitchBase):
             self.set("ip vrrp-extended vrid {}".format(group_id)).on_any_result(BadVrrpGroupNumber, 1, 255)
             try:
                 self.set_vrrp_properties(ips, priority, track_decrement, track_id, dead_interval, hello_interval)
-                self.ssh.do('activate')
+                self.shell.do('activate')
             except:
-                self.ssh.do('exit')
+                self.shell.do('exit')
                 raise
 
     def set_vrrp_properties(self, ips, priority, track_decrement, track_id, dead_interval, hello_interval):
@@ -328,7 +329,7 @@ class Brocade(SwitchBase):
 
         self.set('hello-interval {}', hello_interval).on_any_result(BadVrrpTimers)
         self.set('dead-interval {}', dead_interval).on_any_result(BadVrrpTimers)
-        self.ssh.do('advertise backup')
+        self.shell.do('advertise backup')
         self.set('track-port {}', track_id).on_any_result(BadVrrpTracking)
 
     def remove_vrrp_group(self, vlan_number, group_id):
@@ -338,16 +339,16 @@ class Brocade(SwitchBase):
             raise VrrpDoesNotExistForVlan(vlan=vlan_number, vrrp_group_id=group_id)
 
         with self.config(), self.interface_vlan(vlan):
-            result = self.ssh.do('no ip vrrp-extended vrid {group_id}'.format(group_id=group_id))
+            result = self.shell.do('no ip vrrp-extended vrid {group_id}'.format(group_id=group_id))
             if len(result) > 0:
                 raise VrrpDoesNotExistForVlan(vlan=vlan_number, vrrp_group_id=group_id)
             if len(vlan.vrrp_groups) == 1:
-                self.ssh.do('ip vrrp-extended auth-type no-auth')
+                self.shell.do('ip vrrp-extended auth-type no-auth')
 
     def add_vif_data_to_vlans(self, vlans):
         vlans_interface_name_dict = {vlan.vlan_interface_name: vlan for vlan in vlans if vlan.vlan_interface_name}
 
-        for int_vlan_data in split_on_bang(self.ssh.do("show running-config interface")):
+        for int_vlan_data in split_on_bang(self.shell.do("show running-config interface")):
             if regex.match("^interface ve (\d+)", int_vlan_data[0]):
                 current_vlan = vlans_interface_name_dict.get(regex[0])
                 if current_vlan:
@@ -360,7 +361,7 @@ class Brocade(SwitchBase):
             raise DhcpRelayServerAlreadyExists(vlan_number=vlan_number, ip_address=ip_address)
 
         with self.config(), self.interface_vlan(vlan):
-            self.ssh.do("ip helper-address {}".format(ip_address))
+            self.shell.do("ip helper-address {}".format(ip_address))
 
     def remove_dhcp_relay_server(self, vlan_number, ip_address):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
@@ -369,19 +370,19 @@ class Brocade(SwitchBase):
             raise UnknownDhcpRelayServer(vlan_number=vlan_number, ip_address=ip_address)
 
         with self.config(), self.interface_vlan(vlan):
-            self.ssh.do("no ip helper-address {}".format(ip_address))
+            self.shell.do("no ip helper-address {}".format(ip_address))
 
     def set(self, command, *arguments):
         result = None
         if all([a is not None for a in arguments]):
-            result = self.ssh.do(command.format(*arguments))
+            result = self.shell.do(command.format(*arguments))
 
         return ResultChecker(result)
 
     def _list_vlans(self):
         vlans = []
 
-        for vlan_data in split_on_bang(self.ssh.do("show running-config vlan | begin vlan")):
+        for vlan_data in split_on_bang(self.shell.do("show running-config vlan | begin vlan")):
             vlans.append(parse_vlan(vlan_data))
 
         return vlans
@@ -398,12 +399,12 @@ class Brocade(SwitchBase):
             elif regex.match(".*Associated Virtual Interface Id: (\d+).*", line):
                 vlan.vlan_interface_name = regex[0]
                 if include_vif_data:
-                    add_interface_vlan_data(vlan, self.ssh.do("show running-config interface ve {}".format(regex[0])))
+                    add_interface_vlan_data(vlan, self.shell.do("show running-config interface ve {}".format(regex[0])))
 
         return vlan
 
     def _show_vlan(self, vlan_number):
-        return self.ssh.do("show vlan {}".format(vlan_number))
+        return self.shell.do("show vlan {}".format(vlan_number))
 
 
 def parse_vlan(vlan_data):

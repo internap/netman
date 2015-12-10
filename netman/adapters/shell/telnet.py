@@ -63,7 +63,7 @@ class TelnetClient(TerminalClient):
         expect = wait_for or self.prompt
         if isinstance(expect, basestring):
             expect = [expect]
-        expect = [re.escape(s) for s in list(expect)]
+        expect = ["{}$".format(re.escape(s)) for s in list(expect)]
 
         result = self._wait_for(expect)
         self.full_log += result
