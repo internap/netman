@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/internaphosting/netman.svg?branch=master)](https://travis-ci.org/internaphosting/netman)
+[![Build Status](https://travis-ci.org/internap/netman.svg?branch=master)](https://travis-ci.org/internap/netman)
 [![Documentation Status](https://readthedocs.org/projects/netman/badge/?version=latest)](http://netman.readthedocs.org/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/netman.svg)](http://badge.fury.io/py/netman)
 
