@@ -33,7 +33,7 @@ class TelnetClient(TerminalClient):
         self._login(username, password)
 
     def do(self, command, wait_for=None, include_last_line=False):
-        self.telnet.write(str(command) + "\n")
+        self.telnet.write(str(command) + "\r\n")
         result = self._read_until(wait_for)
 
         return _filter_input_and_empty_lines(command, include_last_line, result)
@@ -45,16 +45,16 @@ class TelnetClient(TerminalClient):
         return _filter_input_and_empty_lines(key, include_last_line, result)
 
     def quit(self, command):
-        self.telnet.write(command + "\n")
+        self.telnet.write(command + "\r\n")
 
     def get_current_prompt(self):
         return self.full_log.splitlines()[-1]
 
     def _login(self, username, password):
         self.telnet.read_until(":", self.command_timeout)
-        self.telnet.write(str(username) + "\n")
+        self.telnet.write(str(username) + "\r\n")
         self.telnet.read_until(":", self.command_timeout)
-        self.telnet.write(str(password) + "\n")
+        self.telnet.write(str(password) + "\r\n")
 
         result = self._wait_for(list(self.prompt))
         self.full_log += result[len(password):].lstrip()
