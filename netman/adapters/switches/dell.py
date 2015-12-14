@@ -52,12 +52,16 @@ class Dell(SwitchBase):
         self.shell_factory = shell_factory
 
     def connect(self):
-        self.shell = self.shell_factory(
+        params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
-            port=self.switch_descriptor.port or 22
         )
+
+        if self.switch_descriptor.port:
+            params["port"] = self.switch_descriptor.port
+
+        self.shell = self.shell_factory(**params)
 
         self.shell.do("enable", wait_for=":")
         self.shell.do(self.switch_descriptor.password)

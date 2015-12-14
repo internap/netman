@@ -40,12 +40,16 @@ class Brocade(SwitchBase):
         self.shell = None
 
     def connect(self):
-        self.shell = self.shell_factory(
+        shell_params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
-            port=self.switch_descriptor.port or 22
         )
+        if self.switch_descriptor.port:
+            shell_params["port"] = self.switch_descriptor.port
+
+        self.shell = self.shell_factory(**shell_params)
+
         if self.shell.get_current_prompt().endswith(">"):
             self.shell.do("enable", wait_for=":")
             self.shell.do(self.switch_descriptor.password)

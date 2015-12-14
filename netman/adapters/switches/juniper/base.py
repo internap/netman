@@ -41,15 +41,19 @@ class Juniper(SwitchBase):
         self.in_transaction = False
 
     def connect(self):
-        self.netconf = manager.connect(
+        params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
             hostkey_verify=False,
             device_params={'name': 'junos'},
-            port=self.switch_descriptor.port or 830,
             timeout=self.timeout
         )
+
+        if self.switch_descriptor.port:
+            params["port"] = self.switch_descriptor.port
+
+        self.netconf = manager.connect(**params)
 
     def disconnect(self):
         try:

@@ -1970,7 +1970,8 @@ class CiscoTest(unittest.TestCase):
 
     @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_connect(self, ssh_client_class_mock):
-        self.switch = Cisco(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="cisco"))
+        self.switch = Cisco(SwitchDescriptor(
+            hostname="my.hostname", username="the_user", password="the_password", model="cisco", port=22))
 
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
@@ -1987,6 +1988,26 @@ class CiscoTest(unittest.TestCase):
             username="the_user",
             password="the_password",
             port=22
+        )
+
+    @mock.patch("netman.adapters.shell.ssh.SshClient")
+    def test_connect_without_port_uses_default(self, ssh_client_class_mock):
+        self.switch = Cisco(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="cisco"))
+
+        self.mocked_ssh_client = flexmock()
+        ssh_client_class_mock.return_value = self.mocked_ssh_client
+        self.mocked_ssh_client.should_receive("get_current_prompt").and_return("hostname>").once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=": ").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("terminal length 0").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("terminal width 0").and_return([]).once().ordered()
+
+        self.switch.connect()
+
+        ssh_client_class_mock.assert_called_with(
+            host="my.hostname",
+            username="the_user",
+            password="the_password"
         )
 
     @mock.patch("netman.adapters.shell.ssh.SshClient")
