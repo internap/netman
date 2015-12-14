@@ -75,7 +75,7 @@ class DellTest(unittest.TestCase):
     @mock.patch("netman.adapters.shell.ssh.SshClient")
     def test_connect(self, ssh_client_class_mock):
         self.switch = Dell(
-            SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="dell"),
+            SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="dell", port=22),
             shell_factory=ssh_client_class_mock)
 
         self.mocked_ssh_client = flexmock()
@@ -90,6 +90,25 @@ class DellTest(unittest.TestCase):
             username="the_user",
             password="the_password",
             port=22
+        )
+
+    @mock.patch("netman.adapters.shell.telnet.TelnetClient")
+    def test_connect_without_port_uses_default(self, telnet_client_class_mock):
+        self.switch = Dell(
+            SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="dell"),
+            shell_factory=telnet_client_class_mock)
+
+        self.mocked_ssh_client = flexmock()
+        telnet_client_class_mock.return_value = self.mocked_ssh_client
+        self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=":").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+
+        self.switch.connect()
+
+        telnet_client_class_mock.assert_called_with(
+            host="my.hostname",
+            username="the_user",
+            password="the_password"
         )
 
     def test_disconnect(self):

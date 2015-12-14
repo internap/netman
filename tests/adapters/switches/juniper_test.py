@@ -4730,6 +4730,25 @@ class JuniperTest(unittest.TestCase):
             timeout=120
         )
 
+    @mock.patch("ncclient.manager.connect")
+    def test_connect_without_port_uses_default(self, connect_mock):
+        connect_mock.return_value = self.netconf_mock
+
+        self.switch = Juniper(
+            SwitchDescriptor(model='juniper', hostname="toto", username="tutu", password="titi"),
+            custom_strategies=JuniperCustomStrategies(), timeout=120)
+
+        self.switch.connect()
+
+        connect_mock.assert_called_with(
+            host="toto",
+            username="tutu",
+            password="titi",
+            hostkey_verify=False,
+            device_params={'name':'junos'},
+            timeout=120
+        )
+
     def test_disconnect(self):
         self.netconf_mock.should_receive("close_session").once().ordered()
 

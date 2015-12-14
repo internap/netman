@@ -2050,7 +2050,8 @@ class BrocadeTest(unittest.TestCase):
 
     @mock.patch("netman.adapters.switches.SshClient")
     def test_connect(self, ssh_client_class_mock):
-        self.switch = brocade_factory_ssh(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade"), mock.Mock())
+        self.switch = brocade_factory_ssh(SwitchDescriptor(
+            hostname="my.hostname", username="the_user", password="the_password", model="brocade", port=22), mock.Mock())
 
         self.shell_mock = flexmock()
         ssh_client_class_mock.return_value = self.shell_mock
@@ -2066,6 +2067,26 @@ class BrocadeTest(unittest.TestCase):
             username="the_user",
             password="the_password",
             port=22
+        )
+
+    @mock.patch("netman.adapters.switches.TelnetClient")
+    def test_connect_without_port_uses_default(self, telnet_client_class_mock):
+        self.switch = brocade_factory_telnet(SwitchDescriptor(
+            hostname="my.hostname", username="the_user", password="the_password", model="brocade"), mock.Mock())
+
+        self.shell_mock = flexmock()
+        telnet_client_class_mock.return_value = self.shell_mock
+        self.shell_mock.should_receive("get_current_prompt").and_return("hostname>").once().ordered()
+        self.shell_mock.should_receive("do").with_args("enable", wait_for=":").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("skip-page-display").and_return([]).once().ordered()
+
+        self.switch.connect()
+
+        telnet_client_class_mock.assert_called_with(
+            host="my.hostname",
+            username="the_user",
+            password="the_password"
         )
 
     @mock.patch("netman.adapters.switches.SshClient")

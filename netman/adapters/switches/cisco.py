@@ -47,12 +47,16 @@ class Cisco(SwitchBase):
         self.ssh = None
 
     def connect(self):
-        self.ssh = ssh.SshClient(
+        params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
             password=self.switch_descriptor.password,
-            port=self.switch_descriptor.port or 22
         )
+        if self.switch_descriptor.port:
+            params["port"] = self.switch_descriptor.port
+
+        self.ssh = ssh.SshClient(**params)
+
         if self.ssh.get_current_prompt().endswith(">"):
             self.ssh.do("enable", wait_for=": ")
             self.ssh.do(self.switch_descriptor.password)
