@@ -402,6 +402,13 @@ class Cisco(SwitchBase):
             if len(result) > 0:
                 raise VrrpDoesNotExistForVlan(vlan=vlan_number, vrrp_group_id=group_id)
 
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        with self.config(), self.interface_vlan(vlan_number):
+            if state:
+                self.ssh.do('ip redirects')
+            else:
+                self.ssh.do('no ip redirects')
+
 
 def parse_interface(data):
     if data and (regex.match("interface (\w*Ethernet[^\s]*)", data[0])
@@ -471,6 +478,9 @@ def apply_interface_running_config_data(vlan, data):
 
         elif regex.match("^ ip helper-address ([^\s]*)", line):
             vlan.dhcp_relay_servers.append(IPAddress(regex[0]))
+
+        elif regex.match("^ no ip redirects", line):
+            vlan.icmp_redirects = False
 
 
 def apply_vlan_running_config_data(vlan, data):

@@ -31,6 +31,7 @@ def to_api(vlan):
             "out": vlan.access_groups[OUT]
         },
         dhcp_relay_servers=[str(server) for server in vlan.dhcp_relay_servers],
+        icmp_redirects=vlan.icmp_redirects,
     )
 
 
@@ -45,5 +46,5 @@ def to_core(serialized):
         ips=[IPNetwork('{address}/{mask}'.format(**ip)) for ip in ips],
         vrrp_groups=[vrrp_group.to_core(group) for group in vrrp_groups],
         dhcp_relay_servers=[IPAddress(i) for i in dhcp_relay_servers],
-        ** serialized
+        **serialized
     )

@@ -59,12 +59,14 @@ class SwitchApiTest(BaseApiTest):
                      VrrpGroup(id=1, ips=[IPAddress('2.2.2.2')], priority=100),
                      VrrpGroup(id=2, ips=[IPAddress('3.3.3.1')], priority=100)
                  ],
-                 dhcp_relay_servers=[IPAddress("10.10.10.1")]),
+                 dhcp_relay_servers=[IPAddress("10.10.10.1")],
+                 icmp_redirects=True),
             Vlan(1, "One", [IPNetwork('1.1.1.1/24')], vrf_forwarding="MY_VRF", access_group_in="Blah_blah",
                  vrrp_groups=[
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
                                track_id='101', track_decrement=50)
-                 ]),
+                 ],
+                 icmp_redirects=False),
         ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -81,7 +83,8 @@ class SwitchApiTest(BaseApiTest):
                  vrrp_groups=[
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
                                track_id='101', track_decrement=50)
-                 ]),
+                 ],
+                 icmp_redirects=False),
         ).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -410,6 +413,37 @@ class SwitchApiTest(BaseApiTest):
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown")
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unreadable content "". Should be either "true" or "false"'}))
+
+    def test_enable_icmp_redirects(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_vlan_icmp_redirects_state').with_args(2500, True).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/vlans/2500/icmp-redirects", raw_data='true')
+
+        assert_that(code, equal_to(204))
+
+    def test_disable_icmp_redirects(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_vlan_icmp_redirects_state').with_args(2500, False).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/vlans/2500/icmp-redirects", raw_data='false')
+
+        assert_that(code, equal_to(204))
+
+    def test_icmp_redirects_invalid_argument(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
+        self.switch_mock.should_receive('connect').never()
+        self.switch_mock.should_receive('set_vlan_icmp_redirects_state').never()
+        self.switch_mock.should_receive('disconnect').never()
+
+        result, code = self.put("/switches/my.switch/vlans/2500/icmp-redirects", raw_data='invalid')
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Unreadable content "invalid". Should be either "true" or "false"'}))
 
     def test_set_access_vlan(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()

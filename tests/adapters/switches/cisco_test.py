@@ -2450,3 +2450,33 @@ class CiscoTest(unittest.TestCase):
             self.switch.remove_dhcp_relay_server(1234, IPAddress('10.10.10.1'))
 
         assert_that(str(expect.exception), equal_to("DHCP relay server 10.10.10.1 not found on VLAN 1234"))
+
+    def test_set_vlan_icmp_redirects_state_enable(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("ip redirects").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.set_vlan_icmp_redirects_state(1234, True)
+
+    def test_set_vlan_icmp_redirects_state_disable(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no ip redirects").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.set_vlan_icmp_redirects_state(1234, False)
+
+

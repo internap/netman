@@ -39,6 +39,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrf-forwarding', view_func=self.remove_vlan_vrf, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/dhcp-relay-server', view_func=self.add_dhcp_relay_server, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/dhcp-relay-server/<ip_network>', view_func=self.remove_dhcp_relay_server, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/icmp-redirects', view_func=self.set_vlan_icmp_redirects_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces', view_func=self.get_interfaces, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/shutdown', view_func=self.set_shutdown_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/port-mode', view_func=self.set_port_mode, methods=['PUT'])
@@ -804,5 +805,22 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.enable_lldp(interface_id, state)
+
+        return 204, None
+
+    @to_response
+    @content(is_boolean)
+    @resource(Switch, Vlan)
+    def set_vlan_icmp_redirects_state(self, switch, vlan_number, state):
+        """
+        Sets the ICMP redirects state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        :body:
+            ``true`` or ``false``
+        """
+
+        switch.set_vlan_icmp_redirects_state(vlan_number, state)
 
         return 204, None

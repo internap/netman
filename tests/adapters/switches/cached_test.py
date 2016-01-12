@@ -727,3 +727,17 @@ class CacheSwitchTest(unittest.TestCase):
             .with_args('xe-1/0/2', True)
 
         self.switch.enable_lldp('xe-1/0/2', True)
+
+    def test_set_vlan_icmp_redirects_state(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(2)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive('set_vlan_icmp_redirects_state').once() \
+            .with_args(2, False)
+
+        self.switch.set_vlan_icmp_redirects_state(2, False)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(2, icmp_redirects=False)]))

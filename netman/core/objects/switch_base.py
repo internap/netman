@@ -57,6 +57,7 @@ class SwitchOperations(object):
     def set_access_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_access_vlan
     def remove_access_vlan(self, interface_id):
         raise NotImplementedError()
 
@@ -72,15 +73,19 @@ class SwitchOperations(object):
     def remove_trunk_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called set_interface_state
     def shutdown_interface(self, interface_id):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be part of set_interface_state
     def openup_interface(self, interface_id):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called set_native_vlan
     def configure_native_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_native_vlan
     def remove_native_vlan(self, interface_id):
         raise NotImplementedError()
 
@@ -93,21 +98,25 @@ class SwitchOperations(object):
     def set_vlan_access_group(self, vlan_number, direction, name):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_vlan_access_group
     def remove_vlan_access_group(self, vlan_number, direction):
         raise NotImplementedError()
 
     def set_vlan_vrf(self, vlan_number, vrf_name):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_vlan_vrf
     def remove_vlan_vrf(self, vlan_number):
         raise NotImplementedError()
 
     def set_interface_description(self, interface_id, description):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_interface_description
     def remove_interface_description(self, interface_id):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called set_interface_spanning_tree_state
     def edit_interface_spanning_tree(self, interface_id, edge=None):
         raise NotImplementedError()
 
@@ -135,6 +144,7 @@ class SwitchOperations(object):
     def set_bond_description(self, number, description):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_bond_description
     def remove_bond_description(self, number):
         raise NotImplementedError()
 
@@ -150,12 +160,15 @@ class SwitchOperations(object):
     def remove_bond_trunk_vlan(self, number, vlan):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called set_bond_native_vlan
     def configure_bond_native_vlan(self, number, vlan):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called unset_bond_native_vlan
     def remove_bond_native_vlan(self, number):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called set_bond_interface_spanning_tree_state
     def edit_bond_spanning_tree(self, number, edge=None):
         raise NotImplementedError()
 
@@ -172,7 +185,11 @@ class SwitchOperations(object):
     def remove_dhcp_relay_server(self, vlan_number, ip_address):
         raise NotImplementedError()
 
+    # TODO(mmitchell): Should be called set_interface_lldp_state
     def enable_lldp(self, interface_id, enabled):
+        raise NotImplementedError()
+
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
         raise NotImplementedError()
 
 
