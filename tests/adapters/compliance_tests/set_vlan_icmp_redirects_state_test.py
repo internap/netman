@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from hamcrest import assert_that, is_
+from netman.core.objects.exceptions import UnknownVlan
 
 from tests.adapters.configured_test_case import ConfiguredTestCase
 
@@ -23,7 +24,6 @@ class SetVlanIcmpRedirectsStateTest(ConfiguredTestCase):
     def setUp(self):
         super(SetVlanIcmpRedirectsStateTest, self).setUp()
         self.client.add_vlan(1000)
-        self.client.add_vlan(1001)
 
     def test_enables_icmp_redirects_when_given_true(self):
         self.client.set_vlan_icmp_redirects_state(1000, True)
@@ -32,12 +32,15 @@ class SetVlanIcmpRedirectsStateTest(ConfiguredTestCase):
         assert_that(vlan.icmp_redirects, is_(True))
 
     def test_disables_icmp_redirects_when_given_false(self):
-        self.client.set_vlan_icmp_redirects_state(1001, False)
-        vlan = self.get_vlan_from_list(1001)
-        assert_that(vlan.number, is_(1001))
+        self.client.set_vlan_icmp_redirects_state(1000, False)
+        vlan = self.get_vlan_from_list(1000)
+        assert_that(vlan.number, is_(1000))
         assert_that(vlan.icmp_redirects, is_(False))
+
+    def test_raises_UnknownVlan_when_operating_on_a_vlan_that_does_not_exist(self):
+        with self.assertRaises(UnknownVlan):
+            self.client.set_vlan_icmp_redirects_state(2000, False)
 
     def tearDown(self):
         self.janitor.remove_vlan(1000)
-        self.janitor.remove_vlan(1001)
         super(SetVlanIcmpRedirectsStateTest, self).tearDown()

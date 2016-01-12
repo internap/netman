@@ -81,7 +81,7 @@ class Cisco(SwitchBase):
         pass
 
     def get_vlan(self, number):
-        vlan = Vlan(int(number))
+        vlan = Vlan(int(number), icmp_redirects=True)
         apply_vlan_running_config_data(vlan, self._get_vlan_run_conf(number))
         apply_interface_running_config_data(
             vlan,
@@ -100,7 +100,7 @@ class Cisco(SwitchBase):
                 if name == ("VLAN{}".format(number)):
                     name = None
 
-                vlans[number] = Vlan(int(number), name)
+                vlans[number] = Vlan(int(number), name, icmp_redirects=True)
 
         for ip_interface_data in split_on_dedent(self.ssh.do("show ip interface")):
             if regex.match("^Vlan(\d+)\s.*", ip_interface_data[0]):
@@ -403,6 +403,8 @@ class Cisco(SwitchBase):
                 raise VrrpDoesNotExistForVlan(vlan=vlan_number, vrrp_group_id=group_id)
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        self.get_vlan_interface_data(vlan_number)
+
         with self.config(), self.interface_vlan(vlan_number):
             if state:
                 self.ssh.do('ip redirects')

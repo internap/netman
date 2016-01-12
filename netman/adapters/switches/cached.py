@@ -341,7 +341,4 @@ class CachedSwitch(SwitchBase):
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         self.real_switch.set_vlan_icmp_redirects_state(vlan_number, state)
-        try:
-            self.vlans_cache[vlan_number].icmp_redirects = state
-        except ValueError:
-            pass
+        self.vlans_cache[vlan_number].icmp_redirects = state

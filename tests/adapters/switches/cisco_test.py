@@ -162,6 +162,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(v3.access_groups[IN], equal_to(None))
         assert_that(v3.access_groups[OUT], equal_to("GAGA"))
         assert_that(len(v3.ips), equal_to(3))
+        assert_that(v3.icmp_redirects, equal_to(True))
 
         v3.ips = sorted(v3.ips, key=lambda ip: (ip.value, ip.prefixlen))
         assert_that(str(v3.ips[0].ip), equal_to('1.1.1.1'))
@@ -218,6 +219,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.ips, is_(empty()))
         assert_that(vlan.vrrp_groups, is_(empty()))
         assert_that(vlan.dhcp_relay_servers, is_(empty()))
+        assert_that(vlan.icmp_redirects, is_(True))
 
     def test_get_vlan_with_an_empty_interface(self):
         self.command_setup()
@@ -274,6 +276,7 @@ class CiscoTest(unittest.TestCase):
             " standby 1 track 101 decrement 50",
             " ip helper-address 10.10.10.1",
             " ip helper-address 10.10.10.2",
+            " no ip redirects"
             "end"
         ])
 
@@ -285,6 +288,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.access_groups[OUT], is_("ACL-OUT"))
         assert_that(vlan.vrf_forwarding, is_("SHIZZLE"))
         assert_that(vlan.ips, has_length(3))
+        assert_that(vlan.icmp_redirects, is_(False))
 
         vrrp_group = vlan.vrrp_groups[0]
         assert_that(len(vrrp_group.ips), equal_to(3))
@@ -2454,6 +2458,15 @@ class CiscoTest(unittest.TestCase):
     def test_set_vlan_icmp_redirects_state_enable(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "Building configuration...",
+            "Current configuration : 41 bytes",
+            "!",
+            "interface Vlan1234",
+            " no ip address",
+            "end"
+        ])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -2468,6 +2481,15 @@ class CiscoTest(unittest.TestCase):
     def test_set_vlan_icmp_redirects_state_disable(self):
         self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "Building configuration...",
+            "Current configuration : 41 bytes",
+            "!",
+            "interface Vlan1234",
+            " no ip address",
+            "end"
+        ])
+
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -2479,4 +2501,42 @@ class CiscoTest(unittest.TestCase):
 
         self.switch.set_vlan_icmp_redirects_state(1234, False)
 
+    def test_set_vlan_icmp_redirects_state_without_interface_creates_it(self):
+        self.command_setup()
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "                                  ^",
+            "% Invalid input detected at '^' marker.",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1234 | begin vlan").once().ordered().and_return([
+            "vlan 1234",
+            "end",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no ip redirects").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.set_vlan_icmp_redirects_state(1234, False)
+
+    def test_set_vlan_icmp_redirects_state_unknown_vlan(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "                                  ^",
+            "% Invalid input detected at '^' marker.",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1234 | begin vlan").once().ordered().and_return([
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.set_vlan_icmp_redirects_state(1234, False)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))

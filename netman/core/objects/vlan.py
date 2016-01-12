@@ -26,7 +26,4 @@ class Vlan(Model):
         self.ips = ips or []
         self.vrrp_groups = vrrp_groups or []
         self.dhcp_relay_servers = dhcp_relay_servers or []
-        if icmp_redirects is not None:
-            self.icmp_redirects = icmp_redirects
-        else:
-            self.icmp_redirects = True
+        self.icmp_redirects = icmp_redirects
