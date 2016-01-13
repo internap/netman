@@ -214,7 +214,7 @@ class Brocade(SwitchBase):
             raise UnknownInterface(interface_id)
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
-        vlan = self._get_vlan(vlan_number)
+        vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
         with self.config(), self.interface_vlan(vlan):
             if state:

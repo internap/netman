@@ -80,14 +80,17 @@ class BrocadeTest(unittest.TestCase):
         self.command_setup()
 
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
-            vlan_display(1234)
+            vlan_with_vif_display(1234, 999, name="Shizzle")
         )
+        self.shell_mock.should_receive("do").with_args("show running-config interface ve 999").once().ordered().and_return([
+            "interface ve 999",
+            "!",
+        ])
+
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
-        self.shell_mock.should_receive("do").with_args("vlan 1234").and_return([]).once().ordered()
-        self.shell_mock.should_receive("do").with_args("router-interface ve 1234").and_return([]).once().ordered()
-        self.shell_mock.should_receive("do").with_args("interface ve 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("interface ve 999").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
-        self.shell_mock.should_receive("do").with_args("ip redirect")
+        self.shell_mock.should_receive("do").with_args("ip redirect").once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice()
         self.shell_mock.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
@@ -97,18 +100,52 @@ class BrocadeTest(unittest.TestCase):
         self.command_setup()
 
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
-            vlan_display(1234)
+            vlan_with_vif_display(1234, 999, name="Shizzle")
         )
+        self.shell_mock.should_receive("do").with_args("show running-config interface ve 999").once().ordered().and_return([
+            "interface ve 999",
+            "!",
+        ])
+
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
-        self.shell_mock.should_receive("do").with_args("vlan 1234").and_return([]).once().ordered()
-        self.shell_mock.should_receive("do").with_args("router-interface ve 1234").and_return([]).once().ordered()
-        self.shell_mock.should_receive("do").with_args("interface ve 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("interface ve 999").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
-        self.shell_mock.should_receive("do").with_args("no ip redirect")
+        self.shell_mock.should_receive("do").with_args("no ip redirect").once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice()
         self.shell_mock.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_icmp_redirects_state(1234, False)
+
+    def test_set_vlan_icmp_redirects_state_without_interface_creates_it(self):
+        self.command_setup()
+
+        self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_with_vif_display(1234, 999, name="Shizzle")
+        )
+        self.shell_mock.should_receive("do").with_args("show running-config interface ve 999").once().ordered().and_return([
+            "Error - ve 999 was not configured"
+        ])
+
+        self.shell_mock.should_receive("do").with_args("configure terminal").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("interface ve 999").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("no ip redirect").once().ordered()
+        self.shell_mock.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice()
+
+        self.switch.set_vlan_icmp_redirects_state(1234, False)
+
+    def test_set_vlan_icmp_redirects_state_unknown_vlan(self):
+        self.command_setup()
+
+        self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return([
+            "Error: vlan 1234 is not configured"
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.set_vlan_icmp_redirects_state(1234, False)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_get_vlans(self):
         self.command_setup()
