@@ -76,6 +76,40 @@ class BrocadeTest(unittest.TestCase):
     def test_switch_has_a_logger_configured_with_the_switch_name(self):
         assert_that(self.switch.logger.name, is_(Brocade.__module__ + ".my.hostname"))
 
+    def test_ip_redirect_enable(self):
+        self.command_setup()
+
+        self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_display(1234)
+        )
+        self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("vlan 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("router-interface ve 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("interface ve 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("ip redirect")
+        self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice()
+        self.shell_mock.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.set_vlan_icmp_redirects_state(1234, True)
+
+    def test_ip_redirect_disable(self):
+        self.command_setup()
+
+        self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
+            vlan_display(1234)
+        )
+        self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("vlan 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("router-interface ve 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("interface ve 1234").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
+        self.shell_mock.should_receive("do").with_args("no ip redirect")
+        self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice()
+        self.shell_mock.should_receive("do").with_args("write memory").and_return([]).once().ordered()
+
+        self.switch.set_vlan_icmp_redirects_state(1234, False)
+
     def test_get_vlans(self):
         self.command_setup()
 
@@ -128,6 +162,7 @@ class BrocadeTest(unittest.TestCase):
                 '  advertise backup',
                 '  track-port ethernet 1/1',
                 '  activate',
+                ' no ip redirect'
                 '!',
                 'interface ve 1203',
                 '!',
@@ -147,9 +182,11 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vlan201.name, equal_to(None))
         assert_that(vlan201.ips, has_length(3))
         assert_that(vlan201.vrf_forwarding, is_("SHIZZLE"))
+        assert_that(vlan201.icmp_redirects, equal_to(False))
         assert_that(vlan2222.number, equal_to(2222))
         assert_that(vlan2222.name, equal_to("your-name-is-way-too-long-for-t"))
         assert_that(vlan2222.ips, has_length(0))
+        assert_that(vlan2222.icmp_redirects, equal_to(True))
         assert_that(vlan3333.number, equal_to(3333))
         assert_that(vlan3333.name, equal_to("some-name"))
         assert_that(vlan3333.ips, has_length(0))
@@ -262,6 +299,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vlan.access_groups[OUT], is_("ACL-OUT"))
         assert_that(vlan.vrf_forwarding, is_("SHIZZLE"))
         assert_that(vlan.ips, has_length(3))
+        assert_that(vlan.icmp_redirects, equal_to(True))
 
         vrrp_group1, vrrp_group2 = vlan.vrrp_groups
         assert_that(len(vrrp_group1.ips), equal_to(1))
