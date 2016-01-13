@@ -21,7 +21,8 @@
             "track_decrement": 50
          }
       ],
-      "dhcp_relay_servers": []
+      "dhcp_relay_servers": [],
+      "icmp_redirects": false
    },
    {
       "number": 2,
@@ -55,6 +56,7 @@
             "track_decrement":null
          }
       ],
-      "dhcp_relay_servers": ["10.10.10.1"]
+      "dhcp_relay_servers": ["10.10.10.1"],
+      "icmp_redirects": true
    }
 ]

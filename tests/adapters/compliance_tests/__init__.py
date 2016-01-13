@@ -17,20 +17,16 @@ from unittest import SkipTest
 
 from tests.adapters.compliance_tests.get_interfaces_test import GetInterfacesTest
 from tests.adapters.compliance_tests.add_vlan_test import AddVlanTest
-from tests.adapters.model_list import available_models
 from tests.adapters.compliance_tests.get_vlan_test import GetVlanTest
+from tests.adapters.compliance_tests.set_vlan_icmp_redirects_state_test import SetVlanIcmpRedirectsStateTest
+from tests.adapters.model_list import available_models
 
 _test_classes = [
     GetVlanTest,
     AddVlanTest,
-    GetInterfacesTest
+    GetInterfacesTest,
+    SetVlanIcmpRedirectsStateTest
 ]
-
-# compliance rule of thumb:
-# DELETING a resource (delete vlan) should raise if it doesn't exist
-# functions are add / remove
-# EMPTYING a resource (remove access vlan) doesnt raise
-# functions are set / unset
 
 
 def _add_tests_for_model(current_module, test_classes, specs):

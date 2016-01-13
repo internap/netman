@@ -175,6 +175,9 @@ class SwitchOperations(object):
     def enable_lldp(self, interface_id, enabled):
         raise NotImplementedError()
 
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        raise NotImplementedError()
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

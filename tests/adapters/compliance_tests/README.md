@@ -1,5 +1,5 @@
 Compliance Testing
-=================
+==================
 
 The goal of this test suite is to enforce the behavior an adapter must have
 when implementing a functionality.  Unless a method raises NotImplementedError

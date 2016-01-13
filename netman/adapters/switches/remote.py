@@ -257,7 +257,11 @@ class RemoteSwitch(SwitchBase):
 
     def enable_lldp(self, interface_id, enabled):
         self.put("/interfaces/{}/lldp".format(interface_id),
-                 raw_data={True: "true", False: "false"}[enabled])
+                 raw_data=_get_json_boolean(enabled))
+
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        self.put('/vlans/{}/icmp-redirects'.format(vlan_number),
+                 raw_data=_get_json_boolean(state))
 
     def get(self, relative_url):
         return self.validated(self.requests.get(**self.request(relative_url)))
@@ -326,3 +330,7 @@ class RemoteSwitch(SwitchBase):
 
             raise exception
         return req
+
+
+def _get_json_boolean(state):
+    return {True: "true", False: "false"}[state]

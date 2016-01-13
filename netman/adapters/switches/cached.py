@@ -150,7 +150,7 @@ class CachedSwitch(SwitchBase):
         if name is not None:
             extras["name"] = name
         result = self.real_switch.add_vlan(number, **extras)
-        self.vlans_cache[number] = Vlan(number, name or "")
+        self.vlans_cache.refresh_items.add(number)
         return result
 
     def remove_vlan(self, number):
@@ -338,3 +338,7 @@ class CachedSwitch(SwitchBase):
 
     def enable_lldp(self, interface_id, enabled):
         self.real_switch.enable_lldp(interface_id, enabled)
+
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        self.real_switch.set_vlan_icmp_redirects_state(vlan_number, state)
+        self.vlans_cache[vlan_number].icmp_redirects = state

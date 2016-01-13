@@ -34,6 +34,7 @@ class GetVlanTest(ConfiguredTestCase):
                                    ips=[IPAddress("10.10.10.1")], priority=110, hello_interval=10,
                                    dead_interval=11, track_id=self.test_vrrp_track_id, track_decrement=50)
         self.try_to.add_dhcp_relay_server(1000, IPAddress("11.11.11.1"))
+        self.try_to.set_vlan_icmp_redirects_state(1000, False)
 
         assert_that(self.client.get_vlan(1000), is_(self.get_vlan_from_list(1000)))
 

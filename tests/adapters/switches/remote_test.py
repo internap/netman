@@ -1175,6 +1175,32 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.enable_lldp("ge-0/0/6", False)
 
+    def test_set_vlan_icmp_redirects_state_False_should_send_false(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/vlans/2000/icmp-redirects',
+            headers=self.headers,
+            data='false'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_vlan_icmp_redirects_state(2000, False)
+
+    def test_set_vlan_icmp_redirects_state_True_should_send_true(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/vlans/2000/icmp-redirects',
+            headers=self.headers,
+            data='true'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_vlan_icmp_redirects_state(2000, True)
+
+
+
     def test_unformatted_exceptions_are_handled(self):
         self.requests_mock.should_receive("put").once().and_return(Reply(
             content='Oops an unexpected excepton occured',

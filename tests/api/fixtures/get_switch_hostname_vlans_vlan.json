@@ -20,5 +20,6 @@
          "track_decrement": 50
       }
    ],
-   "dhcp_relay_servers": []
+   "dhcp_relay_servers": [],
+   "icmp_redirects": false
 }

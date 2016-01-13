@@ -35,6 +35,16 @@ class VlanManagementTest(ConfiguredTestCase):
         self.client.add_vrrp_group(vlan_number=2999, group_id=73, ips=[IPAddress("10.10.0.1")], priority=110,
                                    track_id=self.test_vrrp_track_id, track_decrement=50, hello_interval=5, dead_interval=15)
         self.client.add_dhcp_relay_server(2999, IPAddress("10.10.10.11"))
+        self.try_to.set_vlan_icmp_redirects_state(2999, False)
+
+        single_vlan = self.client.get_vlan(2999)
+        vlan_from_list = self.get_vlan_from_list(2999)
+
+        assert_that(single_vlan, equal_to(vlan_from_list))
+
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    def test_get_vlan_defaults(self):
+        self.client.add_vlan(2999, name="my-test-vlan")
 
         single_vlan = self.client.get_vlan(2999)
         vlan_from_list = self.get_vlan_from_list(2999)

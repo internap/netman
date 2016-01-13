@@ -261,3 +261,8 @@ class SwitchTransactional(SwitchOperations):
     @transactional
     def enable_lldp(self, interface_id, enabled):
         self.impl.enable_lldp(interface_id, enabled)
+
+    @transactional
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        self.impl.set_vlan_icmp_redirects_state(vlan_number, state)
+
