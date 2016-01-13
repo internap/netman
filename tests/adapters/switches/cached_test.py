@@ -118,6 +118,7 @@ class CacheSwitchTest(unittest.TestCase):
 
     def test_add_vlan(self):
         self.real_switch_mock.should_receive("add_vlan").once().with_args(123)
+        self.real_switch_mock.should_receive("get_vlan").once().with_args(123).and_return(Vlan(number=123, name=""))
         self.switch.add_vlan(123)
 
         assert_that(self.switch.get_vlan(123).name, is_(""))
@@ -125,7 +126,7 @@ class CacheSwitchTest(unittest.TestCase):
     def test_add_vlan_after_get_vlans(self):
         all_vlans = [Vlan(1), Vlan(2)]
 
-        self.real_switch_mock.should_receive("get_vlans").once().and_return(
+        self.real_switch_mock.should_receive("get_vlans").once().ordered().and_return(
             all_vlans)
         assert_that(self.switch.get_vlans(), is_(all_vlans))
         assert_that(self.switch.get_vlans(), is_(all_vlans))
@@ -133,6 +134,8 @@ class CacheSwitchTest(unittest.TestCase):
         self.real_switch_mock.should_receive("add_vlan").once().with_args(123, name='allo')
         self.switch.add_vlan(123, 'allo')
 
+        self.real_switch_mock.should_receive("get_vlans").once().ordered().and_return(all_vlans+[Vlan(123, name='allo')])
+        assert_that(self.switch.get_vlans(), is_(all_vlans+[Vlan(123, name='allo')]))
         assert_that(self.switch.get_vlans(), is_(all_vlans+[Vlan(123, name='allo')]))
 
     def test_remove_vlan(self):

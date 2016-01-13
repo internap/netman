@@ -150,7 +150,7 @@ class CachedSwitch(SwitchBase):
         if name is not None:
             extras["name"] = name
         result = self.real_switch.add_vlan(number, **extras)
-        self.vlans_cache[number] = Vlan(number, name or "")
+        self.vlans_cache.refresh_items.add(number)
         return result
 
     def remove_vlan(self, number):
