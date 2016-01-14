@@ -472,7 +472,7 @@ def add_interface_vlan_data(target_vlan, int_vlan_data):
             vrrp_group = None
         elif regex.match("^ ip helper-address ([^\s]*)", line):
             target_vlan.dhcp_relay_servers.append(IPAddress(regex[0]))
-        elif regex.match("^\s*no ip redirect", line):
+        elif regex.match("^ no ip redirect", line):
             target_vlan.icmp_redirects = False
 
 
