@@ -213,6 +213,15 @@ class Brocade(SwitchBase):
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
+    def set_vlan_icmp_redirects_state(self, vlan_number, state):
+        vlan = self._get_vlan(vlan_number, include_vif_data=True)
+
+        with self.config(), self.interface_vlan(vlan):
+            if state:
+                self.shell.do('ip redirect')
+            else:
+                self.shell.do('no ip redirect')
+
     def add_ip_to_vlan(self, vlan_number, ip_network):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
@@ -463,6 +472,8 @@ def add_interface_vlan_data(target_vlan, int_vlan_data):
             vrrp_group = None
         elif regex.match("^ ip helper-address ([^\s]*)", line):
             target_vlan.dhcp_relay_servers.append(IPAddress(regex[0]))
+        elif regex.match("^ no ip redirect", line):
+            target_vlan.icmp_redirects = False
 
 
 def parse_if_ranges(string):
@@ -493,11 +504,11 @@ def _to_short_name(interface_id):
 
 class VlanBrocade(Vlan):
     def __init__(self, *args, **kwargs):
+        super(VlanBrocade, self).__init__(*args, **kwargs)
 
         self.vlan_interface_name = kwargs.pop('vlan_interface_name', None)
         self.tagged_interfaces = []
-
-        super(VlanBrocade, self).__init__(*args, **kwargs)
+        self.icmp_redirects = True
 
 
 class BrocadeIPNetwork(IPNetwork):
