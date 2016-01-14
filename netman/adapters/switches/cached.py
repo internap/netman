@@ -121,9 +121,12 @@ class CachedSwitch(SwitchBase):
         return copy.deepcopy(self.vlans_cache[number])
 
     def get_vlans(self):
-        if self.vlans_cache.refresh_items:
-            self.vlans_cache = VlanCache(
-                (vlan.number, vlan) for vlan in self.real_switch.get_vlans())
+        if None in self.vlans_cache.refresh_items:
+            self.vlans_cache = VlanCache((vlan.number, vlan) for vlan in self.real_switch.get_vlans())
+
+        for number in list(self.vlans_cache.refresh_items):
+            self.get_vlan(number)
+
         return copy.deepcopy(self.vlans_cache.values())
 
     def get_interfaces(self):
