@@ -25,7 +25,7 @@ from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 available_models = [
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="cisco",
             hostname="127.0.0.1",
             port=11002,
@@ -44,7 +44,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="brocade",
             hostname="127.0.0.1",
             port=11003,
@@ -63,7 +63,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="brocade_telnet",
             hostname="127.0.0.1",
             port=11012,
@@ -82,7 +82,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="juniper",
             hostname="127.0.0.1",
             port=11004,
@@ -100,7 +100,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="juniper_qfx_copper",
             hostname="127.0.0.1",
             port=11005,
@@ -118,7 +118,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="dell",
             hostname="127.0.0.1",
             port=11006,
@@ -138,7 +138,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="dell_telnet",
             hostname="127.0.0.1",
             port=11007,
@@ -158,7 +158,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="dell10g",
             hostname="127.0.0.1",
             port=11008,
@@ -176,7 +176,7 @@ available_models = [
         ]
     },
     {
-        "client": SwitchDescriptor(
+        "switch_descriptor": SwitchDescriptor(
             model="dell10g_telnet",
             hostname="127.0.0.1",
             port=11009,

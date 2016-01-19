@@ -20,7 +20,6 @@ from hamcrest import assert_that, is_
 from netman.adapters.switches.cached import CachedSwitch
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.exceptions import NetmanException
-from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.main import app
 from tests.adapters.flask_helper import FlaskRequest
 from tests.adapters.model_list import available_models
@@ -65,9 +64,9 @@ class ConfiguredTestCase(unittest.TestCase):
         if self.switch_specs is not None:
             specs = type(self).switch_specs
         else:
-            specs = next(s for s in available_models if s["client"].model == self._dev_sample)
+            specs = next(s for s in available_models if s["switch_descriptor"].model == self._dev_sample)
 
-        self.switch_descriptor = specs["client"]
+        self.switch_descriptor = specs["switch_descriptor"]
         self.test_port = specs["test_port_name"]
         self.test_ports = specs["ports"]
         self.test_vrrp_track_id = specs.get("test_vrrp_track_id")
