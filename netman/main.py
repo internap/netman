@@ -13,12 +13,12 @@
 # limitations under the License.
 
 #!/usr/bin/env python
+import argparse
 from logging import DEBUG, getLogger
 import logging.config
 
 from flask import request
 from flask.app import Flask
-
 from adapters.threading_lock_factory import ThreadingLockFactory
 from netman.api.netman_api import NetmanApi
 from netman.core.switch_sessions import SwitchSessionManager
@@ -30,7 +30,6 @@ from netman.core.switch_factory import SwitchFactory
 
 app = Flask('netman')
 app.url_map.converters['regex'] = RegexConverter
-
 
 @app.before_request
 def log_request():
@@ -49,4 +48,15 @@ SwitchSessionApi(switch_factory, switch_session_manager).hook_to(app)
 
 
 if __name__ == '__main__':
-    app.run()
+
+    parser = argparse.ArgumentParser(description='Netman Server')
+    parser.add_argument('--host', nargs='?', default="127.0.0.1")
+    parser.add_argument('--port', type=int, nargs='?', default=5000)
+    parser.add_argument('--session_inactivity_timeout', type=int, nargs='?')
+
+    args = parser.parse_args()
+
+    if args.session_inactivity_timeout:
+        switch_session_manager.session_inactivity_timeout = args.session_inactivity_timeout
+
+    app.run(host=args.host, port=args.port)
