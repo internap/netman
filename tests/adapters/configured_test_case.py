@@ -20,7 +20,6 @@ from hamcrest import assert_that, is_
 from netman.adapters.switches.cached import CachedSwitch
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.exceptions import NetmanException
-from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.main import app
 from tests.adapters.flask_helper import FlaskRequest
 from tests.adapters.model_list import available_models
@@ -65,20 +64,15 @@ class ConfiguredTestCase(unittest.TestCase):
         if self.switch_specs is not None:
             specs = type(self).switch_specs
         else:
-            specs = next(s for s in available_models if s["model"] == self._dev_sample)
+            specs = next(s for s in available_models if s["switch_descriptor"].model == self._dev_sample)
 
-        self.switch_hostname = specs["hostname"]
-        self.switch_port = specs["port"]
-        self.switch_type = specs["model"]
-        self.switch_username = specs["username"]
-        self.switch_password = specs["password"]
+        self.switch_descriptor = specs["switch_descriptor"]
         self.test_port = specs["test_port_name"]
         self.test_ports = specs["ports"]
         self.test_vrrp_track_id = specs.get("test_vrrp_track_id")
 
-        self.remote_switch = RemoteSwitch(SwitchDescriptor(
-            netman_server='', **sub_dict(
-                specs, 'hostname', 'port', 'model', 'username', 'password')))
+        self.switch_descriptor.netman_server = ''
+        self.remote_switch = RemoteSwitch(self.switch_descriptor)
         self.remote_switch.requests = FlaskRequest(app.test_client())
 
         self.client = ValidatingCachedSwitch(self.remote_switch)
@@ -105,11 +99,11 @@ def skip_on_switches(*to_skip):
     def resource_decorator(fn):
         @wraps(fn)
         def wrapper(self, *args, **kwargs):
-            if not self.switch_type in to_skip:
+            if not self.switch_descriptor.model in to_skip:
                 return fn(self, *args, **kwargs)
 
             else:
-                raise SkipTest('Test not executed on Switch model %s' % self.switch_type)
+                raise SkipTest('Test not executed on Switch model %s' % self.switch_descriptor.model)
 
         return wrapper
 

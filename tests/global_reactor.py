@@ -29,19 +29,20 @@ class ThreadedReactor(threading.Thread):
             callback(cls._threaded_reactor.reactor)
 
         for specs in models:
+            switch_descriptor = specs["switch_descriptor"]
 
             switch_config = SwitchConfiguration(
-                ip=specs["hostname"],
+                ip=switch_descriptor.hostname,
                 name="my_switch",
-                privileged_passwords=[specs["password"]],
+                privileged_passwords=[switch_descriptor.password],
                 ports=specs["ports"])
 
             specs["service_class"](
-                specs["hostname"],
-                ssh_port=specs["port"],
-                telnet_port=specs["port"],
+                switch_descriptor.hostname,
+                ssh_port=switch_descriptor.port,
+                telnet_port=switch_descriptor.port,
                 switch_core=specs["core_class"](switch_config),
-                users={specs["username"]: specs["password"]}
+                users={switch_descriptor.username: switch_descriptor.password}
             ).hook_to_reactor(cls._threaded_reactor.reactor)
 
         cls._threaded_reactor.start()

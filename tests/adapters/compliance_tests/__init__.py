@@ -33,7 +33,7 @@ def _add_tests_for_model(current_module, test_classes, specs):
     for test_class in test_classes:
         test_class.__test__ = False
 
-        class_name = "{}{}".format(specs["model"].capitalize(), test_class.__name__)
+        class_name = "{}{}".format(specs["switch_descriptor"].model.capitalize(), test_class.__name__)
         new_test_class = type(class_name, (test_class,), {"__test__": True, "switch_specs": specs})
         current_module[class_name] = _wrap_tests_with_not_implemented_tolerance(new_test_class)
 
