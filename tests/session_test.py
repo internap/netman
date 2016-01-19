@@ -10,76 +10,90 @@ from hamcrest import is_
 import pkg_resources
 import requests
 from tests import available_models
+from functools import partial
 
 
 class SessionTest(unittest.TestCase):
-    def setUp(self):
-        self.port = random.randrange(30000, 40000)
-        self.netman_test_app = NetmanTestApp(port=self.port)
-        self.netman_test_app.start()
-
-        self.client = NetmanClient("http://127.0.0.1", self.port, available_models[0]["switch_descriptor"])
-
-    def tearDown(self):
-        self.netman_test_app.stop()
 
     def test_creating_commit_deleting_session_works(self):
-        result = self._create_session("i_love_sessions")
-        session_id = result.json()['session_id']
+        with NetmanTestApp() as partial_client:
+            client = partial_client(_switch_of_model("cisco"))
 
-        result = self.client.post("/switches-sessions/" + session_id + "/actions", data='commit')
-        assert_that(result.status_code, is_(204), result.text)
+            result = _create_session(client, "i_love_sessions")
+            session_id = result.json()['session_id']
 
-        result = self.client.delete("/switches-sessions/" + session_id)
-        assert_that(result.status_code, is_(204), result.text)
+            result = client.post("/switches-sessions/" + session_id + "/actions", data='commit')
+            assert_that(result.status_code, is_(204), result.text)
+
+            result = client.delete("/switches-sessions/" + session_id)
+            assert_that(result.status_code, is_(204), result.text)
 
     def test_sessions_timeout_let_the_next_session_takeover(self):
-        start_time = time.time()
+        with NetmanTestApp() as partial_client:
+            client = partial_client(_switch_of_model("brocade"))
 
-        result = self._create_session("i_love_sessions")
-        assert_that(time.time() - start_time, is_(less_than(1)))
+            start_time = time.time()
 
-        first_session_id = result.json()['session_id']
+            result = _create_session(client, "i_love_sessions")
+            assert_that(time.time() - start_time, is_(less_than(1)))
 
-        result = self._create_session("i_really_love_sessions")
-        assert_that(time.time() - start_time, is_(greater_than(1)))
+            first_session_id = result.json()['session_id']
 
-        second_session_id = result.json()['session_id']
+            result = _create_session(client, "i_really_love_sessions")
+            assert_that(time.time() - start_time, is_(greater_than(1)))
 
-        result = self.client.post("/switches-sessions/" + first_session_id + "/actions", data='commit')
-        assert_that(result.status_code, is_(404), 'A session shall fail after 30s')
+            second_session_id = result.json()['session_id']
 
-        result = self.client.post("/switches-sessions/" + second_session_id + "/actions", data='commit')
-        assert_that(result.status_code, is_(204), result.text)
+            result = client.post("/switches-sessions/" + first_session_id + "/actions", data='commit')
+            assert_that(result.status_code, is_(404), 'A session shall fail after 30s')
 
-        result = self.client.delete("/switches-sessions/" + second_session_id)
-        assert_that(result.status_code, is_(204), result.text)
+            result = client.post("/switches-sessions/" + second_session_id + "/actions", data='commit')
+            assert_that(result.status_code, is_(204), result.text)
+
+            result = client.delete("/switches-sessions/" + second_session_id)
+            assert_that(result.status_code, is_(204), result.text)
 
     def test_creating_two_duplicate_sessions_returns_409(self):
-        result = self._create_session("i_love_sessions")
+        with NetmanTestApp() as partial_client:
+            client = partial_client(_switch_of_model("dell"))
 
-        first_session_id = result.json()['session_id']
+            result = _create_session(client, "i_love_sessions")
 
-        result = self.client.post("/switches-sessions/{}".format(first_session_id), data=json.dumps({"hostname": self.client.switch.hostname}))
-        assert_that(result.status_code, is_(409), result.text)
+            first_session_id = result.json()['session_id']
 
-    def _create_session(self, id):
-        result = self.client.post("/switches-sessions/{}".format(id),
-                                  data=json.dumps({"hostname": self.client.switch.hostname}))
-        assert_that(result.status_code, is_(201), result.text)
-        return result
+            result = client.post("/switches-sessions/{}".format(first_session_id),
+                                 data=json.dumps({"hostname": client.switch.hostname}))
+            assert_that(result.status_code, is_(409), result.text)
+
+
+def _create_session(client, id):
+    result = client.post("/switches-sessions/{}".format(id),
+                         data=json.dumps({"hostname": client.switch.hostname}))
+    assert_that(result.status_code, is_(201), result.text)
+    return result
+
+
+def _switch_of_model(model):
+    return next((m["switch_descriptor"] for m in available_models if m["switch_descriptor"].model == model))
 
 
 class NetmanTestApp(object):
-    def __init__(self, port=9123, ip='0.0.0.0'):
-        self.port = port
-        self.ip = ip
+    def __init__(self, port=None, ip=None):
+        self.ip = ip or "127.0.0.1"
+        self.port = port or random.randrange(30000, 40000)
 
     def start(self):
         self._start(pkg_resources.resource_filename('netman', 'main.py'))
 
     def stop(self):
         self.proc.terminate()
+
+    def __enter__(self):
+        self.start()
+        return partial(NetmanClient, "http://{}".format(self.ip), self.port)
+
+    def __exit__(self, *_):
+        self.stop()
 
     def _start(self, path):
         python = sys.executable
