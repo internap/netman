@@ -33,7 +33,7 @@ class ThreadedReactor(threading.Thread):
             switch_config = SwitchConfiguration(
                 ip=specs["client"].hostname,
                 name="my_switch",
-                privileged_passwords=[specs["password"]],
+                privileged_passwords=[specs["client"].password],
                 ports=specs["ports"])
 
             specs["service_class"](
