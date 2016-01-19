@@ -31,17 +31,17 @@ class ThreadedReactor(threading.Thread):
         for specs in models:
 
             switch_config = SwitchConfiguration(
-                ip=specs["hostname"],
+                ip=specs["client"].hostname,
                 name="my_switch",
                 privileged_passwords=[specs["password"]],
                 ports=specs["ports"])
 
             specs["service_class"](
-                specs["hostname"],
-                ssh_port=specs["port"],
-                telnet_port=specs["port"],
+                specs["client"].hostname,
+                ssh_port=specs["client"].port,
+                telnet_port=specs["client"].port,
                 switch_core=specs["core_class"](switch_config),
-                users={specs["username"]: specs["password"]}
+                users={specs["client"].username: specs["client"].password}
             ).hook_to_reactor(cls._threaded_reactor.reactor)
 
         cls._threaded_reactor.start()
