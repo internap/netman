@@ -21,15 +21,17 @@ from fake_switches.juniper.juniper_qfx_copper_core import JuniperQfxCopperSwitch
 from fake_switches.ssh_service import SwitchSshService
 from fake_switches.switch_configuration import Port
 from fake_switches.telnet_service import SwitchTelnetService
-
+from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 available_models = [
     {
-        "model": "cisco",
-        "hostname": "127.0.0.1",
-        "port": 11002,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="cisco",
+            hostname="127.0.0.1",
+            port=11002,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "FastEthernet0/3",
         "test_vrrp_track_id": "101",
         "core_class": CiscoSwitchCore,
@@ -42,11 +44,13 @@ available_models = [
         ]
     },
     {
-        "model": "brocade",
-        "hostname": "127.0.0.1",
-        "port": 11003,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="brocade",
+            hostname="127.0.0.1",
+            port=11003,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "ethernet 1/3",
         "test_vrrp_track_id": "ethernet 1/1",
         "core_class": BrocadeSwitchCore,
@@ -59,11 +63,13 @@ available_models = [
         ]
     },
     {
-        "model": "brocade_telnet",
-        "hostname": "127.0.0.1",
-        "port": 11012,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="brocade_telnet",
+            hostname="127.0.0.1",
+            port=11012,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "ethernet 1/3",
         "test_vrrp_track_id": "ethernet 1/1",
         "core_class": BrocadeSwitchCore,
@@ -76,11 +82,13 @@ available_models = [
         ]
     },
     {
-        "model": "juniper",
-        "hostname": "127.0.0.1",
-        "port": 11004,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="juniper",
+            hostname="127.0.0.1",
+            port=11004,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "ge-0/0/3",
         "core_class": JuniperSwitchCore,
         "service_class": SwitchSshService,
@@ -92,11 +100,13 @@ available_models = [
         ]
     },
     {
-        "model": "juniper_qfx_copper",
-        "hostname": "127.0.0.1",
-        "port": 11005,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="juniper_qfx_copper",
+            hostname="127.0.0.1",
+            port=11005,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "ge-0/0/3",
         "core_class": JuniperQfxCopperSwitchCore,
         "service_class": SwitchSshService,
@@ -108,11 +118,13 @@ available_models = [
         ]
     },
     {
-        "model": "dell",
-        "hostname": "127.0.0.1",
-        "port": 11006,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="dell",
+            hostname="127.0.0.1",
+            port=11006,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "ethernet 2/g2",
         "core_class": DellSwitchCore,
         "service_class": SwitchSshService,
@@ -126,11 +138,13 @@ available_models = [
         ]
     },
     {
-        "model": "dell_telnet",
-        "hostname": "127.0.0.1",
-        "port": 11007,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="dell_telnet",
+            hostname="127.0.0.1",
+            port=11007,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "ethernet 2/g2",
         "core_class": DellSwitchCore,
         "service_class": SwitchTelnetService,
@@ -144,11 +158,13 @@ available_models = [
         ]
     },
     {
-        "model": "dell10g",
-        "hostname": "127.0.0.1",
-        "port": 11008,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="dell10g",
+            hostname="127.0.0.1",
+            port=11008,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "tengigabitethernet 1/0/1",
         "core_class": Dell10GSwitchCore,
         "service_class": SwitchSshService,
@@ -160,11 +176,13 @@ available_models = [
         ]
     },
     {
-        "model": "dell10g_telnet",
-        "hostname": "127.0.0.1",
-        "port": 11009,
-        "username": "root",
-        "password": "root",
+        "client": SwitchDescriptor(
+            model="dell10g_telnet",
+            hostname="127.0.0.1",
+            port=11009,
+            username="root",
+            password="root",
+        ),
         "test_port_name": "tengigabitethernet 1/0/1",
         "core_class": Dell10GSwitchCore,
         "service_class": SwitchTelnetService,
