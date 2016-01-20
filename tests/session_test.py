@@ -45,7 +45,7 @@ class SessionTest(unittest.TestCase):
             second_session_id = result.json()['session_id']
 
             result = client.post("/switches-sessions/" + first_session_id + "/actions", data='commit')
-            assert_that(result.status_code, is_(404), 'A session shall fail after 30s')
+            assert_that(result.status_code, is_(404), 'Session should have timed out')
 
             result = client.post("/switches-sessions/" + second_session_id + "/actions", data='commit')
             assert_that(result.status_code, is_(204), result.text)
