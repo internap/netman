@@ -23,7 +23,7 @@ from netman.core.objects.exceptions import CouldNotConnect, CommandTimeout, Conn
 class TelnetClient(TerminalClient):
 
     def __init__(self, host, username, password, port=23, prompt=('>', '#'),
-                 connect_timeout=10, command_timeout=30, **_):
+                 connect_timeout=60, command_timeout=300, **_):
         self.prompt = prompt
         self.command_timeout = command_timeout
 
