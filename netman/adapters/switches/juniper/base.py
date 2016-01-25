@@ -32,7 +32,7 @@ from netman.core.objects.bond import Bond
 class Juniper(SwitchBase):
 
     def __init__(self, switch_descriptor, custom_strategies,
-                 timeout=60):
+                 timeout=300):
         super(Juniper, self).__init__(switch_descriptor)
         self.timeout = timeout
         self.custom_strategies = custom_strategies

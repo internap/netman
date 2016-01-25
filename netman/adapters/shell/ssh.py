@@ -24,7 +24,7 @@ from netman.core.objects.exceptions import CouldNotConnect, ConnectTimeout, Comm
 
 class SshClient(TerminalClient):
 
-    def __init__(self, host, username, password, port=22, prompt=('>', '#'), connect_timeout=10, command_timeout=30,
+    def __init__(self, host, username, password, port=22, prompt=('>', '#'), connect_timeout=60, command_timeout=300,
                  reading_interval=0.01, reading_chunk_size=9999):
         self.logger = logging.getLogger(__name__)
 
