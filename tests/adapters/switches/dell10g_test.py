@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
 import unittest
+from contextlib import contextmanager
 
-from hamcrest import assert_that, equal_to, is_, instance_of, has_length, none
 import mock
 from flexmock import flexmock, flexmock_teardown
-from netman.adapters.shell.telnet import TelnetClient
+from hamcrest import assert_that, equal_to, is_, instance_of, has_length, none
+
 from netman.adapters.shell.ssh import SshClient
-from netman.adapters.switches.util import SubShell
-from netman.core.objects.port_modes import ACCESS, TRUNK
+from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.switches import dell10g
 from netman.adapters.switches.dell10g import Dell10G
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.adapters.switches.util import SubShell
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyExist
+from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.switch_transactional import SwitchTransactional
 
 
 def test_factory_ssh():
@@ -57,16 +58,13 @@ def test_factory_telnet():
 class Dell10GTest(unittest.TestCase):
 
     def setUp(self):
-        self.lock = mock.Mock()
-        self.switch = dell10g.factory_ssh(SwitchDescriptor(model='dell', hostname="my.hostname", password="the_password"), self.lock)
+        self.switch = Dell10G(SwitchDescriptor(model='dell', hostname="my.hostname", password="the_password"), None)
         SubShell.debug = True
+        self.mocked_ssh_client = flexmock()
+        self.switch.shell = self.mocked_ssh_client
 
     def tearDown(self):
         flexmock_teardown()
-
-    def command_setup(self):
-        self.mocked_ssh_client = flexmock()
-        self.switch.impl.shell = self.mocked_ssh_client
 
     def test_switch_has_a_logger_configured_with_the_switch_name(self):
         assert_that(self.switch.logger.name, is_(Dell10G.__module__ + ".my.hostname"))
@@ -114,21 +112,19 @@ class Dell10GTest(unittest.TestCase):
 
     def test_disconnect(self):
         logger = flexmock()
-        self.switch.impl.logger = logger
+        self.switch.logger = logger
         logger.should_receive("debug")
 
         mocked_ssh_client = flexmock()
-        self.switch.impl.shell = mocked_ssh_client
+        self.switch.shell = mocked_ssh_client
         mocked_ssh_client.should_receive("quit").with_args("quit").once().ordered()
 
         logger.should_receive("info").with_args("FULL TRANSACTION LOG").once()
 
-        self.switch.impl.shell.full_log = "FULL TRANSACTION LOG"
+        self.switch.shell.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
     def test_shutdown_interface(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/4").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("shutdown").once().ordered().and_return([])
@@ -137,8 +133,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.shutdown_interface("tengigabitethernet 1/0/4")
 
     def test_shutdown_interface_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -151,8 +145,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_openup_interface(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/4").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
@@ -161,8 +153,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.openup_interface("tengigabitethernet 1/0/4")
 
     def test_openup_interface_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -175,8 +165,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_get_vlans(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan").once().ordered().and_return([
 
             "VLAN   Name                             Ports          Type",
@@ -217,8 +205,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(len(vlan4000.ips), equal_to(0))
 
     def test_get_interfaces(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show interfaces status").and_return([
             "Port      Description               Vlan  Duplex Speed   Neg  Link   Flow Ctrl",
             "                                                              State  Status",
@@ -280,8 +266,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(po43.name, is_("port-channel 43"))
 
     def test_add_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
             "ERROR: This VLAN does not exist."
         ])
@@ -293,8 +277,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.add_vlan(1000)
 
     def test_add_vlan_and_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
             "ERROR: This VLAN does not exist."
         ])
@@ -307,8 +289,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.add_vlan(1000, name="shizzle")
 
     def test_add_vlan_invalid_number(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000").and_return([
             "                     ^",
             "Invalid input. Please specify an integer in the range 1 to 4093."
@@ -320,8 +300,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_add_vlan_and_bad_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
             "ERROR: This VLAN does not exist."
         ])
@@ -341,8 +319,6 @@ class Dell10GTest(unittest.TestCase):
 
 
     def test_add_vlan_fails_when_already_exist(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
@@ -355,16 +331,12 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 already exists"))
 
     def test_remove_vlan(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("no vlan 1000").once().ordered().and_return([])
 
         self.switch.remove_vlan(1000)
 
     def test_remove_unknown_vlan(self):
-        self.command_setup()
-
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("no vlan 1000").once().ordered().and_return([
                 "These VLANs do not exist:  1000.",
@@ -376,8 +348,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_set_access_mode(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk allowed vlan").once().ordered().and_return([])
@@ -389,8 +359,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.set_access_mode("tengigabitethernet 1/0/10")
 
     def test_set_access_mode_invalid_interface(self):
-        self.command_setup()
-
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
                 "An invalid interface has been used for this function."
@@ -402,8 +370,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_set_trunk_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
         ])
 
@@ -416,34 +382,24 @@ class Dell10GTest(unittest.TestCase):
         self.switch.set_trunk_mode("tengigabitethernet 1/0/10")
 
     def test_set_trunk_mode_stays_in_trunk(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk"
         ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
-        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
-        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
 
         self.switch.set_trunk_mode("tengigabitethernet 1/0/10")
 
     def test_set_trunk_mode_stays_in_general(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general"
         ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
-        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
-        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
 
         self.switch.set_trunk_mode("tengigabitethernet 1/0/10")
 
     def test_configure_set_trunk_mode_unknown_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/99").and_return([
             "An invalid interface has been used for this function",
         ])
@@ -456,8 +412,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_set_access_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
         ])
 
@@ -469,8 +423,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.set_access_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_set_access_vlan_invalid_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/99").and_return([
             "An invalid interface has been used for this function."
         ])
@@ -483,8 +435,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_set_access_vlan_invalid_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode access"
         ])
@@ -502,8 +452,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_set_access_vlan_invalid_mode_trunk(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk"
         ])
@@ -516,8 +464,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a trunk mode interface"))
 
     def test_set_access_vlan_invalid_mode_general(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general"
         ])
@@ -530,8 +476,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a general mode interface"))
 
     def test_remove_access_vlan(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").once().ordered().and_return([])
@@ -540,8 +484,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.remove_access_vlan("tengigabitethernet 1/0/10")
 
     def test_remove_access_vlan_invalid_interface(self):
-        self.command_setup()
-
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
                 "An invalid interface has been used for this function."
@@ -553,8 +495,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_configure_native_vlan_on_a_general_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general"
         ])
@@ -567,8 +507,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.configure_native_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_configure_native_vlan_unknown_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/99").and_return([
             "An invalid interface has been used for this function",
         ])
@@ -581,8 +519,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_configure_native_vlan_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general",
         ])
@@ -600,8 +536,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_configure_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
         ])
 
@@ -614,8 +548,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.configure_native_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_configure_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport access vlan 2000",
         ])
@@ -628,8 +560,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
     def test_configure_native_vlan_on_a_trunk_mode_swithes_to_general(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
         ])
@@ -643,8 +573,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.configure_native_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_configure_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan 1201-1203,1205",
@@ -660,8 +588,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.configure_native_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_remove_native_vlan_reverts_to_trunk_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general",
             "switchport general pvid 1000"
@@ -675,8 +601,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.remove_native_vlan("tengigabitethernet 1/0/10")
 
     def test_remove_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general",
             "switchport general pvid 1000",
@@ -692,8 +616,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.remove_native_vlan("tengigabitethernet 1/0/10")
 
     def test_remove_native_vlan_inknown_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/99").and_return([
             "An invalid interface has been used for this function",
         ])
@@ -706,8 +628,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_remove_native_vlan_not_set(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general"
         ])
@@ -720,8 +640,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface tengigabitethernet 1/0/10"))
 
     def test_add_trunk_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
         ])
@@ -741,8 +659,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.add_trunk_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_add_trunk_vlan_when_theres_already_one(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan 900"
@@ -763,8 +679,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.add_trunk_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_add_trunk_vlan_unknown_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/99").and_return([
             "An invalid interface has been used for this function",
         ])
@@ -777,8 +691,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_add_trunk_vlan_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
         ])
@@ -797,8 +709,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_add_trunk_vlan_to_general_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general",
         ])
@@ -818,8 +728,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.add_trunk_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_add_trunk_vlan_without_mode_and_access_vlan_assume_no_mode_set_trunk_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
         ])
 
@@ -839,8 +747,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.add_trunk_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_add_trunk_vlan_without_mode_with_access_vlan_assume_access_mode_and_fails(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport access vlan 2000",
         ])
@@ -853,8 +759,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
     def test_remove_trunk_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan 1000",
@@ -868,8 +772,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.remove_trunk_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_remove_trunk_vlan_unknown_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/99").and_return([
             "An invalid interface has been used for this function",
         ])
@@ -882,8 +784,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
     def test_remove_trunk_vlan_not_set_at_all(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
         ])
@@ -894,8 +794,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface tengigabitethernet 1/0/10"))
 
     def test_remove_trunk_vlan_not_set_in_ranges(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan 999,1001",
@@ -907,8 +805,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface tengigabitethernet 1/0/10"))
 
     def test_remove_trunk_vlan_general_mode_and_in_range(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 1/0/10").and_return([
             "switchport mode general",
             "switchport general allowed vlan add 999-1001",
@@ -922,8 +818,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.remove_trunk_vlan("tengigabitethernet 1/0/10", 1000)
 
     def test_edit_interface_spanning_tree_enable_edge(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("spanning-tree portfast").once().ordered().and_return([])
@@ -932,8 +826,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.edit_interface_spanning_tree('tengigabitethernet 1/0/10', edge=True)
 
     def test_edit_interface_spanning_tree_disable_edge(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no spanning-tree portfast").once().ordered().and_return([])
@@ -942,18 +834,11 @@ class Dell10GTest(unittest.TestCase):
         self.switch.edit_interface_spanning_tree('tengigabitethernet 1/0/10', edge=False)
 
     def test_edit_interface_spanning_tree_optional_params(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
-
-        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
-        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
 
         self.switch.edit_interface_spanning_tree("tengigabitethernet 1/0/10")
 
     def test_enable_lldp(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("lldp transmit").once().ordered().and_return([])
@@ -965,8 +850,6 @@ class Dell10GTest(unittest.TestCase):
         self.switch.enable_lldp("tengigabitethernet 1/0/10", True)
 
     def test_disable_lldp(self):
-        self.command_setup()
-
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no lldp transmit").once().ordered().and_return([])
@@ -977,6 +860,12 @@ class Dell10GTest(unittest.TestCase):
 
         self.switch.enable_lldp("tengigabitethernet 1/0/10", False)
 
+    def test_commit(self):
+        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
+        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
+
+        self.switch.commit_transaction()
+
     @contextmanager
     def configuring_and_committing(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
@@ -984,8 +873,6 @@ class Dell10GTest(unittest.TestCase):
         yield
 
         self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
-        self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
 
     @contextmanager
     def configuring(self):

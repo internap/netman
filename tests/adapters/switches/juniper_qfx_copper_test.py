@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
 import unittest
 
+import mock
 from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, equal_to, is_, instance_of
-import mock
 
-from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
 from netman.adapters.switches import juniper
-from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.juniper import Juniper
+from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.switch_transactional import SwitchTransactional
+from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
 
 
 def test_factory():
@@ -44,16 +44,20 @@ def test_factory():
 class JuniperTest(unittest.TestCase):
 
     def setUp(self):
-        self.lock = mock.Mock()
-        self.switch = juniper.qfx_copper_factory(SwitchDescriptor(model='juniper', hostname="toto", username="tutu", password="titi"), self.lock)
-
+        self.switch = Juniper(
+                switch_descriptor=SwitchDescriptor(model='juniper', hostname="toto"),
+                custom_strategies=JuniperQfxCopperCustomStrategies()
+        )
         self.netconf_mock = flexmock()
-        self.switch.impl.netconf = self.netconf_mock
+        self.switch.netconf = self.netconf_mock
+        self.switch.in_transaction = True
 
     def tearDown(self):
         flexmock_teardown()
 
     def test_get_interfaces(self):
+        self.switch.in_transaction = False
+
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
@@ -180,15 +184,32 @@ class JuniperTest(unittest.TestCase):
         assert_that(if5.bond_master, equal_to(10))
 
     def test_port_mode_access_with_no_port_mode_or_vlan_set_just_sets_the_port_mode(self):
-        with self.expecting_successful_transaction():
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -196,196 +217,163 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
+                          <interface-mode>access</interface-mode>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <interface-mode>access</interface-mode>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.set_access_mode("ge-0/0/6")
 
     def test_add_interface_to_bond(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                    <protocols>
-                      <rstp>
-                        <interface />
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="replace">
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <auto-negotiation/>
-                          <ieee-802.3ad>
-                            <bundle>ae10</bundle>
-                          </ieee-802.3ad>
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
-
-        self.switch.add_interface_to_bond('ge-0/0/1', 10)
-
-
-    def test_add_interface_to_bond_gets_up_to_speed_and_removes_existing_rstp_protocol(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                    <protocols>
-                      <rstp>
-                        <interface />
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                    <aggregated-ether-options>
-                      <link-speed>1g</link-speed>
-                    </aggregated-ether-options>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
                 <protocols>
                   <rstp>
-                    <interface>
-                      <name>ge-0/0/1</name>
-                      <edge />
-                    </interface>
+                    <interface />
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="replace">
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <auto-negotiation/>
-                          <ieee-802.3ad>
-                            <bundle>ae10</bundle>
-                          </ieee-802.3ad>
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface operation="delete">
-                          <name>ge-0/0/1</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
-
-        self.switch.add_interface_to_bond('ge-0/0/1', 10)
-
-    def test_change_bond_speed_update_slaves_and_interface_at_same_time(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
+                  <interface operation="replace">
                     <name>ge-0/0/1</name>
                     <ether-options>
+                      <auto-negotiation/>
                       <ieee-802.3ad>
                         <bundle>ae10</bundle>
                       </ieee-802.3ad>
                     </ether-options>
                   </interface>
-                  <interface>
-                    <name>ge-0/0/2</name>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.add_interface_to_bond('ge-0/0/1', 10)
+
+
+    def test_add_interface_to_bond_gets_up_to_speed_and_removes_existing_rstp_protocol(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+                <protocols>
+                  <rstp>
+                    <interface />
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+                <aggregated-ether-options>
+                  <link-speed>1g</link-speed>
+                </aggregated-ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/1</name>
+                  <edge />
+                </interface>
+              </rstp>
+            </protocols>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="replace">
+                    <name>ge-0/0/1</name>
+                    <ether-options>
+                      <auto-negotiation/>
+                      <ieee-802.3ad>
+                        <bundle>ae10</bundle>
+                      </ieee-802.3ad>
+                    </ether-options>
                   </interface>
                 </interfaces>
-            """))
+                <protocols>
+                  <rstp>
+                    <interface operation="delete">
+                      <name>ge-0/0/1</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae10</name>
-                        <aggregated-ether-options>
-                          <link-speed>1g</link-speed>
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
+        self.switch.add_interface_to_bond('ge-0/0/1', 10)
+
+    def test_change_bond_speed_update_slaves_and_interface_at_same_time(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+                <ether-options>
+                  <ieee-802.3ad>
+                    <bundle>ae10</bundle>
+                  </ieee-802.3ad>
+                </ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/2</name>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ae10</name>
+                    <aggregated-ether-options>
+                      <link-speed>1g</link-speed>
+                    </ether-options>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
         self.switch.set_bond_link_speed(10, '1g')
-
-    @contextmanager
-    def expecting_successful_transaction(self):
-        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered()
-
-        yield
-
-        self.netconf_mock.should_receive("commit").with_args().once().ordered()
-        self.netconf_mock.should_receive("unlock").with_args(target="candidate").once().ordered()
