@@ -20,10 +20,9 @@ from netman.core.objects.exceptions import UnknownSession, SessionAlreadyExists
 
 
 class SwitchSessionManager(object):
-    def __init__(self, session_storage=None, session_inactivity_timeout=60):
-        if not session_storage:
-            session_storage = MemorySessionStorage()
-        self.session_storage = session_storage
+    def __init__(self, session_inactivity_timeout=60, session_storage=None):
+        self.session_storage = session_storage or MemorySessionStorage()
+        self.sessions = {}
         self.session_inactivity_timeout = session_inactivity_timeout
         self.timers = {}
 
@@ -32,15 +31,15 @@ class SwitchSessionManager(object):
         return logging.getLogger(__name__)
 
     def get_switch_for_session(self, session_id):
-        switch = self.session_storage.get(session_id)
-        if not switch:
+        try:
+            return self.sessions[session_id]
+        except KeyError:
             raise UnknownSession(session_id)
-        return switch
 
     def open_session(self, switch, session_id):
         self.logger.info("Creating session {}".format(session_id))
 
-        if self.session_storage.get(session_id):
+        if session_id in self.sessions:
             raise SessionAlreadyExists(session_id)
 
         switch.connect()
@@ -52,10 +51,24 @@ class SwitchSessionManager(object):
             raise
 
         self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
-        self.session_storage.add(switch, session_id)
+        self.add_session(switch, session_id)
         self._start_timer(session_id)
 
         return session_id
+
+    # TODO(walhawari) - Only handles local sessions. Handle remote as well
+    def add_session(self, switch, session_id):
+        if session_id in self.sessions:
+            raise SessionAlreadyExists(session_id)
+        self.sessions[session_id] = switch
+        self.session_storage.add(switch.switch_descriptor, session_id)
+
+    # TODO(walhawari) - Only handles local sessions. Handle remote as well
+    def remove_session(self, session_id):
+        if session_id not in self.sessions:
+            raise UnknownSession(session_id)
+        del self.sessions[session_id]
+        self.session_storage.remove(session_id)
 
     def keep_alive(self, session_id):
         self.logger.info("Keep-aliving session {}".format(session_id))
@@ -80,7 +93,7 @@ class SwitchSessionManager(object):
         try:
             switch.end_transaction()
         finally:
-            self.session_storage.remove(session_id)
+            self.remove_session(session_id)
             self._stop_timer(session_id)
             switch.disconnect()
 

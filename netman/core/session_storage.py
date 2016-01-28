@@ -14,7 +14,7 @@
 
 
 class SessionStorage(object):
-    def add(self, switch, session_id):
+    def add(self, switch_descriptor, session_id):
         raise NotImplementedError
 
     def get(self, session_id):

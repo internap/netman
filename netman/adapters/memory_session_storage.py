@@ -21,9 +21,9 @@ class MemorySessionStorage(SessionStorage):
         super(MemorySessionStorage, self).__init__()
         self.sessions = {}
 
-    def add(self, switch, session_id):
+    def add(self, switch_descriptor, session_id):
         if session_id not in self.sessions:
-            self.sessions[session_id] = switch
+            self.sessions[session_id] = switch_descriptor
         else:
             raise SessionAlreadyExists(session_id)
 

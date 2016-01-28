@@ -21,13 +21,14 @@ import mock
 from netman.adapters.memory_session_storage import MemorySessionStorage
 
 from netman.core.objects.exceptions import UnknownResource, \
-    OperationNotCompleted, NetmanException, SessionAlreadyExists
+    OperationNotCompleted, NetmanException, SessionAlreadyExists, UnknownSession
 from netman.core.switch_sessions import SwitchSessionManager
 
 
 class SwitchSessionManagerTest(TestCase):
     def setUp(self):
         self.switch_mock = flexmock()
+        self.switch_mock.switch_descriptor = "I describe switches"
         self.session_manager = SwitchSessionManager()
 
     def tearDown(self):
@@ -44,20 +45,12 @@ class SwitchSessionManagerTest(TestCase):
 
     def test_verify_session_storage_with_open_close(self):
         switch = mock.Mock()
+        switch.switch_descriptor = "describe_me"
         self.session_manager.session_storage = flexmock()
-        self.session_manager.session_storage.should_receive('get')\
-            .with_args('patate').once().ordered().and_return(None)
-        self.session_manager.session_storage.should_receive('add').with_args(switch, 'patate').once().ordered()
+        self.session_manager.session_storage.should_receive('add').with_args(switch.switch_descriptor, 'patate').once().ordered()
 
         assert_that(self.session_manager.open_session(switch, 'patate'), is_('patate'))
 
-        self.session_manager.session_storage.should_receive('get')\
-            .with_args('patate').once().ordered().and_return(switch)
-
-        assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch))
-
-        self.session_manager.session_storage.should_receive('get')\
-             .with_args('patate').once().ordered().and_return(switch)
         self.session_manager.session_storage.should_receive('remove').with_args('patate').once().ordered()
 
         self.session_manager.close_session('patate')
@@ -68,6 +61,7 @@ class SwitchSessionManagerTest(TestCase):
         self.switch_mock.should_receive('start_transaction').never()
         self.switch_mock.should_receive('disconnect').never()
 
+        self.session_manager.sessions['i_already_exist_buddy'] = 'stuff'
         self.session_manager.session_storage.add('stuff', 'i_already_exist_buddy')
 
         with self.assertRaises(SessionAlreadyExists):
@@ -200,3 +194,36 @@ class SwitchSessionManagerTest(TestCase):
 
         with self.assertRaises(UnknownResource):
             self.session_manager.get_switch_for_session('patate')
+
+    def test_add_session(self):
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.session_storage.should_receive('add').with_args(self.switch_mock.switch_descriptor, 'patate')
+
+        self.session_manager.add_session(self.switch_mock, 'patate')
+
+        assert_that(self.session_manager.sessions['patate'], is_(self.switch_mock))
+
+    def test_add_session_raises_if_already_exists(self):
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.sessions['patate'] = self.switch_mock
+        self.session_manager.session_storage.should_receive('add').never()
+
+        with self.assertRaises(SessionAlreadyExists):
+            self.session_manager.add_session(self.switch_mock, 'patate')
+
+    def test_remove_session(self):
+        self.session_manager.sessions['patate'] = self.switch_mock
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.session_storage.should_receive('remove').with_args('patate')
+
+        self.session_manager.remove_session('patate')
+
+        assert_that(self.session_manager.sessions.get('patate'), is_(None))
+
+    def test_remove_session_raises_if_nonexistent(self):
+        self.session_manager.sessions['not_a_patate'] = self.switch_mock
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.session_storage.should_receive('remove').never()
+
+        with self.assertRaises(UnknownSession):
+            self.session_manager.remove_session('patate')
