@@ -110,7 +110,6 @@ class Dell(SwitchBase):
             vlan = parse_vlan_list(result)
             while len(result) > 0 and "--More--" in result[-1]:
                 result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-                vlan += parse_vlan_list(result)
             return vlan[0]
 
 

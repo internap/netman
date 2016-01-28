@@ -216,26 +216,7 @@ class Dell10GTest(unittest.TestCase):
         assert_that(vlan4000.name, equal_to(None))
         assert_that(len(vlan4000.ips), equal_to(0))
 
-    def test_get_vlan_standard_no_name(self):
-        self.command_setup()
-
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
-
-            "VLAN   Name                             Ports          Type",
-            "-----  ---------------                  -------------  --------------",
-            "1000                                    Po27,          Static",
-            "                                        Te1/0/2-4,",
-            "                                        Te1/0/6-8,",
-            "                                        Te1/0/41-46",
-        ])
-
-        vlan = self.switch.get_vlan(1000)
-
-        assert_that(vlan.number, equal_to(1000))
-        assert_that(vlan.name, equal_to(None))
-        assert_that(len(vlan.ips), equal_to(0))
-
-    def test_get_vlan_standard_name_VLAN(self):
+    def test_get_vlan_with_no_name(self):
         self.command_setup()
 
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
@@ -271,25 +252,6 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(vlan.number, equal_to(1000))
         assert_that(vlan.name, equal_to("MyVlan"))
-        assert_that(len(vlan.ips), equal_to(0))
-
-    def test_get_vlan_default(self):
-        self.command_setup()
-
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
-
-            "VLAN   Name                             Ports          Type",
-            "-----  ---------------                  -------------  --------------",
-            "1      default                          Po2-128,       Default",
-            "                                        Te1/0/3-46,",
-            "                                        Fo1/0/1-2"
-
-        ])
-
-        vlan = self.switch.get_vlan(1)
-
-        assert_that(vlan.number, equal_to(1))
-        assert_that(vlan.name, equal_to("defaut"))
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_default(self):
