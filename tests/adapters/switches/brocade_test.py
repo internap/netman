@@ -348,6 +348,105 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan 1750 not found"))
 
+    def test_get_vlan_with_both_ip_and_ipv6_vrrp_groups_ipv6_is_ignored(self):
+        self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
+                vlan_with_vif_display(1750, 1750, name="Shizzle")
+        )
+
+        self.shell_mock.should_receive("do").with_args("show running-config interface ve 1750").once() \
+            .ordered().and_return([
+            'interface ve 1750',
+            'port-name vrrp-extended vrid 42',
+            ' ip address 10.241.0.33/27',
+            ' no ip redirect',
+            ' ip helper-address 10.10.10.1',
+            ' ip helper-address 10.10.10.2',
+            ' ipv6 address 2001:47c2:19:5::2/64',
+            ' ipv6 address 2001:47c2:19:5::3/64',
+            ' ipv6 nd suppress-ra',
+            ' ip vrrp-extended vrid 42',
+            '  backup priority 130 track-priority 20',
+            '  ip-address 1.1.1.2',
+            '  advertise backup',
+            '  hello-interval 4',
+            '  track-port ethernet 1/3',
+            '  activate',
+            ' ipv6 vrrp-extended vrid 43',
+            '  backup priority 110 track-priority 50',
+            '  ipv6-address 2001:47c2:19:5::1',
+            '  advertise backup',
+            '  hello-interval 5',
+            '  track-port ethernet 1/2',
+            ' activate',
+            '!',
+        ])
+
+        vlan = self.switch.get_vlan(1750)
+
+        assert_that(vlan.number, is_(1750))
+        assert_that(vlan.ips, has_length(1))
+        assert_that(vlan.icmp_redirects, equal_to(False))
+
+        assert_that(vlan.vrrp_groups, has_length(1))
+        vrrp_group1 = vlan.vrrp_groups[0]
+        assert_that(len(vrrp_group1.ips), equal_to(1))
+        assert_that(vrrp_group1.ips[0], equal_to(IPAddress('1.1.1.2')))
+        assert_that(vrrp_group1.hello_interval, equal_to(4))
+        assert_that(vrrp_group1.priority, equal_to(130))
+        assert_that(vrrp_group1.track_id, equal_to('ethernet 1/3'))
+        assert_that(vrrp_group1.track_decrement, equal_to(20))
+
+        assert_that(len(vlan.dhcp_relay_servers), equal_to(2))
+        assert_that(str(vlan.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
+        assert_that(str(vlan.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
+
+    def test_get_vlan_with_both_ip_and_ipv6_in_the_same_vrrp_group(self):
+        self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
+                vlan_with_vif_display(1750, 1750, name="Shizzle")
+        )
+
+        self.shell_mock.should_receive("do").with_args("show running-config interface ve 1750").once() \
+            .ordered().and_return([
+            'interface ve 1750',
+            'port-name vrrp-extended vrid 42',
+            ' ip address 10.241.0.33/27',
+            ' no ip redirect',
+            ' ip helper-address 10.10.10.1',
+            ' ip helper-address 10.10.10.2',
+            ' ipv6 address 2001:47c2:19:5::2/64',
+            ' ipv6 address 2001:47c2:19:5::3/64',
+            ' ipv6 nd suppress-ra',
+            ' ip vrrp-extended vrid 42',
+            '  backup priority 130 track-priority 20',
+            '  ip-address 1.1.1.2',
+            '  advertise backup',
+            '  hello-interval 4',
+            '  track-port ethernet 1/3',
+            '  activate',
+            ' ipv6 vrrp-extended vrid 42',
+            '  backup priority 170 track-priority 40',
+            '  ipv6-address 2001:47c2:19:5::1',
+            '  advertise backup',
+            '  hello-interval 400',
+            '  track-port ethernet 4/6',
+            ' activate',
+            '!',
+        ])
+
+        vlan = self.switch.get_vlan(1750)
+
+        assert_that(vlan.number, is_(1750))
+        assert_that(vlan.ips, has_length(1))
+        assert_that(vlan.icmp_redirects, equal_to(False))
+
+        vrrp_group = vlan.vrrp_groups[0]
+        assert_that(len(vrrp_group.ips), equal_to(1))
+        assert_that(vrrp_group.ips[0], equal_to(IPAddress('1.1.1.2')))
+        assert_that(vrrp_group.hello_interval, equal_to(4))
+        assert_that(vrrp_group.priority, equal_to(130))
+        assert_that(vrrp_group.track_id, equal_to('ethernet 1/3'))
+        assert_that(vrrp_group.track_decrement, equal_to(20))
+
     def test_add_vlan(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").and_return([
             "Error: vlan 2999 is not configured"
