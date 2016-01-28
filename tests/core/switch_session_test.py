@@ -18,6 +18,7 @@ import time
 from flexmock import flexmock
 from hamcrest import assert_that, is_
 import mock
+from netman.adapters.memory_session_storage import MemorySessionStorage
 
 from netman.core.objects.exceptions import UnknownResource, \
     OperationNotCompleted, NetmanException, SessionAlreadyExists
@@ -41,13 +42,33 @@ class SwitchSessionManagerTest(TestCase):
         assert_that(self.session_manager.open_session(self.switch_mock, 'patate'), is_('patate'))
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(self.switch_mock))
 
+    def test_verify_session_storage_with_open_close(self):
+        switch = mock.Mock()
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.session_storage.should_receive('get')\
+            .with_args('patate').once().ordered().and_return(None)
+        self.session_manager.session_storage.should_receive('add').with_args(switch, 'patate').once().ordered()
+
+        assert_that(self.session_manager.open_session(switch, 'patate'), is_('patate'))
+
+        self.session_manager.session_storage.should_receive('get')\
+            .with_args('patate').once().ordered().and_return(switch)
+
+        assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch))
+
+        self.session_manager.session_storage.should_receive('get')\
+             .with_args('patate').once().ordered().and_return(switch)
+        self.session_manager.session_storage.should_receive('remove').with_args('patate').once().ordered()
+
+        self.session_manager.close_session('patate')
+
     def test_open_session_with_session_that_already_exists_raises_an_exception(self):
 
         self.switch_mock.should_receive('connect').never()
         self.switch_mock.should_receive('start_transaction').never()
         self.switch_mock.should_receive('disconnect').never()
 
-        self.session_manager.sessions['i_already_exist_buddy'] = 'stuff'
+        self.session_manager.session_storage.add('stuff', 'i_already_exist_buddy')
 
         with self.assertRaises(SessionAlreadyExists):
             self.session_manager.open_session(self.switch_mock, 'i_already_exist_buddy')
@@ -74,7 +95,7 @@ class SwitchSessionManagerTest(TestCase):
         self.session_manager.close_session('patate')
 
         with self.assertRaises(UnknownResource):
-            self.session_manager.get_switch_for_session('patate')
+                self.session_manager.get_switch_for_session('patate')
 
     def test_session_should_close_itself_after_timeout(self):
         self.session_manager.session_inactivity_timeout = 0.5

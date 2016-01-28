@@ -15,13 +15,16 @@
 import logging
 import threading
 
+from netman.adapters.memory_session_storage import MemorySessionStorage
 from netman.core.objects.exceptions import UnknownSession, SessionAlreadyExists
 
 
 class SwitchSessionManager(object):
-    def __init__(self, session_inactivity_timeout=60):
+    def __init__(self, session_storage=None, session_inactivity_timeout=60):
+        if not session_storage:
+            session_storage = MemorySessionStorage()
+        self.session_storage = session_storage
         self.session_inactivity_timeout = session_inactivity_timeout
-        self.sessions = {}
         self.timers = {}
 
     @property
@@ -29,15 +32,15 @@ class SwitchSessionManager(object):
         return logging.getLogger(__name__)
 
     def get_switch_for_session(self, session_id):
-        try:
-            return self.sessions[session_id]
-        except KeyError:
+        switch = self.session_storage.get(session_id)
+        if not switch:
             raise UnknownSession(session_id)
+        return switch
 
     def open_session(self, switch, session_id):
         self.logger.info("Creating session {}".format(session_id))
 
-        if session_id in self.sessions:
+        if self.session_storage.get(session_id):
             raise SessionAlreadyExists(session_id)
 
         switch.connect()
@@ -49,7 +52,7 @@ class SwitchSessionManager(object):
             raise
 
         self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
-        self.sessions[session_id] = switch
+        self.session_storage.add(switch, session_id)
         self._start_timer(session_id)
 
         return session_id
@@ -77,7 +80,7 @@ class SwitchSessionManager(object):
         try:
             switch.end_transaction()
         finally:
-            del self.sessions[session_id]
+            self.session_storage.remove(session_id)
             self._stop_timer(session_id)
             switch.disconnect()
 
