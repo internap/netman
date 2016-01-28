@@ -32,7 +32,7 @@ class SwitchSessionManager(object):
         return logging.getLogger(__name__)
 
     def get_switch_for_session(self, session_id):
-        switch = self.session_storage.get_session(session_id)
+        switch = self.session_storage.get(session_id)
         if not switch:
             raise UnknownSession(session_id)
         return switch
@@ -40,7 +40,7 @@ class SwitchSessionManager(object):
     def open_session(self, switch, session_id):
         self.logger.info("Creating session {}".format(session_id))
 
-        if self.session_storage.get_session(session_id):
+        if self.session_storage.get(session_id):
             raise SessionAlreadyExists(session_id)
 
         switch.connect()
@@ -52,7 +52,7 @@ class SwitchSessionManager(object):
             raise
 
         self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
-        self.session_storage.add_session(switch, session_id)
+        self.session_storage.add(switch, session_id)
         self._start_timer(session_id)
 
         return session_id
@@ -80,7 +80,7 @@ class SwitchSessionManager(object):
         try:
             switch.end_transaction()
         finally:
-            self.session_storage.remove_session(session_id)
+            self.session_storage.remove(session_id)
             self._stop_timer(session_id)
             switch.disconnect()
 

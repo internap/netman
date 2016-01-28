@@ -25,24 +25,24 @@ class SessionStorageTest(TestCase):
         self.switch = mock.Mock()
 
     def test_add_session(self):
-        self.session_source.add_session(self.switch, 'some_session')
+        self.session_source.add(self.switch, 'some_session')
         assert_that(self.session_source.sessions['some_session'], is_(self.switch))
 
     def test_get_session(self):
         self.session_source.sessions['some_session'] = self.switch
-        assert_that(self.session_source.get_session('some_session'), is_(self.switch))
+        assert_that(self.session_source.get('some_session'), is_(self.switch))
 
     def test_get_nonexistent_session_is_none(self):
-        assert_that(self.session_source.get_session('nonexistent_session'), is_(None))
+        assert_that(self.session_source.get('nonexistent_session'), is_(None))
 
     def test_remove_session(self):
         self.session_source.sessions['some_session'] = self.switch
-        self.session_source.remove_session('some_session')
+        self.session_source.remove('some_session')
         assert_that(self.session_source.sessions.get('some_session'), is_(None))
 
     def test_add_session_that_already_exists_fails(self):
-        self.session_source.add_session(self.switch, 'some_session')
+        self.session_source.add(self.switch, 'some_session')
         with self.assertRaises(SessionAlreadyExists):
-            self.session_source.add_session(self.switch, 'some_session')
+            self.session_source.add(self.switch, 'some_session')
 
 

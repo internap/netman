@@ -45,20 +45,20 @@ class SwitchSessionManagerTest(TestCase):
     def test_verify_session_storage_with_open_close(self):
         switch = mock.Mock()
         self.session_manager.session_storage = flexmock()
-        self.session_manager.session_storage.should_receive('get_session')\
+        self.session_manager.session_storage.should_receive('get')\
             .with_args('patate').once().ordered().and_return(None)
-        self.session_manager.session_storage.should_receive('add_session').with_args(switch, 'patate').once().ordered()
+        self.session_manager.session_storage.should_receive('add').with_args(switch, 'patate').once().ordered()
 
         assert_that(self.session_manager.open_session(switch, 'patate'), is_('patate'))
 
-        self.session_manager.session_storage.should_receive('get_session')\
+        self.session_manager.session_storage.should_receive('get')\
             .with_args('patate').once().ordered().and_return(switch)
 
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch))
 
-        self.session_manager.session_storage.should_receive('get_session')\
+        self.session_manager.session_storage.should_receive('get')\
              .with_args('patate').once().ordered().and_return(switch)
-        self.session_manager.session_storage.should_receive('remove_session').with_args('patate').once().ordered()
+        self.session_manager.session_storage.should_receive('remove').with_args('patate').once().ordered()
 
         self.session_manager.close_session('patate')
 
@@ -68,7 +68,7 @@ class SwitchSessionManagerTest(TestCase):
         self.switch_mock.should_receive('start_transaction').never()
         self.switch_mock.should_receive('disconnect').never()
 
-        self.session_manager.session_storage.add_session('stuff', 'i_already_exist_buddy')
+        self.session_manager.session_storage.add('stuff', 'i_already_exist_buddy')
 
         with self.assertRaises(SessionAlreadyExists):
             self.session_manager.open_session(self.switch_mock, 'i_already_exist_buddy')

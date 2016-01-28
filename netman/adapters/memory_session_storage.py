@@ -21,16 +21,16 @@ class MemorySessionStorage(SessionStorage):
         super(MemorySessionStorage, self).__init__()
         self.sessions = {}
 
-    def add_session(self, switch, session_id):
+    def add(self, switch, session_id):
         if session_id not in self.sessions:
             self.sessions[session_id] = switch
         else:
             raise SessionAlreadyExists(session_id)
 
-    def get_session(self, session_id):
+    def get(self, session_id):
         if session_id in self.sessions:
             return self.sessions[session_id]
 
-    def remove_session(self, session_id):
+    def remove(self, session_id):
         if session_id in self.sessions:
             del self.sessions[session_id]

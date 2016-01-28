@@ -14,11 +14,11 @@
 
 
 class SessionStorage(object):
-    def add_session(self, switch, session_id):
+    def add(self, switch, session_id):
         raise NotImplementedError
 
-    def get_session(self, session_id):
+    def get(self, session_id):
         raise NotImplementedError
 
-    def remove_session(self, session_id):
+    def remove(self, session_id):
         raise NotImplementedError
