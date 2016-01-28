@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.core.objects.exceptions import SessionAlreadyExists
+from netman.core.objects.exceptions import SessionAlreadyExists, UnknownSession
 from netman.core.session_storage import SessionStorage
 
 
@@ -32,5 +32,6 @@ class MemorySessionStorage(SessionStorage):
             return self.sessions[session_id]
 
     def remove(self, session_id):
-        if session_id in self.sessions:
-            del self.sessions[session_id]
+        if session_id not in self.sessions:
+            raise UnknownSession(session_id)
+        del self.sessions[session_id]

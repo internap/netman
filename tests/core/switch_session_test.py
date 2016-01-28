@@ -17,9 +17,7 @@ import time
 
 from flexmock import flexmock
 from hamcrest import assert_that, is_
-import mock
-from netman.adapters.memory_session_storage import MemorySessionStorage
-
+from mock import Mock, patch
 from netman.core.objects.exceptions import UnknownResource, \
     OperationNotCompleted, NetmanException, SessionAlreadyExists, UnknownSession
 from netman.core.switch_sessions import SwitchSessionManager
@@ -44,7 +42,7 @@ class SwitchSessionManagerTest(TestCase):
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(self.switch_mock))
 
     def test_verify_session_storage_with_open_close(self):
-        switch = mock.Mock()
+        switch = Mock()
         switch.switch_descriptor = "describe_me"
         self.session_manager.session_storage = flexmock()
         self.session_manager.session_storage.should_receive('add').with_args(switch.switch_descriptor, 'patate').once().ordered()
@@ -91,10 +89,23 @@ class SwitchSessionManagerTest(TestCase):
         with self.assertRaises(UnknownResource):
                 self.session_manager.get_switch_for_session('patate')
 
+    @patch('netman.core.switch_sessions.SwitchSessionManager.logger')
+    def test_close_session_logs_if_remote_remove_fails(self, mock_log):
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.sessions['patate'] = 'stuff'
+        self.session_manager.session_storage. \
+            should_receive('remove'). \
+            with_args('patate'). \
+            and_raise(NetmanException, "bob")
+
+        self.session_manager.remove_session('patate')
+
+        assert_that(mock_log.error.call_count, is_(1))
+
     def test_session_should_close_itself_after_timeout(self):
         self.session_manager.session_inactivity_timeout = 0.5
 
-        switch_mock = mock.Mock()
+        switch_mock = Mock()
 
         assert_that(self.session_manager.open_session(switch_mock, 'patate'), is_('patate'))
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch_mock))
@@ -114,7 +125,7 @@ class SwitchSessionManagerTest(TestCase):
     def test_session_timeout_should_reset_on_activity(self):
         self.session_manager.session_inactivity_timeout = 1
 
-        switch_mock = mock.Mock()
+        switch_mock = Mock()
 
         assert_that(self.session_manager.open_session(switch_mock, 'patate'), is_('patate'))
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch_mock))
@@ -144,7 +155,7 @@ class SwitchSessionManagerTest(TestCase):
             self.session_manager.get_switch_for_session('patate')
 
     def test_commit_session(self):
-        self.session_manager.keep_alive = mock.Mock()
+        self.session_manager.keep_alive = Mock()
 
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
@@ -160,7 +171,7 @@ class SwitchSessionManagerTest(TestCase):
         self.session_manager.keep_alive.assert_called_with(session_id)
 
     def test_rollback_session(self):
-        self.session_manager.keep_alive = mock.Mock()
+        self.session_manager.keep_alive = Mock()
 
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
@@ -210,6 +221,18 @@ class SwitchSessionManagerTest(TestCase):
 
         with self.assertRaises(SessionAlreadyExists):
             self.session_manager.add_session(self.switch_mock, 'patate')
+
+    @patch('netman.core.switch_sessions.SwitchSessionManager.logger')
+    def test_add_session_logs_exception_if_remote_add_fails(self, mock_log):
+        self.session_manager.session_storage = flexmock()
+        self.session_manager.session_storage.\
+            should_receive('add').\
+            with_args(self.switch_mock.switch_descriptor, 'patate').\
+            and_raise(NetmanException)
+
+        self.session_manager.add_session(self.switch_mock, 'patate')
+
+        assert_that(mock_log.error.call_count, is_(1))
 
     def test_remove_session(self):
         self.session_manager.sessions['patate'] = self.switch_mock

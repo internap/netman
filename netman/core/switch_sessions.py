@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
+from logging import getLogger
 import threading
 
 from netman.adapters.memory_session_storage import MemorySessionStorage
-from netman.core.objects.exceptions import UnknownSession, SessionAlreadyExists
+from netman.core.objects.exceptions import UnknownSession, SessionAlreadyExists, \
+    NetmanException
 
 
 class SwitchSessionManager(object):
@@ -28,7 +29,7 @@ class SwitchSessionManager(object):
 
     @property
     def logger(self):
-        return logging.getLogger(__name__)
+        return getLogger(__name__)
 
     def get_switch_for_session(self, session_id):
         try:
@@ -56,19 +57,25 @@ class SwitchSessionManager(object):
 
         return session_id
 
-    # TODO(walhawari) - Only handles local sessions. Handle remote as well
     def add_session(self, switch, session_id):
         if session_id in self.sessions:
             raise SessionAlreadyExists(session_id)
         self.sessions[session_id] = switch
-        self.session_storage.add(switch.switch_descriptor, session_id)
+        try:
+            self.session_storage.add(switch.switch_descriptor, session_id)
+        except NetmanException as e:
+            self.logger.error('Switch for session {} could not be added in '
+                              'SessionStorage: {}'.format(session_id, e))
 
-    # TODO(walhawari) - Only handles local sessions. Handle remote as well
     def remove_session(self, session_id):
         if session_id not in self.sessions:
             raise UnknownSession(session_id)
         del self.sessions[session_id]
-        self.session_storage.remove(session_id)
+        try:
+            self.session_storage.remove(session_id)
+        except NetmanException as e:
+            self.logger.error('Switch for session {} could not be removed from '
+                              'SessionStorage: {}'.format(session_id, e))
 
     def keep_alive(self, session_id):
         self.logger.info("Keep-aliving session {}".format(session_id))

@@ -15,34 +15,39 @@
 from unittest import TestCase
 from hamcrest import assert_that, is_
 from netman.adapters.memory_session_storage import MemorySessionStorage
-from netman.core.objects.exceptions import SessionAlreadyExists
+from netman.core.objects.exceptions import SessionAlreadyExists, UnknownSession
 import mock
 
 
 class SessionStorageTest(TestCase):
     def setUp(self):
         self.session_source = MemorySessionStorage()
-        self.switch = mock.Mock()
+        self.switch_descriptor = mock.Mock()
 
     def test_add_session(self):
-        self.session_source.add(self.switch, 'some_session')
-        assert_that(self.session_source.sessions['some_session'], is_(self.switch))
+        self.session_source.add(self.switch_descriptor, 'some_session')
+        assert_that(self.session_source.sessions['some_session'],
+                    is_(self.switch_descriptor))
 
     def test_get_session(self):
-        self.session_source.sessions['some_session'] = self.switch
-        assert_that(self.session_source.get('some_session'), is_(self.switch))
+        self.session_source.sessions['some_session'] = self.switch_descriptor
+        assert_that(self.session_source.get('some_session'),
+                    is_(self.switch_descriptor))
 
     def test_get_nonexistent_session_is_none(self):
         assert_that(self.session_source.get('nonexistent_session'), is_(None))
 
     def test_remove_session(self):
-        self.session_source.sessions['some_session'] = self.switch
+        self.session_source.sessions['some_session'] = self.switch_descriptor
         self.session_source.remove('some_session')
         assert_that(self.session_source.sessions.get('some_session'), is_(None))
 
     def test_add_session_that_already_exists_fails(self):
-        self.session_source.add(self.switch, 'some_session')
+        self.session_source.add(self.switch_descriptor, 'some_session')
         with self.assertRaises(SessionAlreadyExists):
-            self.session_source.add(self.switch, 'some_session')
+            self.session_source.add(self.switch_descriptor, 'some_session')
 
-
+    def test_remove_nonexistent_session_fails(self):
+        self.session_source.sessions['other_session'] = self.switch_descriptor
+        with self.assertRaises(UnknownSession):
+            self.session_source.remove('some_session')
