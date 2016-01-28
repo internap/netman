@@ -246,6 +246,119 @@ class DellTest(unittest.TestCase):
 
         assert_that(vlans, has_length(10))
 
+    def test_get_vlan_standard_no_name(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000                                    ch2-3,ch5-6,   Static    Required",
+            "                                        ch8-48,",
+            "                                        1/g2-1/g3"
+        ])
+
+        vlan = self.switch.get_vlan(1000)
+
+        assert_that(vlan.number, equal_to(1000))
+        assert_that(vlan.name, equal_to(None))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_with_name(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000   shizzle                          ch2-3,ch5-6,   Static    Required",
+            "                                        ch8-48,",
+            "                                        1/g2-1/g3"
+        ])
+
+        vlan = self.switch.get_vlan(1000)
+
+        assert_that(vlan.number, equal_to(1000))
+        assert_that(vlan.name, equal_to("shizzle"))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_default(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1      Default                          ch2-3,ch5-6,   Default   Required",
+            "                                        ch8-48,1/g2,",
+            "                                        1/g4,1/g7,",
+            "                                        1/g13,",
+            "                                        1/g17-1/g20,",
+            "                                        1/xg4,2/g2,",
+            "                                        2/g4,2/g7,",
+            "                                        2/g9,",
+            "                                        2/g12-2/g20,",
+            "                                        2/g23-2/g24,",
+            "                                        2/xg3-2/xg4"
+        ])
+
+        vlan = self.switch.get_vlan(1)
+
+        assert_that(vlan.number, equal_to(1))
+        assert_that(vlan.name, equal_to("default"))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_with_bad_number(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "                     ^",
+            "Invalid input. Please specify an integer in the range 1 to 4093."
+        ])
+
+        with self.assertRaises(BadVlanNumber) as expect:
+            self.switch.get_vlan(5000)
+
+        assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
+
+    def test_get_vlan_with_unknown_number(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "ERROR: This VLAN does not exist."
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan(2019)
+
+        assert_that(str(expect.exception), equal_to("Vlan None not found"))
+
+    def test_get_vlan_with_more_than_one_page(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000   MyVlanName                       ch2-3,ch5-6,   Static    Required",
+            "                                        ch8-48,1/g2,",
+            "                                        1/g4,1/g7,",
+            "                                        1/g13,",
+            "--More-- or (q)uit"
+        ])
+
+        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "                                        1/g17-1/g20,",
+            "                                        1/xg4,2/g2,",
+            "                                        2/g4,2/g7,",
+            "                                        2/g9,",
+            "                                        2/g12-2/g20,",
+            "                                        2/g23-2/g24,",
+            "                                        2/xg3-2/xg4"
+        ])
+
+        vlan = self.switch.get_vlan(1000)
+
+        assert_that(vlan.number, equal_to(1000))
+        assert_that(vlan.name, equal_to("MyVlanName"))
+        assert_that(len(vlan.ips), equal_to(0))
+
     def test_get_interfaces(self):
         self.command_setup()
 

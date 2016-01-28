@@ -216,6 +216,139 @@ class Dell10GTest(unittest.TestCase):
         assert_that(vlan4000.name, equal_to(None))
         assert_that(len(vlan4000.ips), equal_to(0))
 
+    def test_get_vlan_standard_no_name(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
+
+            "VLAN   Name                             Ports          Type",
+            "-----  ---------------                  -------------  --------------",
+            "1000                                    Po27,          Static",
+            "                                        Te1/0/2-4,",
+            "                                        Te1/0/6-8,",
+            "                                        Te1/0/41-46",
+        ])
+
+        vlan = self.switch.get_vlan(1000)
+
+        assert_that(vlan.number, equal_to(1000))
+        assert_that(vlan.name, equal_to(None))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_standard_name_VLAN(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
+
+            "VLAN   Name                             Ports          Type",
+            "-----  ---------------                  -------------  --------------",
+            "1000   VLAN1000                         Po27,          Static",
+            "                                        Te1/0/2-4,",
+            "                                        Te1/0/6-8,",
+            "                                        Te1/0/41-46",
+        ])
+
+        vlan = self.switch.get_vlan(1000)
+
+        assert_that(vlan.number, equal_to(1000))
+        assert_that(vlan.name, equal_to(None))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_standard_with_name(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
+
+            "VLAN   Name                             Ports          Type",
+            "-----  ---------------                  -------------  --------------",
+            "1000   MyVlan                           Po27,          Static",
+            "                                        Te1/0/2-4,",
+            "                                        Te1/0/6-8,",
+            "                                        Te1/0/41-46",
+        ])
+
+        vlan = self.switch.get_vlan(1000)
+
+        assert_that(vlan.number, equal_to(1000))
+        assert_that(vlan.name, equal_to("MyVlan"))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_default(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
+
+            "VLAN   Name                             Ports          Type",
+            "-----  ---------------                  -------------  --------------",
+            "1      default                          Po2-128,       Default",
+            "                                        Te1/0/3-46,",
+            "                                        Fo1/0/1-2"
+
+        ])
+
+        vlan = self.switch.get_vlan(1)
+
+        assert_that(vlan.number, equal_to(1))
+        assert_that(vlan.name, equal_to("defaut"))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_default(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1").once().ordered().and_return([
+
+            "VLAN   Name                             Ports          Type",
+            "-----  ---------------                  -------------  --------------",
+            "1      default                          Po2-128,       Default",
+            "                                        Te1/0/3-46,",
+            "                                        Fo1/0/1-2"
+
+        ])
+
+        vlan = self.switch.get_vlan(1)
+
+        assert_that(vlan.number, equal_to(1))
+        assert_that(vlan.name, equal_to("default"))
+        assert_that(len(vlan.ips), equal_to(0))
+
+    def test_get_vlan_with_value_out_of_range(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000").once().ordered().and_return([
+            "                                              ^",
+            "Value is out of range. The valid range is 1 to 4093."
+        ])
+
+        with self.assertRaises(BadVlanNumber) as expect:
+            self.switch.get_vlan(5000)
+
+        assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
+
+    def test_get_vlan_with_bad_number(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id abcde").once().ordered().and_return([
+            "                                              ^",
+            "Invalid input. Please specify an integer in the range 1 to 4093."
+         ])
+
+        with self.assertRaises(BadVlanNumber) as expect:
+            self.switch.get_vlan("abcde")
+
+        assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
+
+    def test_get_vlan_with_unknown_number(self):
+        self.command_setup()
+
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1210").once().ordered().and_return([
+            "ERROR: This VLAN does not exist."
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan(1210)
+
+        assert_that(str(expect.exception), equal_to("Vlan None not found"))
+
     def test_get_interfaces(self):
         self.command_setup()
 

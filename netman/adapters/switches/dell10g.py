@@ -49,6 +49,15 @@ class Dell10G(Dell):
         result = self.shell.do('show vlan')
         return parse_vlan_list(result)
 
+    def get_vlan(self, number):
+        result = self.shell.do("show vlan id {}".format(number))
+        if regex.match(".*\^.*", result[0]):
+            raise BadVlanNumber
+        elif regex.match("^ERROR", result[0]):
+            raise UnknownVlan
+        else:
+            return parse_vlan_list(result)[0]
+
     def get_interfaces(self):
         result = self.shell.do('show interfaces status')
         return [self.read_interface(name) for name in parse_interface_names(result)]
