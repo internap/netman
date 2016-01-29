@@ -21,7 +21,7 @@ from tests.adapters.configured_test_case import ConfiguredTestCase
 
 
 class GetVlanTest(ConfiguredTestCase):
-    _dev_sample = "brocade"
+    _dev_sample = "dell"
 
     def test_returns_a_vlan_with_all_available_data(self):
         self.client.add_vlan(1000, name="vlan_name")
