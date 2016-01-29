@@ -205,8 +205,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(len(vlan4000.ips), equal_to(0))
 
     def test_get_vlan_with_no_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
 
             "VLAN   Name                             Ports          Type",
@@ -224,8 +222,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_standard_with_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
 
             "VLAN   Name                             Ports          Type",
@@ -243,8 +239,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_default(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1").once().ordered().and_return([
 
             "VLAN   Name                             Ports          Type",
@@ -262,8 +256,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_with_value_out_of_range(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000").once().ordered().and_return([
             "                                              ^",
             "Value is out of range. The valid range is 1 to 4093."
@@ -275,8 +267,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_get_vlan_with_bad_number(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id abcde").once().ordered().and_return([
             "                                              ^",
             "Invalid input. Please specify an integer in the range 1 to 4093."
@@ -288,8 +278,6 @@ class Dell10GTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_get_vlan_with_unknown_number(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1210").once().ordered().and_return([
             "ERROR: This VLAN does not exist."
         ])

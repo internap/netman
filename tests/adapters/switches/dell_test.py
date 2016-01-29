@@ -232,8 +232,6 @@ class DellTest(unittest.TestCase):
         assert_that(vlans, has_length(10))
 
     def test_get_vlan_standard_no_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
@@ -249,8 +247,6 @@ class DellTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_with_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
@@ -266,8 +262,6 @@ class DellTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_default(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
@@ -291,8 +285,6 @@ class DellTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_with_bad_number(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "                     ^",
             "Invalid input. Please specify an integer in the range 1 to 4093."
@@ -304,8 +296,6 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_get_vlan_with_unknown_number(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "ERROR: This VLAN does not exist."
         ])
@@ -316,8 +306,6 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan None not found"))
 
     def test_get_vlan_with_more_than_one_page(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
