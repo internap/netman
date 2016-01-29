@@ -19,19 +19,19 @@ from netman.core.session_storage import SessionStorage
 class MemorySessionStorage(SessionStorage):
     def __init__(self):
         super(MemorySessionStorage, self).__init__()
-        self.sessions = {}
+        self._sessions = {}
 
-    def add(self, switch_descriptor, session_id):
-        if session_id not in self.sessions:
-            self.sessions[session_id] = switch_descriptor
+    def add(self, session_id, switch_descriptor):
+        if session_id not in self._sessions:
+            self._sessions[session_id] = switch_descriptor
         else:
             raise SessionAlreadyExists(session_id)
 
     def get(self, session_id):
-        if session_id in self.sessions:
-            return self.sessions[session_id]
+        if session_id in self._sessions:
+            return self._sessions[session_id]
 
     def remove(self, session_id):
-        if session_id not in self.sessions:
+        if session_id not in self._sessions:
             raise UnknownSession(session_id)
-        del self.sessions[session_id]
+        del self._sessions[session_id]

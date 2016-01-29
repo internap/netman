@@ -52,24 +52,20 @@ class SwitchSessionManager(object):
             raise
 
         self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
-        self.add_session(switch, session_id)
+        self._add_session(session_id, switch)
         self._start_timer(session_id)
 
         return session_id
 
-    def add_session(self, switch, session_id):
-        if session_id in self.sessions:
-            raise SessionAlreadyExists(session_id)
+    def _add_session(self, session_id, switch):
         self.sessions[session_id] = switch
         try:
-            self.session_storage.add(switch.switch_descriptor, session_id)
+            self.session_storage.add(session_id, switch.switch_descriptor)
         except NetmanException as e:
             self.logger.error('Switch for session {} could not be added in '
                               'SessionStorage: {}'.format(session_id, e))
 
-    def remove_session(self, session_id):
-        if session_id not in self.sessions:
-            raise UnknownSession(session_id)
+    def _remove_session(self, session_id):
         del self.sessions[session_id]
         try:
             self.session_storage.remove(session_id)
@@ -100,7 +96,7 @@ class SwitchSessionManager(object):
         try:
             switch.end_transaction()
         finally:
-            self.remove_session(session_id)
+            self._remove_session(session_id)
             self._stop_timer(session_id)
             switch.disconnect()
 
