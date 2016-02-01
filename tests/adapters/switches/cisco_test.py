@@ -14,15 +14,15 @@
 
 import unittest
 
+import mock
 from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, has_length, equal_to, is_, instance_of, none, empty
-import mock
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
+
 from netman.adapters.switches import cisco
-from netman.adapters.switches.util import SubShell
-from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.cisco import Cisco, parse_vlan_ranges
+from netman.adapters.switches.util import SubShell
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, BadVrrpGroupNumber, \
@@ -31,6 +31,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     UnknownBond
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.switch_transactional import SwitchTransactional
 
 
 def test_factory():
@@ -50,26 +51,18 @@ def test_factory():
 class CiscoTest(unittest.TestCase):
 
     def setUp(self):
-        self.lock = mock.Mock()
-        self.switch = cisco.factory(SwitchDescriptor(model='cisco', hostname="my.hostname", password="the_password"), self.lock)
+        self.switch = Cisco(SwitchDescriptor(model='cisco', hostname="my.hostname"))
         SubShell.debug = True
+        self.mocked_ssh_client = flexmock()
+        self.switch.ssh = self.mocked_ssh_client
 
     def tearDown(self):
         flexmock_teardown()
-
-    def command_setup(self):
-        self.mocked_ssh_client = flexmock()
-        self.switch.impl.ssh = self.mocked_ssh_client
-        self.mocked_ssh_client.should_receive("do").with_args("terminal length 0").never()
-        self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=": ").never()
-        self.mocked_ssh_client.should_receive("do").with_args("the_password").never()
 
     def test_switch_has_a_logger_configured_with_the_switch_name(self):
         assert_that(self.switch.logger.name, is_(Cisco.__module__ + ".my.hostname"))
 
     def test_get_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show vlan brief").once().ordered().and_return([
             "VLAN Name                             Status    Ports",
             "---- -------------------------------- --------- -------------------------------",
@@ -196,9 +189,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan_list[4].access_groups[OUT], equal_to(None))
 
     def test_get_vlan_with_no_interface(self):
-        self.command_setup()
-
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1750 | begin vlan").and_return([
             "vlan 1750",
             "end"
@@ -222,9 +212,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.icmp_redirects, is_(True))
 
     def test_get_vlan_with_an_empty_interface(self):
-        self.command_setup()
-
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1750 | begin vlan").and_return([
             "vlan 1750",
             " name Shizzle",
@@ -249,9 +236,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.dhcp_relay_servers, is_(empty()))
 
     def test_get_vlan_with_a_full_interface(self):
-        self.command_setup()
-
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1750 | begin vlan").and_return([
             "vlan 1750",
             " name Shizzle",
@@ -304,8 +288,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(vlan.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
 
     def test_get_vlan_unknown_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1750 | begin vlan").once().ordered().and_return([
         ])
 
@@ -315,8 +297,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1750 not found"))
 
     def test_add_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
@@ -325,13 +305,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("name Gertrude").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vlan(2999, name="Gertrude")
 
     def test_add_vlan_refused_number(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
@@ -349,8 +326,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_add_vlan_refused_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
@@ -371,8 +346,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
 
     def test_add_vlan_no_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
@@ -380,13 +353,10 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vlan(2999)
 
     def test_add_vlan_already_exist_fails(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"
@@ -399,8 +369,6 @@ class CiscoTest(unittest.TestCase):
 
 
     def test_remove_vlan_also_removes_associated_vlan_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -411,13 +379,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no interface vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_vlan(2999)
 
     def test_remove_vlan_invalid_vlan_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
         ]).once().ordered()
 
@@ -427,7 +392,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_remove_vlan_ignores_removing_interface_not_created(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -440,13 +404,10 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("no vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_vlan(2999)
 
     def test_get_interfaces(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").once().ordered().and_return([
             "interface FastEthernet0/1",
             "!",
@@ -538,7 +499,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(list(result), equal_to([1, 3, 4, 5, 7]))
 
     def test_set_access_vlan(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -549,12 +509,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport access vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_access_vlan("FastEthernet0/4", vlan=2999)
 
     def test_set_access_vlan_invalid_vlan_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
         ]).once().ordered()
 
@@ -564,7 +522,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_set_access_vlan_invalid_interface_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -584,19 +541,16 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_remove_access_vlan(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_access_vlan("FastEthernet0/4")
 
     def test_remove_access_vlan_invalid_interface_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -612,7 +566,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_set_access_mode(self):
-        self.command_setup()
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -622,13 +575,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk native vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk allowed vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_access_mode("FastEthernet0/4")
 
     def test_set_access_mode_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -644,8 +594,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_set_bond_access_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -654,13 +602,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk native vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk allowed vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_bond_access_mode(4)
 
     def test_set_bond_access_mode_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -676,8 +621,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
 
     def test_set_trunk_mode_initial(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/4").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 156 bytes",
@@ -693,13 +636,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan none").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_trunk_mode("FastEthernet0/4")
 
     def test_set_trunk_mode_initial_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface SlowEthernet42/9999").and_return([
             "        ^",
             "% Invalid input detected at '^' marker."
@@ -711,8 +651,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_set_trunk_mode_switching_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/4").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 156 bytes",
@@ -729,13 +667,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan none").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_trunk_mode("FastEthernet0/4")
 
     def test_set_trunk_mode_idempotent(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/4").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 156 bytes",
@@ -753,13 +688,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_trunk_mode("FastEthernet0/4")
 
     def test_set_bond_trunk_mode_initial(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 156 bytes",
@@ -775,13 +707,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan none").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_bond_trunk_mode(4)
 
     def test_set_bond_trunk_mode_initial_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel9999").and_return([
             "        ^",
             "% Invalid input detected at '^' marker."
@@ -793,8 +722,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
 
     def test_set_bond_trunk_mode_switching_mode(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 156 bytes",
@@ -811,13 +738,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan none").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_bond_trunk_mode(4)
 
     def test_set_bond_trunk_mode_idempotent(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 156 bytes",
@@ -835,12 +759,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_bond_trunk_mode(4)
 
     def test_add_trunk_vlan(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -851,12 +773,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_trunk_vlan("FastEthernet0/4", vlan=2999)
 
     def test_add_trunk_vlan_invalid_vlan_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
         ]).once().ordered()
 
@@ -866,7 +786,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_add_trunk_vlan_invalid_interface_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -886,8 +805,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_remove_trunk_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/4 | begin interface").once().ordered().and_return([
             "interface FastEthernet0/4",
             " switchport access vlan 100",
@@ -903,13 +820,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_trunk_vlan("FastEthernet0/4", vlan=2999)
 
     def test_remove_trunk_vlan_invalid_vlan_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/4 | begin interface").once().ordered().and_return([
             "interface FastEthernet0/4",
             " switchport access vlan 100",
@@ -925,8 +839,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_remove_trunk_vlan_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface SlowEthernet42/9999 | begin interface").once().ordered().and_return([
             "        ^",
             "% Invalid input detected at '^' marker."
@@ -938,8 +850,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_remove_trunk_vlan_no_port_mode_still_working(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/4 | begin interface").once().ordered().and_return([
             "interface FastEthernet0/4",
             " switchport access vlan 100",
@@ -954,12 +864,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 303").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_trunk_vlan("FastEthernet0/4", vlan=303)
 
     def test_add_bond_trunk_vlan(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -970,12 +878,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_bond_trunk_vlan(4, vlan=2999)
 
     def test_add_bond_trunk_vlan_invalid_vlan_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
         ]).once().ordered()
 
@@ -985,7 +891,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_add_bond_trunk_vlan_invalid_interface_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -1005,8 +910,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
 
     def test_remove_bond_trunk_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4 | begin interface").once().ordered().and_return([
             "interface Port-channel4",
             " switchport access vlan 100",
@@ -1022,13 +925,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_bond_trunk_vlan(4, vlan=2999)
 
     def test_remove_bond_trunk_vlan_invalid_vlan_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4 | begin interface").once().ordered().and_return([
             "interface Port-channel4",
             " switchport access vlan 100",
@@ -1044,8 +944,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_remove_bond_trunk_vlan_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel9999 | begin interface").once().ordered().and_return([
             "        ^",
             "% Invalid input detected at '^' marker."
@@ -1057,8 +955,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
 
     def test_remove_bond_trunk_vlan_no_port_mode_still_working(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface Port-channel4 | begin interface").once().ordered().and_return([
             "interface Port-channel4",
             " switchport access vlan 100",
@@ -1073,26 +969,20 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan remove 303").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_bond_trunk_vlan(4, vlan=303)
 
     def test_shutdown_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.shutdown_interface("FastEthernet0/4")
 
     def test_shutdown_interface_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -1108,21 +998,16 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_openup_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.openup_interface("FastEthernet0/4")
 
     def test_openup_interface_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -1138,7 +1023,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_configure_native_vlan_on_trunk(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -1149,12 +1033,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk native vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.configure_native_vlan("FastEthernet0/4", vlan=2999)
 
     def test_configure_native_vlan_on_trunk_invalid_vlan_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
         ]).once().ordered()
 
@@ -1164,7 +1046,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_configure_native_vlan_on_trunk_invalid_interface_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -1184,21 +1065,16 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_remove_native_vlan_on_trunk(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface FastEthernet0/4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk native vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_native_vlan("FastEthernet0/4")
 
     def test_remove_native_vlan_on_trunk_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -1214,7 +1090,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
     def test_configure_bond_native_vlan_on_trunk(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -1225,12 +1100,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("switchport trunk native vlan 2999").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.configure_bond_native_vlan(4, vlan=2999)
 
     def test_configure_bond_native_vlan_on_trunk_invalid_vlan_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
         ]).once().ordered()
 
@@ -1240,7 +1113,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
     def test_configure_bond_native_vlan_on_trunk_invalid_interface_raises(self):
-        self.command_setup()
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
             "end"]).once().ordered()
@@ -1260,21 +1132,16 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
 
     def test_remove_bond_native_vlan_on_trunk(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface Port-channel4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no switchport trunk native vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_bond_native_vlan(4)
 
     def test_remove_bond_native_vlan_on_trunk_invalid_interface_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -1290,8 +1157,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 9999 not found"))
 
     def test_add_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1308,13 +1173,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip address 1.2.3.4 255.255.255.0").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_ip_to_vlan(1234, IPNetwork("1.2.3.4/24"))
 
     def test_add_another_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1335,13 +1197,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no ip redirects").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip address 2.3.4.5 255.255.255.128 secondary").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_ip_to_vlan(1234, IPNetwork("2.3.4.5/25"))
 
     def test_add_unavailable_ip_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1367,8 +1226,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 1.2.3.4/24 is not available in this vlan: % 2.1.1.128 overlaps with secondary address on Vlan2998"))
 
     def test_add_unavailable_ip_because_secondary_elsewhere_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1394,8 +1251,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 1.2.3.4/24 is not available in this vlan: % 2.1.1.128 is assigned as a secondary address on Vlan2998"))
 
     def test_add_an_ip_already_present_in_the_same_port_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1413,8 +1268,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 1.2.3.4/24 is already present in this vlan as 1.2.3.4/25"))
 
     def test_add_an_ip_already_present_in_the_same_port_secondary_raises(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1433,8 +1286,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 2.1.1.1/24 is already present in this vlan as 2.1.1.1/24"))
 
     def test_add_ip_to_vlan_without_interface_creates_it(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1452,13 +1303,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip address 1.2.3.4 255.255.255.0").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_ip_to_vlan(1234, IPNetwork("1.2.3.4/24"))
 
     def test_add_ip_to_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1473,8 +1321,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_remove_lonely_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1491,13 +1337,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip address 1.2.3.4 255.255.255.128").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_ip_from_vlan(1234, IPNetwork("1.2.3.4/25"))
 
     def test_remove_secondary_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1515,13 +1358,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip address 2.1.1.1 255.255.255.0 secondary").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_ip_from_vlan(1234, IPNetwork("2.1.1.1/24"))
 
     def test_remove_a_primary_ip_that_have_secondary_ips(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1540,13 +1380,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip address 2.1.1.1 255.255.255.0").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_ip_from_vlan(1234, IPNetwork("1.2.3.4/25"))
 
     def test_cant_remove_unknown_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1564,8 +1401,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 5.5.5.5/25 not found"))
 
     def test_cant_remove_known_ip_with_wrong_netmask(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1583,8 +1418,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 1.2.3.4/27 not found"))
 
     def test_remove_ip_from_known_vlan_with_no_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1601,8 +1434,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("IP 1.2.3.4/24 not found"))
 
     def test_remove_ip_from_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1617,8 +1448,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_set_access_group_success(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1635,13 +1464,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup in").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_access_group(2500, IN, "TheAccessGroup")
 
     def test_set_access_group_incorrect_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1668,8 +1494,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Access group name \"TheAc cessGroup\" is invalid"))
 
     def test_set_access_group_without_interface_creates_it(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1687,13 +1511,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip access-group TheAccessGroup in").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_access_group(2500, IN, "TheAccessGroup")
 
     def test_set_access_group_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1708,8 +1529,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 
     def test_remove_access_group_success(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1727,13 +1546,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip access-group in").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_vlan_access_group(2500, IN)
 
     def test_remove_access_group_success_out_also(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1751,13 +1567,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip access-group out").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_vlan_access_group(2500, OUT)
 
     def test_remove_access_group_not_set(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1774,8 +1587,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Outgoing IP access group not found"))
 
     def test_remove_access_group_from_known_vlan_with_no_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1792,8 +1603,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Inbound IP access group not found"))
 
     def test_remove_access_group_from_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1808,8 +1617,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 
     def test_set_vlan_vrf_success(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1826,13 +1633,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip vrf forwarding MYVRF").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_vrf(2500, "MYVRF")
 
     def test_set_vlan_vrf_incorrect_name(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1858,8 +1662,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("VRF name \"MYVRF\" was not configured."))
 
     def test_set_vlan_vrf_without_interface_creates_it(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1877,13 +1679,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip vrf forwarding MYVRF").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_vrf(2500, "MYVRF")
 
     def test_set_vlan_vrf_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1898,8 +1697,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 
     def test_remove_vlan_vrf_success(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1917,13 +1714,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip vrf forwarding").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_vlan_vrf(2500)
 
     def test_remove_vlan_vrf_not_set(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -1939,8 +1733,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("VRF is not set on vlan 2500"))
 
     def test_remove_vlan_vrf_from_known_vlan_with_no_interface(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -1957,8 +1749,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("VRF is not set on vlan 2500"))
 
     def test_remove_vlan_vrf_from_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -2036,21 +1826,19 @@ class CiscoTest(unittest.TestCase):
 
     def test_disconnect(self):
         logger = flexmock()
-        self.switch.impl.logger = logger
+        self.switch.logger = logger
         logger.should_receive("debug")
 
         mocked_ssh_client = flexmock()
-        self.switch.impl.ssh = mocked_ssh_client
+        self.switch.ssh = mocked_ssh_client
         mocked_ssh_client.should_receive("quit").with_args("exit").once().ordered()
 
         logger.should_receive("info").with_args("FULL TRANSACTION LOG").once()
 
-        self.switch.impl.ssh.full_log = "FULL TRANSACTION LOG"
+        self.switch.ssh.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
     def test_transactions_commit_write_memory(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -2069,8 +1857,6 @@ class CiscoTest(unittest.TestCase):
         self.switch.end_transaction()
 
     def test_add_vrrp_success_single_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2092,14 +1878,11 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 track 101 decrement 50").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 ip 1.2.3.4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                    track_id=101, track_decrement=50)
 
     def test_add_vrrp_success_multiple_ip(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2122,15 +1905,12 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 ip 1.2.3.4").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 ip 5.6.7.8 secondary").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4"), IPAddress("5.6.7.8")], priority=110,
                                    hello_interval=5, dead_interval=15, track_id=101,
                                    track_decrement=50)
 
     def test_add_vrrp_from_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -2145,8 +1925,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_add_existing_vrrp_to_same_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2164,8 +1942,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vrrp group 1 is already in use on vlan 1234"))
 
     def test_add_vrrp_to_vlan_with_another_vrrp(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2188,21 +1964,16 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("standby 2 authentication VLAN1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 2 ip 1.2.3.5").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_vrrp_group(1234, 2, ips=[IPAddress("1.2.3.5")], priority=90)
 
     def test_add_vrrp_with_out_of_range_group_id(self):
-        self.command_setup()
-
         with self.assertRaises(BadVrrpGroupNumber) as expect:
             self.switch.add_vrrp_group(1234, 0, ips=[IPAddress("1.2.3.4")], priority=255)
 
         assert_that(str(expect.exception), equal_to("VRRP group number is invalid, must be contained between 1 and 255"))
 
     def test_add_vrrp_with_bad_priority(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2228,8 +1999,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("VRRP priority value is invalid, must be contained between 1 and 255"))
 
     def test_add_vrrp_with_bad_timers(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2257,8 +2026,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("VRRP timers values are invalid"))
 
     def test_add_vrrp_with_bad_tracking(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2288,8 +2055,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("VRRP tracking values are invalid"))
 
     def test_remove_vrrp_success(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2312,13 +2077,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no standby 1").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_vrrp_group(1234, 1)
 
     def test_remove_vrrp_with_invalid_group_id(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2334,8 +2096,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vrrp group 256 does not exist for vlan 1234"))
 
     def test_remove_vrrp_from_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -2350,8 +2110,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_add_dhcp_relay_server(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2368,13 +2126,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip helper-address 10.10.10.1").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_dhcp_relay_server(1234, IPAddress('10.10.10.1'))
 
     def test_add_second_dhcp_relay_server(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2392,13 +2147,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip helper-address 10.10.10.2").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.add_dhcp_relay_server(1234, IPAddress('10.10.10.2'))
 
     def test_add_same_dhcp_relay_server_fails(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2415,8 +2167,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("DHCP relay server 10.10.10.1 already exists on VLAN 1234"))
 
     def test_remove_dhcp_relay_server(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2434,13 +2184,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip helper-address 10.10.10.1").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.remove_dhcp_relay_server(1234, IPAddress('10.10.10.1'))
 
     def test_remove_non_existent_dhcp_relay_server_fails(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2456,8 +2203,6 @@ class CiscoTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("DHCP relay server 10.10.10.1 not found on VLAN 1234"))
 
     def test_set_vlan_icmp_redirects_state_enable(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2474,13 +2219,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("ip redirects").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_icmp_redirects_state(1234, True)
 
     def test_set_vlan_icmp_redirects_state_disable(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",
             "Current configuration : 41 bytes",
@@ -2497,13 +2239,10 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip redirects").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
 
         self.switch.set_vlan_icmp_redirects_state(1234, False)
 
     def test_set_vlan_icmp_redirects_state_without_interface_creates_it(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
@@ -2521,13 +2260,9 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no ip redirects").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("write memory").and_return([]).once().ordered()
-
         self.switch.set_vlan_icmp_redirects_state(1234, False)
 
     def test_set_vlan_icmp_redirects_state_unknown_vlan(self):
-        self.command_setup()
-
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "                                  ^",
             "% Invalid input detected at '^' marker.",
