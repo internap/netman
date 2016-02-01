@@ -25,7 +25,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
 
@@ -34,8 +34,8 @@ __all__ = ['factory', 'Cisco']
 
 
 def factory(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Cisco(switch_descriptor=switch_descriptor),
+    return FlowControlSwitch(
+        wrapped_switch=Cisco(switch_descriptor=switch_descriptor),
         lock=lock
     )
 
@@ -46,7 +46,7 @@ class Cisco(SwitchBase):
         super(Cisco, self).__init__(switch_descriptor)
         self.ssh = None
 
-    def connect(self):
+    def _connect(self):
         params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
@@ -64,14 +64,14 @@ class Cisco(SwitchBase):
         self.ssh.do("terminal length 0")
         self.ssh.do("terminal width 0")
 
-    def disconnect(self):
+    def _disconnect(self):
         self.ssh.quit("exit")
         self.logger.info(self.ssh.full_log)
 
-    def end_transaction(self):
+    def _end_transaction(self):
         pass
 
-    def start_transaction(self):
+    def _start_transaction(self):
         pass
 
     def commit_transaction(self):

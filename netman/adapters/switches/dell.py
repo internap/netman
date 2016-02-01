@@ -19,7 +19,7 @@ from netman.core.objects.interface import Interface
 from netman.adapters.switches.cisco import parse_vlan_ranges
 from netman.core.objects.vlan import Vlan
 from netman import regex
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
@@ -31,15 +31,15 @@ __all__ = ['factory_ssh', 'factory_telnet', 'Dell']
 
 
 def factory_ssh(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Dell(switch_descriptor=switch_descriptor, shell_factory=SshClient),
+    return FlowControlSwitch(
+        wrapped_switch=Dell(switch_descriptor=switch_descriptor, shell_factory=SshClient),
         lock=lock,
     )
 
 
 def factory_telnet(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
+    return FlowControlSwitch(
+        wrapped_switch=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
         lock=lock,
     )
 
@@ -51,7 +51,7 @@ class Dell(SwitchBase):
         self.shell = None
         self.shell_factory = shell_factory
 
-    def connect(self):
+    def _connect(self):
         params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
@@ -66,14 +66,14 @@ class Dell(SwitchBase):
         self.shell.do("enable", wait_for=":")
         self.shell.do(self.switch_descriptor.password)
 
-    def disconnect(self):
+    def _disconnect(self):
         self.shell.quit("quit")
         self.logger.info(self.shell.full_log)
 
-    def start_transaction(self):
+    def _start_transaction(self):
         pass
 
-    def end_transaction(self):
+    def _end_transaction(self):
         pass
 
     def rollback_transaction(self):

@@ -23,7 +23,7 @@ from netman.adapters.switches.juniper import Juniper
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
 
 
@@ -31,8 +31,8 @@ def test_factory():
     lock = mock.Mock()
     switch = juniper.qfx_copper_factory(SwitchDescriptor(hostname='hostname', model='juniper_qfx_copper', username='username', password='password', port=22), lock)
 
-    assert_that(switch, instance_of(SwitchTransactional))
-    assert_that(switch.impl, instance_of(Juniper))
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Juniper))
     assert_that(switch.lock, is_(lock))
     assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
     assert_that(switch.switch_descriptor.model, equal_to("juniper_qfx_copper"))

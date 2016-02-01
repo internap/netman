@@ -30,15 +30,15 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     VlanAlreadyExist
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def test_factory_ssh():
     lock = mock.Mock()
     switch = brocade_factory_ssh(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=22), lock)
 
-    assert_that(switch, instance_of(SwitchTransactional))
-    assert_that(switch.impl, instance_of(Brocade))
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Brocade))
     assert_that(switch.lock, is_(lock))
     assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
     assert_that(switch.switch_descriptor.model, equal_to("brocade"))
@@ -50,8 +50,8 @@ def test_factory_telnet():
     lock = mock.Mock()
     switch = brocade_factory_telnet(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=23), lock)
 
-    assert_that(switch, instance_of(SwitchTransactional))
-    assert_that(switch.impl, instance_of(Brocade))
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Brocade))
     assert_that(switch.lock, is_(lock))
     assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
     assert_that(switch.switch_descriptor.model, equal_to("brocade"))

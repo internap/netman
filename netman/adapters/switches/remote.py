@@ -48,13 +48,13 @@ class RemoteSwitch(SwitchBase):
             self._proxy = self.switch_descriptor.netman_server
             self._next_proxies = []
 
-    def connect(self):
+    def _connect(self):
         pass
 
-    def disconnect(self):
+    def _disconnect(self):
         pass
 
-    def start_transaction(self):
+    def _start_transaction(self):
         self.session_id = str(uuid.uuid4())
         url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
         details = self.request()
@@ -81,7 +81,7 @@ class RemoteSwitch(SwitchBase):
                                                             'Netman-Session-Id': self.session_id}, data='rollback'))
         self.logger.info("Rollbacked {}".format(self.session_id))
 
-    def end_transaction(self):
+    def _end_transaction(self):
         self.logger.info("Ending session {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
         session_id = self.session_id
