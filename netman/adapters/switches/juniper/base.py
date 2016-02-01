@@ -114,29 +114,30 @@ class Juniper(SwitchBase):
         return vlan_list
 
     def get_vlan(self, number):
-        name = number
-        config = self.query(one_vlan(name), all_interfaces)
+        config = self.query(one_vlan_by_vlan_id(number), all_interfaces)
+        if len(config.xpath("data/configuration/vlans/vlan")) >= 1:
+            vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
+            number_node = first(vlan_node.xpath("vlan-id"))
+            vlan = None
+            if number_node is not None:
+                vlan = Vlan(number=int(number_node.text))
 
-        vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
-        number_node = first(vlan_node.xpath("vlan-id"))
-        vlan = None
-        if number_node is not None:
-            vlan = Vlan(number=int(number_node.text))
+                description_node = first(vlan_node.xpath("description"))
+                if description_node is not None:
+                    vlan.name = description_node.text
 
-            description_node = first(vlan_node.xpath("description"))
-            if description_node is not None:
-                vlan.name = description_node.text
+                l3_if_type, l3_if_name = get_l3_interface(vlan_node)
+                if l3_if_name is not None:
+                    interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
+                                                        "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
+                    if interface_node is not None:
+                        vlan.ips = parse_ips(interface_node)
+                        vlan.access_groups[IN] = parse_inet_filter(interface_node, "input")
+                        vlan.access_groups[OUT] = parse_inet_filter(interface_node, "output")
 
-            l3_if_type, l3_if_name = get_l3_interface(vlan_node)
-            if l3_if_name is not None:
-                interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
-                                                    "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
-                if interface_node is not None:
-                    vlan.ips = parse_ips(interface_node)
-                    vlan.access_groups[IN] = parse_inet_filter(interface_node, "input")
-                    vlan.access_groups[OUT] = parse_inet_filter(interface_node, "output")
-
-        return vlan
+            return vlan
+        else:
+            raise UnknownVlan(number)
 
     def get_interfaces(self):
         config = self.query(all_interfaces, all_vlans)
@@ -695,6 +696,19 @@ def one_vlan(vlan_name):
                 </vlan>
             </vlans>
         """.format(vlan_name))
+
+    return m
+
+
+def one_vlan_by_vlan_id(vlan_id):
+    def m():
+        return to_ele("""
+            <vlans>
+                <vlan>
+                    <vlan-id>{}</vlan-id>
+                </vlan>
+            </vlans>
+        """.format(vlan_id))
 
     return m
 

@@ -269,7 +269,7 @@ class JuniperTest(unittest.TestCase):
                   <configuration>
                     <vlans>
                       <vlan>
-                        <name>STANDARD</name>
+                        <vlan-id>10</vlan-id>
                       </vlan>
                     </vlans>
                     <interfaces />
@@ -285,7 +285,7 @@ class JuniperTest(unittest.TestCase):
                 </vlans>
             """))
 
-        vlan = self.switch.get_vlan("STANDARD")
+        vlan = self.switch.get_vlan(10)
 
         assert_that(vlan.number, equal_to(10))
         assert_that(vlan.name, equal_to("my-description"))
@@ -293,30 +293,26 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlan.access_groups[OUT], equal_to(None))
         assert_that(vlan.ips, has_length(0))
 
-    def test_get_vlan_with_no_vlan_id(self):
+    def test_get_vlan_with_unknown_vlan(self):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
-                    <filter>
-                      <configuration>
-                        <vlans>
-                          <vlan>
-                            <name>NO-VLAN-ID</name>
-                          </vlan>
-                        </vlans>
-                        <interfaces />
-                      </configuration>
-                    </filter>
-                """)).and_return(a_configuration("""
+                <filter>
+                  <configuration>
                     <vlans>
                       <vlan>
-                        <name>NO-VLAN-ID</name>
-                        <description>shizzle</description>
+                        <vlan-id>10</vlan-id>
                       </vlan>
                     </vlans>
-                """))
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+            """))
 
-        vlan = self.switch.get_vlan("NO-VLAN-ID")
 
-        assert_that(vlan, is_(None))
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan(10)
+
+        assert_that(str(expect.exception), equal_to("Vlan 10 not found"))
 
     def test_get_vlan_with_interface(self):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
@@ -324,7 +320,7 @@ class JuniperTest(unittest.TestCase):
                   <configuration>
                     <vlans>
                       <vlan>
-                        <name>WITH-IF</name>
+                        <vlan-id>20</vlan-id>
                       </vlan>
                     </vlans>
                     <interfaces />
@@ -395,7 +391,7 @@ class JuniperTest(unittest.TestCase):
                 </interfaces>
             """))
 
-        vlan = self.switch.get_vlan("WITH-IF")
+        vlan = self.switch.get_vlan(20)
 
         assert_that(vlan.number, equal_to(20))
         assert_that(vlan.name, equal_to(None))
@@ -412,7 +408,7 @@ class JuniperTest(unittest.TestCase):
                   <configuration>
                     <vlans>
                       <vlan>
-                        <name>WITH-IF-MULTI-IP</name>
+                        <vlan-id>40</vlan-id>
                       </vlan>
                     </vlans>
                     <interfaces />
@@ -473,7 +469,7 @@ class JuniperTest(unittest.TestCase):
                 </interfaces>
             """))
 
-        vlan = self.switch.get_vlan("WITH-IF-MULTI-IP")
+        vlan = self.switch.get_vlan(40)
 
         assert_that(vlan.number, equal_to(40))
         assert_that(vlan.name, equal_to(None))
@@ -493,7 +489,7 @@ class JuniperTest(unittest.TestCase):
               <configuration>
                 <vlans>
                   <vlan>
-                    <name>ON_IRB</name>
+                    <vlan-id>20</vlan-id>
                   </vlan>
                 </vlans>
                 <interfaces />
@@ -553,7 +549,7 @@ class JuniperTest(unittest.TestCase):
             </interfaces>
         """))
 
-        vlan = self.switch.get_vlan("ON_IRB")
+        vlan = self.switch.get_vlan(20)
 
         assert_that(str(vlan.ips[0].ip), equal_to("2.1.1.1"))
 
@@ -563,7 +559,7 @@ class JuniperTest(unittest.TestCase):
               <configuration>
                 <vlans>
                   <vlan>
-                    <name>NOT_FOUND</name>
+                    <vlan-id>40</vlan-id>
                   </vlan>
                 </vlans>
                 <interfaces />
@@ -623,7 +619,7 @@ class JuniperTest(unittest.TestCase):
             </interfaces>
         """))
 
-        vlan = self.switch.get_vlan("NOT_FOUND")
+        vlan = self.switch.get_vlan(40)
 
         assert_that(vlan.ips, has_length(0))
 
