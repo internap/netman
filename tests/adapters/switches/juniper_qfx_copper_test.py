@@ -45,7 +45,7 @@ class JuniperTest(unittest.TestCase):
 
     def setUp(self):
         self.switch = Juniper(
-                switch_descriptor=SwitchDescriptor(model='juniper', hostname="toto"),
+                switch_descriptor=SwitchDescriptor(model='juniper_qfx_copper', hostname="toto"),
                 custom_strategies=JuniperQfxCopperCustomStrategies()
         )
         self.netconf_mock = flexmock()

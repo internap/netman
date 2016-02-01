@@ -26,7 +26,7 @@ from tests.adapters.switches.brocade_test import vlan_with_vif_display, vlan_dis
 class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
     def setUp(self):
-        self.switch = BackwardCompatibleBrocade(SwitchDescriptor("cisco", "host"), None)
+        self.switch = BackwardCompatibleBrocade(SwitchDescriptor("brocade", "host"), None)
         self.shell_mock = flexmock()
         self.switch.shell = self.shell_mock
 
