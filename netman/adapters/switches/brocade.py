@@ -20,7 +20,6 @@ from netaddr.ip import IPAddress
 from netman import regex
 from netman.adapters.switches.util import SubShell, split_on_bang, split_on_dedent, no_output, \
     ResultChecker
-from netman.adapters.shell import ssh
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
@@ -452,12 +451,12 @@ def add_interface_vlan_data(target_vlan, int_vlan_data):
             target_vlan.access_groups[direction] = regex[0]
         elif regex.match("^ vrf forwarding ([^\s]*)", line):
             target_vlan.vrf_forwarding = regex[0]
-        elif regex.match("^ ip vrrp-extended vrid ([^\s]*)", line):
+        elif regex.match("^ (?:ip|ipv6) vrrp-extended vrid ([^\s]*)", line):
             vrrp_group = next((group for group in target_vlan.vrrp_groups if str(group.id) == regex[0]), None)
             if vrrp_group is None:
                 vrrp_group = VrrpGroup(id=int(regex[0]))
                 target_vlan.vrrp_groups.append(vrrp_group)
-        elif regex.match("^  ip-address ([^\s]*)", line):
+        elif regex.match("^  (?:ip|ipv6)-address ([^\s]*)", line):
             vrrp_group.ips.append(IPAddress(regex[0]))
         elif regex.match("^  backup priority ([^\s]*) track-priority ([^\s]*)", line):
             vrrp_group.priority = int(regex[0])
