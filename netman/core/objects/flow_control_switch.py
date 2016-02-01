@@ -44,7 +44,7 @@ class FlowControlSwitch(SwitchOperations):
     def __init__(self, wrapped_switch, lock):
         self.wrapped_switch = wrapped_switch
         self.lock = lock
-        self.i_connected = False
+        self._has_auto_connected = False
 
     def __new__(cls, *args, **kwargs):
         obj = super(FlowControlSwitch, cls).__new__(cls, *args, **kwargs)
@@ -71,13 +71,14 @@ class FlowControlSwitch(SwitchOperations):
         try:
             if not self.wrapped_switch.connected:
                self.wrapped_switch.connect()
-               self.i_connected = True
+               self._has_auto_connected = True
 
             self.wrapped_switch.start_transaction()
         except Exception:
             try:
-                if self.i_connected:
+                if self._has_auto_connected:
                     self.wrapped_switch.disconnect()
+                    self._has_auto_connected = False
             finally:
                 self.lock.release()
             raise
@@ -88,8 +89,9 @@ class FlowControlSwitch(SwitchOperations):
             self.wrapped_switch.end_transaction()
         finally:
             try:
-                if self.i_connected:
+                if self._has_auto_connected:
                     self.wrapped_switch.disconnect()
+                    self._has_auto_connected = False
             finally:
                 self.lock.release()
 

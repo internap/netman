@@ -292,6 +292,26 @@ class FlowControlSwitchTest(TestCase):
 
         self.switch.end_transaction()
 
+    def test_switch_contract_compliance_end_transaction_dont_dc_for_a_legit_connection_after_a_managed_one(self):
+        self.lock.should_receive("acquire").once().ordered()
+        self.wrapped_switch.should_receive("_connect").once().ordered()
+        self.wrapped_switch.should_receive("_start_transaction").once().ordered()
+
+        self.switch.start_transaction()
+
+        self.wrapped_switch.should_receive("_end_transaction").once().ordered()
+        self.wrapped_switch.should_receive("_disconnect").once().ordered()
+        self.lock.should_receive("release").once().ordered()
+
+        self.switch.end_transaction()
+
+        self.wrapped_switch.connected = True
+
+        self.wrapped_switch.should_receive("_end_transaction").once().ordered()
+        self.lock.should_receive("release").once().ordered()
+
+        self.switch.end_transaction()
+
     def test_switch_contract_compliance_end_transaction_if_not_connected_by_start_dont_dc(self):
         self.wrapped_switch.connected = True
 
