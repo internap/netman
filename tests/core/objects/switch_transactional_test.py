@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
 from unittest import TestCase
 
 from flexmock import flexmock
 from hamcrest import assert_that, is_
+
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -81,7 +81,7 @@ class SwitchTransactionalTest(TestCase):
 
     def test_lock_is_released_if_start_transaction_fails_using_annotation(self):
         self.lock.should_receive("acquire").with_args().once().ordered()
-/        self.switch_impl.should_receive("_start_transaction").with_args().and_raise(NetmanException()).once().ordered()
+        self.switch_impl.should_receive("_start_transaction").with_args().and_raise(NetmanException()).once().ordered()
         self.lock.should_receive("release").with_args().once().ordered()
 
         with self.assertRaises(NetmanException):
