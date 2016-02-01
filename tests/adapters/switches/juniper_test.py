@@ -263,6 +263,369 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(vlan30.ips[0].ip), equal_to("3.1.1.1"))
         assert_that(vlan40.ips, has_length(0))
 
+    def test_get_vlan_with_no_interface(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <vlans>
+                      <vlan>
+                        <name>STANDARD</name>
+                      </vlan>
+                    </vlans>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>STANDARD</name>
+                    <vlan-id>10</vlan-id>
+                    <description>my-description</description>
+                  </vlan>
+                </vlans>
+            """))
+
+        vlan = self.switch.get_vlan("STANDARD")
+
+        assert_that(vlan.number, equal_to(10))
+        assert_that(vlan.name, equal_to("my-description"))
+        assert_that(vlan.access_groups[IN], equal_to(None))
+        assert_that(vlan.access_groups[OUT], equal_to(None))
+        assert_that(vlan.ips, has_length(0))
+
+    def test_get_vlan_with_no_vlan_id(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                    <filter>
+                      <configuration>
+                        <vlans>
+                          <vlan>
+                            <name>NO-VLAN-ID</name>
+                          </vlan>
+                        </vlans>
+                        <interfaces />
+                      </configuration>
+                    </filter>
+                """)).and_return(a_configuration("""
+                    <vlans>
+                      <vlan>
+                        <name>NO-VLAN-ID</name>
+                        <description>shizzle</description>
+                      </vlan>
+                    </vlans>
+                """))
+
+        vlan = self.switch.get_vlan("NO-VLAN-ID")
+
+        assert_that(vlan, is_(None))
+
+    def test_get_vlan_with_interface(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <vlans>
+                      <vlan>
+                        <name>WITH-IF</name>
+                      </vlan>
+                    </vlans>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>WITH-IF</name>
+                    <vlan-id>20</vlan-id>
+                    <l3-interface>vlan.20</l3-interface>
+                  </vlan>
+                </vlans>
+                <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+                  <interface>
+                    <name>ge-0/0/1</name>
+                  </interface>
+                  <interface>
+                    <name>vlan</name>
+                    <unit>
+                      <name>20</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>1.1.1.1/24</name>
+                          </address>
+                          <filter>
+                            <input>
+                              <filter-name>AC-IN</filter-name>
+                            </input>
+                            <output>
+                              <filter-name>AC-OUT</filter-name>
+                            </output>
+                          </filter>
+                        </inet>
+                      </family>
+                    </unit>
+                    <unit>
+                      <name>40</name>
+                    </unit>
+                    <unit>
+                      <name>70</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>2.1.1.1/24</name>
+                          </address>
+                          <address>
+                            <name>4.1.1.1/24</name>
+                          </address>
+                          <address>
+                            <name>3.1.1.1/24</name>
+                          </address>
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+            """))
+
+        vlan = self.switch.get_vlan("WITH-IF")
+
+        assert_that(vlan.number, equal_to(20))
+        assert_that(vlan.name, equal_to(None))
+        assert_that(vlan.access_groups[IN], equal_to("AC-IN"))
+        assert_that(vlan.access_groups[OUT], equal_to("AC-OUT"))
+        assert_that(vlan.ips, has_length(1))
+        vlan20ip1 = vlan.ips[0]
+        assert_that(str(vlan20ip1.ip), equal_to("1.1.1.1"))
+        assert_that(vlan20ip1.prefixlen, equal_to(24))
+
+    def test_get_vlan_with_interface_multi_ip(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <vlans>
+                      <vlan>
+                        <name>WITH-IF-MULTI-IP</name>
+                      </vlan>
+                    </vlans>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>WITH-IF-MULTI-IP</name>
+                    <vlan-id>40</vlan-id>
+                    <l3-interface>vlan.70</l3-interface>
+                  </vlan>
+                </vlans>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/1</name>
+                  </interface>
+                  <interface>
+                    <name>vlan</name>
+                    <unit>
+                      <name>20</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>1.1.1.1/24</name>
+                          </address>
+                          <filter>
+                            <input>
+                              <filter-name>AC-IN</filter-name>
+                            </input>
+                            <output>
+                              <filter-name>AC-OUT</filter-name>
+                            </output>
+                          </filter>
+                        </inet>
+                      </family>
+                    </unit>
+                    <unit>
+                      <name>40</name>
+                    </unit>
+                    <unit>
+                      <name>70</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>2.1.1.1/24</name>
+                          </address>
+                          <address>
+                            <name>4.1.1.1/24</name>
+                          </address>
+                          <address>
+                            <name>3.1.1.1/24</name>
+                          </address>
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+            """))
+
+        vlan = self.switch.get_vlan("WITH-IF-MULTI-IP")
+
+        assert_that(vlan.number, equal_to(40))
+        assert_that(vlan.name, equal_to(None))
+        assert_that(vlan.access_groups[IN], equal_to(None))
+        assert_that(vlan.access_groups[OUT], equal_to(None))
+        vlanip1, vlanip2, vlanip3 = vlan.ips
+        assert_that(str(vlanip1.ip), equal_to("2.1.1.1"))
+        assert_that(vlanip1.prefixlen, equal_to(24))
+        assert_that(str(vlanip2.ip), equal_to("3.1.1.1"))
+        assert_that(vlanip2.prefixlen, equal_to(24))
+        assert_that(str(vlanip3.ip), equal_to("4.1.1.1"))
+        assert_that(vlanip3.prefixlen, equal_to(24))
+
+    def test_get_vlan_where_vlan_interfaces_can_also_be_called_irb(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans>
+                  <vlan>
+                    <name>ON_IRB</name>
+                  </vlan>
+                </vlans>
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>ON_IRB</name>
+                <vlan-id>20</vlan-id>
+                <l3-interface>irb.20</l3-interface>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+              <interface>
+                <name>vlan</name>
+                <unit>
+                  <name>10</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>1.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>irb</name>
+                <unit>
+                  <name>20</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>2.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>whatever</name>
+                <unit>
+                  <name>30</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>3.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        vlan = self.switch.get_vlan("ON_IRB")
+
+        assert_that(str(vlan.ips[0].ip), equal_to("2.1.1.1"))
+
+    def test_get_vlan_where_vlan_interfaces_can_also_be_called_irb_not_found(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans>
+                  <vlan>
+                    <name>NOT_FOUND</name>
+                  </vlan>
+                </vlans>
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>NOT_FOUND</name>
+                <vlan-id>40</vlan-id>
+                <l3-interface>notfound.20</l3-interface>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+              <interface>
+                <name>vlan</name>
+                <unit>
+                  <name>10</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>1.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>irb</name>
+                <unit>
+                  <name>20</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>2.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>whatever</name>
+                <unit>
+                  <name>30</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>3.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        vlan = self.switch.get_vlan("NOT_FOUND")
+
+        assert_that(vlan.ips, has_length(0))
 
     def test_get_interfaces(self):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""

@@ -113,6 +113,31 @@ class Juniper(SwitchBase):
 
         return vlan_list
 
+    def get_vlan(self, number):
+        name = number
+        config = self.query(one_vlan(name), all_interfaces)
+
+        vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
+        number_node = first(vlan_node.xpath("vlan-id"))
+        vlan = None
+        if number_node is not None:
+            vlan = Vlan(number=int(number_node.text))
+
+            description_node = first(vlan_node.xpath("description"))
+            if description_node is not None:
+                vlan.name = description_node.text
+
+            l3_if_type, l3_if_name = get_l3_interface(vlan_node)
+            if l3_if_name is not None:
+                interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
+                                                    "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
+                if interface_node is not None:
+                    vlan.ips = parse_ips(interface_node)
+                    vlan.access_groups[IN] = parse_inet_filter(interface_node, "input")
+                    vlan.access_groups[OUT] = parse_inet_filter(interface_node, "output")
+
+        return vlan
+
     def get_interfaces(self):
         config = self.query(all_interfaces, all_vlans)
 
