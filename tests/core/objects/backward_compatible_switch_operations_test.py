@@ -17,7 +17,7 @@ from flexmock import flexmock
 from netman.core.objects.switch_base import SwitchOperations
 
 
-class BackwardCompatiblieSwitchOperationsTest(TestCase):
+class BackwardCompatibleSwitchOperationsTest(TestCase):
     def setUp(self):
         self.switch = flexmock(SwitchOperations())
 
