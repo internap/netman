@@ -100,6 +100,19 @@ class Dell(SwitchBase):
 
         return vlans
 
+    def get_vlan(self, number):
+        result =  self.shell.do("show vlan id {}".format(number), wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        if regex.match(".*\^.*", result[0]):
+            raise BadVlanNumber
+        elif regex.match("^ERROR", result[0]):
+            raise UnknownVlan
+        else:
+            vlan = parse_vlan_list(result)
+            while len(result) > 0 and "--More--" in result[-1]:
+                result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+            return vlan[0]
+
+
     def get_interfaces(self):
         result = self.shell.do('show interfaces status', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
         name_list = self.parse_interface_names(result)

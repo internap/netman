@@ -12,22 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
 import logging
+import re
 import textwrap
 import unittest
-import re
 
+import mock
+from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, has_length, equal_to, contains_string, has_key, \
     is_, instance_of
-import mock
 from ncclient.devices.junos import JunosDeviceHandler
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import NCElement, to_ele, to_xml
 
-from flexmock import flexmock, flexmock_teardown
 from netman.adapters.switches import juniper
-from netman.core.objects.switch_transactional import SwitchTransactional
 from netman.adapters.switches.juniper import Juniper, JuniperCustomStrategies
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
@@ -35,6 +33,7 @@ from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVl
     BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.switch_transactional import SwitchTransactional
 
 
 def test_factory():
@@ -54,11 +53,14 @@ def test_factory():
 class JuniperTest(unittest.TestCase):
 
     def setUp(self):
-        self.lock = mock.Mock()
-        self.switch = juniper.standard_factory(SwitchDescriptor(model='juniper', hostname="toto", username="tutu", password="titi"), self.lock)
+        self.switch = Juniper(
+            switch_descriptor=SwitchDescriptor(model='juniper', hostname="toto"),
+            custom_strategies=JuniperCustomStrategies()
+        )
 
         self.netconf_mock = flexmock()
-        self.switch.impl.netconf = self.netconf_mock
+        self.switch.netconf = self.netconf_mock
+        self.switch.in_transaction = True
 
     def tearDown(self):
         flexmock_teardown()
@@ -67,6 +69,8 @@ class JuniperTest(unittest.TestCase):
         assert_that(self.switch.logger.name, is_(Juniper.__module__ + ".toto"))
 
     def test_get_vlans(self):
+        self.switch.in_transaction = False
+
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
@@ -180,7 +184,9 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlan40ip3.prefixlen, equal_to(24))
 
     def test_get_vlans_where_vlan_interfaces_can_also_be_called_irb(self):
-        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+        self.switch.in_transaction = True
+
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
                 <vlans />
@@ -624,6 +630,8 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlan.ips, has_length(0))
 
     def test_get_interfaces(self):
+        self.switch.in_transaction = False
+
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
@@ -752,7 +760,8 @@ class JuniperTest(unittest.TestCase):
         assert_that(if5.bond_master, equal_to(10))
 
     def test_get_interfaces_supports_named_vlans(self):
-        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+        self.switch.in_transaction = True
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
                 <interfaces />
@@ -789,58 +798,54 @@ class JuniperTest(unittest.TestCase):
         assert_that(if1.access_vlan, equal_to(1234))
 
     def test_add_vlan(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>900</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <vlans>
                   <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>900</vlan-id>
+                    <name>VLAN1000</name>
+                    <vlan-id>1000</vlan-id>
+                    <description>Shizzle</description>
                   </vlan>
                 </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan>
-                        <name>VLAN1000</name>
-                        <vlan-id>1000</vlan-id>
-                        <description>Shizzle</description>
-                      </vlan>
-                    </vlans>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.add_vlan(1000, name="Shizzle")
 
     def test_add_vlan_already_in_use_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(VlanAlreadyExist) as expect:
             self.switch.add_vlan(1000)
@@ -848,24 +853,22 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Vlan 1000 already exist"))
 
     def test_add_existing_vlan_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN1000</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN1000</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(VlanAlreadyExist) as expect:
             self.switch.add_vlan(1000)
@@ -873,36 +876,34 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Vlan 1000 already exist"))
 
     def test_add_vlan_bad_vlan_id(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration(""))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration(""))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan>
-                        <name>VLAN9000</name>
-                        <vlan-id>9000</vlan-id>
-                      </vlan>
-                    </vlans>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-info>
-                <bad-element>9000</bad-element>
-                </error-info>
-                <error-message>Value 9000 is not within range (1..4094)</error-message>
-                </rpc-error>
-            """))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <vlans>
+                  <vlan>
+                    <name>VLAN9000</name>
+                    <vlan-id>9000</vlan-id>
+                  </vlan>
+                </vlans>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-info>
+            <bad-element>9000</bad-element>
+            </error-info>
+            <error-message>Value 9000 is not within range (1..4094)</error-message>
+            </rpc-error>
+        """))))
 
         with self.assertRaises(BadVlanNumber) as expect:
             self.switch.add_vlan(9000)
@@ -910,37 +911,35 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_add_vlan_bad_vlan_name(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration(""))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration(""))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan>
-                        <name>VLAN1000</name>
-                        <vlan-id>1000</vlan-id>
-                        <description>a</description>
-                      </vlan>
-                    </vlans>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-info>
-                <bad-element>a</bad-element>
-                </error-info>
-                <error-message>Length 1 is not within range (2..255)</error-message>
-                </rpc-error>
-            """))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <vlans>
+                  <vlan>
+                    <name>VLAN1000</name>
+                    <vlan-id>1000</vlan-id>
+                    <description>a</description>
+                  </vlan>
+                </vlans>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-info>
+            <bad-element>a</bad-element>
+            </error-info>
+            <error-message>Length 1 is not within range (2..255)</error-message>
+            </rpc-error>
+        """))))
 
         with self.assertRaises(BadVlanName) as expect:
             self.switch.add_vlan(1000, "a")
@@ -948,155 +947,148 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
 
     def test_remove_vlan_also_removes_associated_vlan_interface(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>MEH</name>
+                <vlan-id>5</vlan-id>
+              </vlan>
+              <vlan>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+                <l3-interface>vlan.25</l3-interface>
+              </vlan>
+              <vlan>
+                <name>MEH2</name>
+                <vlan-id>15</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <vlans>
-                  <vlan>
-                    <name>MEH</name>
-                    <vlan-id>5</vlan-id>
-                  </vlan>
-                  <vlan>
+                  <vlan operation="delete">
                     <name>STANDARD</name>
-                    <vlan-id>10</vlan-id>
-                    <l3-interface>vlan.25</l3-interface>
-                  </vlan>
-                  <vlan>
-                    <name>MEH2</name>
-                    <vlan-id>15</vlan-id>
                   </vlan>
                 </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan operation="delete">
-                        <name>STANDARD</name>
-                      </vlan>
-                    </vlans>
-                    <interfaces>
-                      <interface>
-                        <name>vlan</name>
-                        <unit operation="delete">
-                          <name>25</name>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+                <interfaces>
+                  <interface>
+                    <name>vlan</name>
+                    <unit operation="delete">
+                      <name>25</name>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_vlan(10)
 
     def test_remove_vlan_also_removes_associated_vlan_interface_even_if_non_standard_name(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>MEH</name>
+                <vlan-id>5</vlan-id>
+              </vlan>
+              <vlan>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+                <l3-interface>irb.25</l3-interface>
+              </vlan>
+              <vlan>
+                <name>MEH2</name>
+                <vlan-id>15</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <vlans>
-                  <vlan>
-                    <name>MEH</name>
-                    <vlan-id>5</vlan-id>
-                  </vlan>
-                  <vlan>
+                  <vlan operation="delete">
                     <name>STANDARD</name>
-                    <vlan-id>10</vlan-id>
-                    <l3-interface>irb.25</l3-interface>
-                  </vlan>
-                  <vlan>
-                    <name>MEH2</name>
-                    <vlan-id>15</vlan-id>
                   </vlan>
                 </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan operation="delete">
-                        <name>STANDARD</name>
-                      </vlan>
-                    </vlans>
-                    <interfaces>
-                      <interface>
-                        <name>irb</name>
-                        <unit operation="delete">
-                          <name>25</name>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit operation="delete">
+                      <name>25</name>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_vlan(10)
 
     def test_remove_vlan_ignores_removing_interface_not_created(self):
-        with self.expecting_successful_transaction():
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+              </vlan>
+            </vlans>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <vlans>
-                  <vlan>
+                  <vlan operation="delete">
                     <name>STANDARD</name>
-                    <vlan-id>10</vlan-id>
                   </vlan>
                 </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan operation="delete">
-                        <name>STANDARD</name>
-                      </vlan>
-                    </vlans>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_vlan(10)
 
     def test_remove_vlan_invalid_vlan_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>ANOTHER</name>
-                    <vlan-id>10</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>ANOTHER</name>
+                <vlan-id>10</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.remove_vlan(20)
@@ -1104,19 +1096,102 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 20 not found"))
 
     def test_remove_vlan_in_use_deletes_all_usages(self):
-        with self.expecting_successful_transaction():
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>9</members>
+                        <members>10</members>
+                        <members>11</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>ge-0/0/2</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>9-15</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>ge-0/0/3</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                      <vlan>
+                        <members>12</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>ge-0/0/4</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                      <vlan>
+                        <members>STANDARD</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>ge-0/0/5</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                      <vlan>
+                        <members>ANOTHER_NAME</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <vlans>
-                  <vlan>
+                  <vlan operation="delete">
                     <name>STANDARD</name>
-                    <vlan-id>10</vlan-id>
                   </vlan>
                 </vlans>
                 <interfaces>
@@ -1126,11 +1201,8 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
                           <vlan>
-                            <members>9</members>
-                            <members>10</members>
-                            <members>11</members>
+                            <members operation="delete">10</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
@@ -1142,23 +1214,10 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
                           <vlan>
-                            <members>9-15</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/3</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                          <vlan>
-                            <members>12</members>
+                            <members operation="delete">9-15</members>
+                            <members>9</members>
+                            <members>11-15</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
@@ -1170,116 +1229,79 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>access</port-mode>
                           <vlan>
-                            <members>STANDARD</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/5</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                          <vlan>
-                            <members>ANOTHER_NAME</members>
+                            <members operation="delete">STANDARD</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan operation="delete">
-                        <name>STANDARD</name>
-                      </vlan>
-                    </vlans>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/1</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members operation="delete">10</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                      <interface>
-                        <name>ge-0/0/2</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members operation="delete">9-15</members>
-                                <members>9</members>
-                                <members>11-15</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                      <interface>
-                        <name>ge-0/0/4</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members operation="delete">STANDARD</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
         self.switch.remove_vlan(10)
 
     def test_remove_vlan_delete_usage_and_interface_at_same_time(self):
-        with self.expecting_successful_transaction():
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <vlans />
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <vlans />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+                <l3-interface>vlan.10</l3-interface>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>name</name>
+                <unit>
+                  <name>10</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>1.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>10</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <vlans>
-                  <vlan>
+                  <vlan operation="delete">
                     <name>STANDARD</name>
-                    <vlan-id>10</vlan-id>
-                    <l3-interface>vlan.10</l3-interface>
                   </vlan>
                 </vlans>
                 <interfaces>
                   <interface>
-                    <name>name</name>
-                    <unit>
+                    <name>vlan</name>
+                    <unit operation="delete">
                       <name>10</name>
-                      <family>
-                        <inet>
-                          <address>
-                            <name>1.1.1.1/24</name>
-                          </address>
-                        </inet>
-                      </family>
                     </unit>
                   </interface>
                   <interface>
@@ -1288,264 +1310,47 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
                           <vlan>
-                            <members>10</members>
+                            <members operation="delete">10</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <vlans>
-                      <vlan operation="delete">
-                        <name>STANDARD</name>
-                      </vlan>
-                    </vlans>
-                    <interfaces>
-                      <interface>
-                        <name>vlan</name>
-                        <unit operation="delete">
-                          <name>10</name>
-                        </unit>
-                      </interface>
-                      <interface>
-                        <name>ge-0/0/1</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members operation="delete">10</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_vlan(10)
 
     def test_port_mode_access_with_no_port_mode_or_vlan_set_just_sets_the_port_mode(self):
-        with self.expecting_successful_transaction():
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_mode("ge-0/0/6")
-
-    def test_port_mode_access_with_no_mode_and_1_vlan_does_not_remove_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <vlan>
-                            <members>2998</members>
-                            <members>2998</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_mode("ge-0/0/6")
-
-    def test_port_mode_access_with_trunk_mode_and_1_vlan_does_remove_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <vlan>
-                            <members>2998</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                              <vlan operation="delete" />
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_mode("ge-0/0/6")
-
-    def test_port_mode_access_with_trunk_mode_and_no_attributes_just_sets_mode(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_mode("ge-0/0/6")
-
-    def test_port_mode_access_already_in_access_mode_does_nothing(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -1559,26 +1364,201 @@ class JuniperTest(unittest.TestCase):
                     </unit>
                   </interface>
                 </interfaces>
-                <vlans/>
-            """))
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.switch.set_access_mode("ge-0/0/6")
+
+    def test_port_mode_access_with_no_mode_and_1_vlan_does_not_remove_it(self):
+
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <vlan>
+                        <members>2998</members>
+                        <members>2998</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("ge-0/0/6")
+
+    def test_port_mode_access_with_trunk_mode_and_1_vlan_does_remove_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>2998</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                          <vlan operation="delete" />
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("ge-0/0/6")
+
+    def test_port_mode_access_with_trunk_mode_and_no_attributes_just_sets_mode(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("ge-0/0/6")
+
+    def test_port_mode_access_already_in_access_mode_does_nothing(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
 
         self.switch.set_access_mode("ge-0/0/6")
 
     def test_port_mode_access_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration())
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.set_access_mode("ge-0/0/6")
@@ -1586,172 +1566,38 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_port_mode_access_with_trunk_mode_wipes_all_trunk_stuff(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <vlan>
-                            <members>123</members>
-                            <members>456</members>
-                          </vlan>
-                          <native-vlan-id>999</native-vlan-id>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>123</members>
+                        <members>456</members>
+                      </vlan>
+                      <native-vlan-id>999</native-vlan-id>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                              <vlan operation="delete" />
-                              <native-vlan-id operation="delete" />
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_mode("ge-0/0/6")
-
-    def test_port_mode_trunk_with_no_port_mode_or_vlan_set_just_sets_the_port_mode(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>trunk</port-mode>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_trunk_mode("ge-0/0/6")
-
-    def test_port_mode_trunk_with_no_port_mode_and_1_vlan_removes_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <vlan>
-                            <members>1000</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>trunk</port-mode>
-                              <vlan operation="delete">
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_trunk_mode("ge-0/0/6")
-
-    def test_port_mode_trunk_with_access_port_mode_and_1_vlan_removes_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -1760,51 +1606,46 @@ class JuniperTest(unittest.TestCase):
                       <family>
                         <ethernet-switching>
                           <port-mode>access</port-mode>
-                          <vlan>
-                            <members>1000</members>
-                          </vlan>
+                          <vlan operation="delete" />
+                          <native-vlan-id operation="delete" />
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("ge-0/0/6")
+
+    def test_port_mode_trunk_with_no_port_mode_or_vlan_set_just_sets_the_port_mode(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>trunk</port-mode>
-                              <vlan operation="delete">
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_trunk_mode("ge-0/0/6")
-
-    def test_port_mode_trunk_already_in_trunk_mode_does_nothing(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -1813,35 +1654,162 @@ class JuniperTest(unittest.TestCase):
                       <family>
                         <ethernet-switching>
                           <port-mode>trunk</port-mode>
-                          <vlan>
-                            <members>1000</members>
-                            <members>1001</members>
-                          </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-                <vlans/>
-            """))
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.switch.set_trunk_mode("ge-0/0/6")
+
+    def test_port_mode_trunk_with_no_port_mode_and_1_vlan_removes_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <vlan>
+                        <members>1000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                          <vlan operation="delete">
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_trunk_mode("ge-0/0/6")
+
+    def test_port_mode_trunk_with_access_port_mode_and_1_vlan_removes_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                      <vlan>
+                        <members>1000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                          <vlan operation="delete">
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_trunk_mode("ge-0/0/6")
+
+    def test_port_mode_trunk_already_in_trunk_mode_does_nothing(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>1000</members>
+                        <members>1001</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
 
         self.switch.set_trunk_mode("ge-0/0/6")
 
     def test_port_mode_trunk_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration())
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.set_trunk_mode("ge-0/0/6")
@@ -1849,177 +1817,38 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_set_access_vlan_on_interface_with_access_mode_and_no_vlan_succeeds_easily(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members>1000</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_vlan("ge-0/0/6", 1000)
-
-    def test_set_access_vlan_on_interface_that_already_has_it_does_nothing(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                            <vlan>
-                              <members>1000</members>
-                            </vlan>
-                          </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
-
-        self.switch.set_access_vlan("ge-0/0/6", 1000)
-
-    def test_set_access_vlan_on_interface_that_has_no_port_mode_sets_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                              <vlan>
-                                <members>1000</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.set_access_vlan("ge-0/0/6", 1000)
-
-    def test_set_access_vlan_on_interface_replaces_the_actual_ones(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                  <vlan>
-                    <name>PATATE2</name>
-                    <vlan-id>2000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2028,60 +1857,88 @@ class JuniperTest(unittest.TestCase):
                       <family>
                         <ethernet-switching>
                           <vlan>
-                            <members>2000</members>
-                            <members>2000-2000</members>
+                            <members>1000</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>access</port-mode>
-                              <vlan>
-                                <members operation="delete">2000</members>
-                                <members operation="delete">2000-2000</members>
-                                <members>1000</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.set_access_vlan("ge-0/0/6", 1000)
 
-    def test_set_access_vlan_on_interface_in_trunk_mode_should_raise(self):
-        with self.expecting_failed_transaction():
+    def test_set_access_vlan_on_interface_that_already_has_it_does_nothing(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                        <vlan>
+                          <members>1000</members>
+                        </vlan>
+                      </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.set_access_vlan("ge-0/0/6", 1000)
+
+    def test_set_access_vlan_on_interface_that_has_no_port_mode_sets_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2089,15 +1946,116 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
+                          <port-mode>access</port-mode>
+                          <vlan>
+                            <members>1000</members>
+                          </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.switch.set_access_vlan("ge-0/0/6", 1000)
+
+    def test_set_access_vlan_on_interface_replaces_the_actual_ones(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+              <vlan>
+                <name>PATATE2</name>
+                <vlan-id>2000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <vlan>
+                        <members>2000</members>
+                        <members>2000-2000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                          <vlan>
+                            <members operation="delete">2000</members>
+                            <members operation="delete">2000-2000</members>
+                            <members>1000</members>
+                          </vlan>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_vlan("ge-0/0/6", 1000)
+
+    def test_set_access_vlan_on_interface_in_trunk_mode_should_raise(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.set_access_vlan("ge-0/0/6", 1000)
@@ -2105,38 +2063,36 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a trunk mode interface"))
 
     def test_set_access_vlan_on_unknown_vlan_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>3333</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>3333</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.set_access_vlan("ge-0/0/6", 1000)
@@ -2144,25 +2100,23 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Vlan 1000 not found"))
 
     def test_set_access_vlan_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.set_access_vlan("ge-0/0/6", 1000)
@@ -2170,16 +2124,36 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_remove_access_vlan_removes_the_vlan_members(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <vlan>
+                        <members>1000</members>
+                        <members>1000-1000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2187,67 +2161,43 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <vlan>
-                            <members>1000</members>
-                            <members>1000-1000</members>
-                          </vlan>
+                          <vlan operation="delete" />
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan operation="delete" />
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_access_vlan("ge-0/0/6")
 
     def test_remove_access_vlan_with_no_vlan_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(AccessVlanNotSet) as expect:
             self.switch.remove_access_vlan("ge-0/0/6")
@@ -2255,36 +2205,34 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Access Vlan is not set on interface ge-0/0/6"))
 
     def test_remove_access_vlan_on_trunk_mode_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <vlan>
-                            <members>123</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>123</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.remove_access_vlan("ge-0/0/6")
@@ -2292,18 +2240,16 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a trunk mode interface"))
 
     def test_remove_access_vlan_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration(""))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration(""))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.remove_access_vlan("ge-0/0/6")
@@ -2311,22 +2257,38 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_set_native_vlan_on_interface_with_trunk_mode_and_no_native_vlan_succeeds_easily(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2334,53 +2296,85 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
+                          <native-vlan-id>1000</native-vlan-id>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <native-vlan-id>1000</native-vlan-id>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.configure_native_vlan("ge-0/0/6", 1000)
 
     def test_set_native_vlan_on_interface_that_already_has_it_does_nothing(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <native-vlan-id>1000</native-vlan-id>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.configure_native_vlan("ge-0/0/6", 1000)
+
+    def test_set_native_vlan_on_interface_that_has_no_port_mode_sets_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2395,87 +2389,50 @@ class JuniperTest(unittest.TestCase):
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
-
-        self.switch.configure_native_vlan("ge-0/0/6", 1000)
-
-    def test_set_native_vlan_on_interface_that_has_no_port_mode_sets_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>trunk</port-mode>
-                              <native-vlan-id>1000</native-vlan-id>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.configure_native_vlan("ge-0/0/6", 1000)
 
     def test_set_native_vlan_on_interface_replaces_the_actual_ones(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+              <vlan>
+                <name>PATATE2</name>
+                <vlan-id>2000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <native-vlan-id>2000</native-vlan-id>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                  <vlan>
-                    <name>PATATE2</name>
-                    <vlan-id>2000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2483,70 +2440,49 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <native-vlan-id>2000</native-vlan-id>
+                          <native-vlan-id>1000</native-vlan-id>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <native-vlan-id>1000</native-vlan-id>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.configure_native_vlan("ge-0/0/6", 1000)
 
     def test_set_native_vlan_on_interface_in_access_mode_should_raise(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.configure_native_vlan("ge-0/0/6", 1000)
@@ -2554,49 +2490,47 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
 
     def test_set_native_vlan_on_interface_that_is_already_a_member_of_the_trunk_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE0</name>
+                <vlan-id>999</vlan-id>
+              </vlan>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+              <vlan>
+                <name>PATATE2</name>
+                <vlan-id>1001</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>999-1001</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE0</name>
-                    <vlan-id>999</vlan-id>
-                  </vlan>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                  <vlan>
-                    <name>PATATE2</name>
-                    <vlan-id>1001</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <vlan>
-                            <members>999-1001</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(VlanAlreadyInTrunk) as expect:
             self.switch.configure_native_vlan("ge-0/0/6", 1000)
@@ -2604,38 +2538,36 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Vlan 1000 cannot be set as native vlan because it is already a member of the trunk"))
 
     def test_set_native_vlan_on_unknown_vlan_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>3333</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>3333</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.configure_native_vlan("ge-0/0/6", 1000)
@@ -2643,25 +2575,23 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Vlan 1000 not found"))
 
     def test_set_native_vlan_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.configure_native_vlan("ge-0/0/6", 1000)
@@ -2669,16 +2599,33 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_remove_native_vlan_succeeds(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <native-vlan-id>1000</native-vlan-id>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2686,64 +2633,43 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <native-vlan-id>1000</native-vlan-id>
+                          <native-vlan-id operation="delete" />
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <native-vlan-id operation="delete" />
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_native_vlan("ge-0/0/6")
 
     def test_remove_native_vlan_when_none_is_set_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(NativeVlanNotSet) as expect:
             self.switch.remove_native_vlan("ge-0/0/6")
@@ -2751,18 +2677,16 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Trunk native Vlan is not set on interface ge-0/0/6"))
 
     def test_remove_native_vlan_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration(""))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration(""))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.remove_native_vlan("ge-0/0/6")
@@ -2770,22 +2694,38 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_add_trunk_vlan_on_interface_with_trunk_mode_and_no_vlan_succeeds_easily(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2793,150 +2733,89 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
+                          <vlan>
+                            <members>1000</members>
+                          </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members>1000</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.add_trunk_vlan("ge-0/0/6", 1000)
 
     def test_add_trunk_vlan_on_interface_that_already_has_it_does_nothing(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                        <vlan>
+                          <members>900-1100</members>
+                        </vlan>
+                      </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                            <vlan>
-                              <members>900-1100</members>
-                            </vlan>
-                          </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         self.switch.add_trunk_vlan("ge-0/0/6", 1000)
 
     def test_add_trunk_vlan_on_interface_that_has_no_port_mode_and_no_vlan_sets_it(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <port-mode>trunk</port-mode>
-                              <vlan>
-                                <members>1000</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.add_trunk_vlan("ge-0/0/6", 1000)
-
-    def test_add_trunk_vlan_on_interface_adds_to_the_list(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -2946,57 +2825,56 @@ class JuniperTest(unittest.TestCase):
                         <ethernet-switching>
                           <port-mode>trunk</port-mode>
                           <vlan>
-                            <members>2000</members>
-                            <members>2100-2200</members>
+                            <members>1000</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members>1000</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.add_trunk_vlan("ge-0/0/6", 1000)
 
-    def test_add_trunk_vlan_on_interface_that_has_no_port_mode_with_a_vlan_assumes_access_mode_and_raises(self):
-        with self.expecting_failed_transaction():
+    def test_add_trunk_vlan_on_interface_adds_to_the_list(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>2000</members>
+                        <members>2100-2200</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3005,16 +2883,52 @@ class JuniperTest(unittest.TestCase):
                       <family>
                         <ethernet-switching>
                           <vlan>
-                            <members>500</members>
+                            <members>1000</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.switch.add_trunk_vlan("ge-0/0/6", 1000)
+
+    def test_add_trunk_vlan_on_interface_that_has_no_port_mode_with_a_vlan_assumes_access_mode_and_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <vlan>
+                        <members>500</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.add_trunk_vlan("ge-0/0/6", 1000)
@@ -3022,41 +2936,39 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
 
     def test_add_trunk_vlan_on_interface_in_access_mode_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                      <vlan>
+                        <members>500</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                          <vlan>
-                            <members>500</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.add_trunk_vlan("ge-0/0/6", 1000)
@@ -3064,32 +2976,30 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
 
     def test_add_trunk_vlan_on_unknown_vlan_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.add_trunk_vlan("ge-0/0/6", 1000)
@@ -3097,25 +3007,23 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Vlan 1000 not found"))
 
     def test_add_trunk_vlan_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>PATATE</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.add_trunk_vlan("ge-0/0/6", 1000)
@@ -3123,22 +3031,45 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_remove_trunk_vlan_removes_the_vlan_members_in_every_possible_way(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>1000</members>
+                        <members>1000-1001</members>
+                        <members>999-1000</members>
+                        <members>999-1001</members>
+                        <members>998-1002</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN_NAME</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3146,72 +3077,68 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
                           <vlan>
-                            <members>1000</members>
-                            <members>1000-1001</members>
-                            <members>999-1000</members>
-                            <members>999-1001</members>
-                            <members>998-1002</members>
+                            <members operation="delete">1000</members>
+                            <members operation="delete">1000-1001</members>
+                            <members>1001</members>
+                            <members operation="delete">999-1000</members>
+                            <members>999</members>
+                            <members operation="delete">999-1001</members>
+                            <members>999</members>
+                            <members>1001</members>
+                            <members operation="delete">998-1002</members>
+                            <members>998-999</members>
+                            <members>1001-1002</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members operation="delete">1000</members>
-                                <members operation="delete">1000-1001</members>
-                                <members>1001</members>
-                                <members operation="delete">999-1000</members>
-                                <members>999</members>
-                                <members operation="delete">999-1001</members>
-                                <members>999</members>
-                                <members>1001</members>
-                                <members operation="delete">998-1002</members>
-                                <members>998-999</members>
-                                <members>1001-1002</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_trunk_vlan("ge-0/0/6", 1000)
 
     def test_remove_trunk_vlan_removes_the_vlan_even_if_referenced_by_name(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>1000</members>
+                        <members>VLAN_NAME</members>
+                        <members>SOEMTHING</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN_NAME</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3219,81 +3146,56 @@ class JuniperTest(unittest.TestCase):
                       <name>0</name>
                       <family>
                         <ethernet-switching>
-                          <port-mode>trunk</port-mode>
                           <vlan>
-                            <members>1000</members>
-                            <members>VLAN_NAME</members>
-                            <members>SOEMTHING</members>
+                            <members operation="delete">1000</members>
+                            <members operation="delete">VLAN_NAME</members>
                           </vlan>
                         </ethernet-switching>
                       </family>
                     </unit>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <unit>
-                          <name>0</name>
-                          <family>
-                            <ethernet-switching>
-                              <vlan>
-                                <members operation="delete">1000</members>
-                                <members operation="delete">VLAN_NAME</members>
-                              </vlan>
-                            </ethernet-switching>
-                          </family>
-                        </unit>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_trunk_vlan("ge-0/0/6", 1000)
 
     def test_remove_trunk_vlan_not_in_members_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>trunk</port-mode>
+                      <vlan>
+                        <members>500-999</members>
+                        <members>1001-4000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN_NAME</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>trunk</port-mode>
-                          <vlan>
-                            <members>500-999</members>
-                            <members>1001-4000</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(TrunkVlanNotSet) as expect:
             self.switch.remove_trunk_vlan("ge-0/0/6", 1000)
@@ -3301,41 +3203,39 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Trunk Vlan is not set on interface ge-0/0/6"))
 
     def test_remove_trunk_vlan_on_access_with_the_correct_vlan_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <port-mode>access</port-mode>
+                      <vlan>
+                        <members>1000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN_NAME</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <port-mode>access</port-mode>
-                          <vlan>
-                            <members>1000</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.remove_trunk_vlan("ge-0/0/6", 1000)
@@ -3343,40 +3243,38 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
 
     def test_remove_trunk_vlan_on_no_port_mode_interface_with_the_correct_vlan_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                      <vlan>
+                        <members>1000</members>
+                      </vlan>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN_NAME</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <unit>
-                      <name>0</name>
-                      <family>
-                        <ethernet-switching>
-                          <vlan>
-                            <members>1000</members>
-                          </vlan>
-                        </ethernet-switching>
-                      </family>
-                    </unit>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
             self.switch.remove_trunk_vlan("ge-0/0/6", 1000)
@@ -3384,25 +3282,23 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
 
     def test_remove_trunk_vlan_on_unknown_interface_raises(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <vlans>
-                  <vlan>
-                    <name>VLAN_NAME</name>
-                    <vlan-id>1000</vlan-id>
-                  </vlan>
-                </vlans>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.remove_trunk_vlan("ge-0/0/6", 1000)
@@ -3410,44 +3306,40 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_set_interface_description_succeeds(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <description>Resistance is futile</name>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <description>Resistance is futile</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.set_interface_description("ge-0/0/6", "Resistance is futile")
 
     def test_set_interface_description_on_unkown_interface_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/99</name>
-                        <description>Resistance is futile</name>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                port value outside range 0..47 for '99' in 'ge-0/0/99'
-                </error-message>
-                </rpc-error>"""))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <description>Resistance is futile</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.set_interface_description("ge-0/0/99", "Resistance is futile")
@@ -3455,44 +3347,40 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_remove_interface_description_succeeds(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <description operation="delete" />
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <description operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_interface_description("ge-0/0/6")
 
     def test_remove_interface_description_on_unkown_interface_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/99</name>
-                        <description operation="delete" />
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                port value outside range 0..47 for '99' in 'ge-0/0/99'
-                </error-message>
-                </rpc-error>"""))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <description operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.remove_interface_description("ge-0/0/99")
@@ -3500,49 +3388,30 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_remove_interface_description_on_interface_with_no_description_just_ignores_it(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/99</name>
-                        <description operation="delete" />
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>warning</error-severity>
-                <error-path>[edit interfaces ge-0/0/6]</error-path>
-                <error-message>statement not found: description</error-message>
-                </rpc-error>"""))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <description operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>warning</error-severity>
+            <error-path>[edit interfaces ge-0/0/6]</error-path>
+            <error-message>statement not found: description</error-message>
+            </rpc-error>"""))))
 
         self.switch.remove_interface_description("ge-0/0/99")
 
     def test_edit_interface_spanning_tree_enable_edge_from_nothing(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3555,47 +3424,45 @@ class JuniperTest(unittest.TestCase):
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <edge />
-                          <no-root-port />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge />
+                      <no-root-port />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
     def test_edit_interface_spanning_tree_enable_edge_when_all_is_already_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3605,38 +3472,36 @@ class JuniperTest(unittest.TestCase):
                   <rstp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <edge/>
-                      <no-root-port/>
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <edge/>
+                  <no-root-port/>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
     def test_edit_interface_spanning_tree_enable_edge_when_only_edge_is_already_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3646,50 +3511,48 @@ class JuniperTest(unittest.TestCase):
                   <rstp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <edge/>
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <edge/>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <no-root-port />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <no-root-port />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
     def test_edit_interface_spanning_tree_enable_edge_when_only_no_root_port_is_already_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3699,50 +3562,48 @@ class JuniperTest(unittest.TestCase):
                   <rstp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <no-root-port />
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <no-root-port />
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <edge />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
     def test_edit_interface_spanning_tree_disable_edge_when_all_is_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3752,52 +3613,50 @@ class JuniperTest(unittest.TestCase):
                   <rstp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <edge/>
-                      <no-root-port/>
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <edge/>
+                  <no-root-port/>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <edge operation="delete" />
-                          <no-root-port operation="delete" />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge operation="delete" />
+                      <no-root-port operation="delete" />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
     def test_edit_interface_spanning_tree_disable_edge_when_all_is_only_edge_is_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3807,50 +3666,48 @@ class JuniperTest(unittest.TestCase):
                   <rstp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <edge/>
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <edge/>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <edge operation="delete" />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <edge operation="delete" />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
     def test_edit_interface_spanning_tree_disable_edge_when_all_is_only_no_root_port_is_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3860,50 +3717,48 @@ class JuniperTest(unittest.TestCase):
                   <rstp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <no-root-port />
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <no-root-port />
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <no-root-port operation="delete" />
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <no-root-port operation="delete" />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
     def test_edit_interface_spanning_tree_disable_edge_when_nothing_is_set(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -3916,35 +3771,48 @@ class JuniperTest(unittest.TestCase):
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
     def test_edit_interface_spanning_tree_unknown_interface(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/99</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/99</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ge-0/0/99</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration())
-
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.edit_interface_spanning_tree('ge-0/0/99', edge=True)
@@ -3952,44 +3820,40 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_enable_interface_succeeds(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <enable />
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <enable />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.openup_interface("ge-0/0/6")
 
     def test_enable_interface_on_unkown_interface_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/99</name>
-                        <enable />
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                port value outside range 0..47 for '99' in 'ge-0/0/99'
-                </error-message>
-                </rpc-error>"""))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <enable />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.openup_interface("ge-0/0/99")
@@ -3997,44 +3861,40 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_disable_interface_succeeds(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                        <disable />
-                      </interface>
-                    </ienablenterfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <disable />
+                  </interface>
+                </ienablenterfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.shutdown_interface("ge-0/0/6")
 
     def test_disable_interface_on_unkown_interface_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/99</name>
-                        <disable />
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                port value outside range 0..47 for '99' in 'ge-0/0/99'
-                </error-message>
-                </rpc-error>"""))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <disable />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.shutdown_interface("ge-0/0/99")
@@ -4042,62 +3902,58 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_add_bond(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae6</name>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration(""))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae6</name>
-                        <aggregated-ether-options>
-                          <lacp>
-                            <active/>
-                            <periodic>slow</periodic>
-                          </lacp>
-                        </aggregated-ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.add_bond(6)
-
-    def test_add_bond_already_created_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae6</name>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ae6</name>
                   </interface>
                 </interfaces>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration(""))
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ae6</name>
+                    <aggregated-ether-options>
+                      <lacp>
+                        <active/>
+                        <periodic>slow</periodic>
+                      </lacp>
+                    </aggregated-ether-options>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.add_bond(6)
+
+    def test_add_bond_already_created_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ae6</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae6</name>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(BondAlreadyExist) as expect:
             self.switch.add_bond(6)
@@ -4105,44 +3961,42 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 6 already exists"))
 
     def test_add_bond_bad_bond_number(self):
-        with self.expecting_failed_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ae9000</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration(""))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae9000</name>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration(""))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae9000</name>
-                        <aggregated-ether-options>
-                          <lacp>
-                            <active/>
-                            <periodic>slow</periodic>
-                          </lacp>
-                        </aggregated-ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
-                <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
-                <error-severity>error</error-severity>
-                <error-message>
-                device value outside range 0..31 for '9000' in 'ae9000'
-                </error-message>
-                </rpc-error>
-            """))))
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ae9000</name>
+                    <aggregated-ether-options>
+                      <lacp>
+                        <active/>
+                        <periodic>slow</periodic>
+                      </lacp>
+                    </aggregated-ether-options>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            device value outside range 0..31 for '9000' in 'ae9000'
+            </error-message>
+            </rpc-error>
+        """))))
 
         with self.assertRaises(BadBondNumber) as expect:
             self.switch.add_bond(9000)
@@ -4150,120 +4004,114 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond number is invalid"))
 
     def test_remove_bond(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ae10</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
-                    <name>ge-4/3/3</name>
-                  </interface>
-                </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="delete">
-                        <name>ae10</name>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
-
-        self.switch.remove_bond(10)
-
-    def test_remove_bond_also_removes_rstp_protocol(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ae10</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
-                    <name>ge-4/3/3</name>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <protocols>
                   <rstp>
                     <interface>
                       <name>ae10</name>
-                      <edge/>
-                      <no-root-port/>
                     </interface>
                   </rstp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-4/3/3</name>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="delete">
-                        <name>ae10</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface operation="delete">
-                          <name>ae10</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="delete">
+                    <name>ae10</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.remove_bond(10)
+
+    def test_remove_bond_also_removes_rstp_protocol(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ae10</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-4/3/3</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ae10</name>
+                  <edge/>
+                  <no-root-port/>
+                </interface>
+              </rstp>
+            </protocols>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="delete">
+                    <name>ae10</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface operation="delete">
+                      <name>ae10</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.remove_bond(10)
 
     def test_remove_bond_invalid_number_raises(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ae7</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration())
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ae7</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
 
         with self.assertRaises(UnknownBond) as expect:
             self.switch.remove_bond(007)
@@ -4271,27 +4119,87 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 7 not found"))
 
     def test_remove_bond_delete_slaves_and_interface_at_same_time(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces />
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ae10</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+                <ether-options>
+                  <ieee-802.3ad>
+                    <bundle>ae10</bundle>
+                  </ieee-802.3ad>
+                </ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/2</name>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces />
-                    <protocols>
-                      <rstp>
-                        <interface>
-                          <name>ae10</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
-                  <interface>
+                  <interface operation="delete">
                     <name>ae10</name>
                   </interface>
                   <interface>
+                    <name>ge-0/0/1</name>
+                    <ether-options>
+                      <ieee-802.3ad operation="delete" />
+                    </ether-options>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.remove_bond(10)
+
+    def test_add_interface_to_bond(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+                <protocols>
+                  <rstp>
+                    <interface />
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="replace">
                     <name>ge-0/0/1</name>
                     <ether-options>
                       <ieee-802.3ad>
@@ -4299,340 +4207,263 @@ class JuniperTest(unittest.TestCase):
                       </ieee-802.3ad>
                     </ether-options>
                   </interface>
-                  <interface>
-                    <name>ge-0/0/2</name>
-                  </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="delete">
-                        <name>ae10</name>
-                      </interface>
-                      <interface>
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <ieee-802.3ad operation="delete" />
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
-
-        self.switch.remove_bond(10)
-
-    def test_add_interface_to_bond(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                    <protocols>
-                      <rstp>
-                        <interface />
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                  </interface>
-                </interfaces>
-                <vlans/>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="replace">
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <ieee-802.3ad>
-                            <bundle>ae10</bundle>
-                          </ieee-802.3ad>
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
         self.switch.add_interface_to_bond('ge-0/0/1', 10)
 
     def test_add_interface_to_bond_gets_up_to_speed_and_removes_existing_rstp_protocol(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                    <protocols>
-                      <rstp>
-                        <interface />
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                    <aggregated-ether-options>
-                      <link-speed>1g</link-speed>
-                    </aggregated-ether-options>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
                 <protocols>
                   <rstp>
-                    <interface>
+                    <interface />
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+                <aggregated-ether-options>
+                  <link-speed>1g</link-speed>
+                </aggregated-ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/1</name>
+                  <edge />
+                </interface>
+              </rstp>
+            </protocols>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="replace">
+                    <name>ge-0/0/1</name>
+                    <ether-options>
+                      <ieee-802.3ad>
+                        <bundle>ae10</bundle>
+                      </ieee-802.3ad>
+                      <speed>
+                        <ethernet-1g/>
+                      </speed>
+                    </ether-options>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface operation="delete">
                       <name>ge-0/0/1</name>
-                      <edge />
                     </interface>
                   </rstp>
                 </protocols>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface operation="replace">
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <ieee-802.3ad>
-                            <bundle>ae10</bundle>
-                          </ieee-802.3ad>
-                          <speed>
-                            <ethernet-1g/>
-                          </speed>
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <rstp>
-                        <interface operation="delete">
-                          <name>ge-0/0/1</name>
-                        </interface>
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
         self.switch.add_interface_to_bond('ge-0/0/1', 10)
 
     def test_add_interface_to_bond_without_bond(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                    <protocols>
-                      <rstp>
-                        <interface />
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+                <protocols>
+                  <rstp>
+                    <interface />
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
         with self.assertRaises(UnknownBond):
             self.switch.add_interface_to_bond('ge-0/0/1', 10)
 
     def test_add_interface_to_bond_without_interface(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                    <vlans/>
-                    <protocols>
-                      <rstp>
-                        <interface />
-                      </rstp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                </interfaces>
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
                 <vlans/>
-            """))
+                <protocols>
+                  <rstp>
+                    <interface />
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.add_interface_to_bond('ge-0/0/1', 10)
 
     def test_remove_interface_from_bond(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+                <ether-options>
+                  <ieee-802.3ad>
+                    <bundle>ae10</bundle>
+                  </ieee-802.3ad>
+                </ether-options>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/1</name>
                     <ether-options>
-                      <ieee-802.3ad>
-                        <bundle>ae10</bundle>
-                      </ieee-802.3ad>
+                      <ieee-802.3ad operation="delete" />
                     </ether-options>
                   </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <ieee-802.3ad operation="delete" />
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
         self.switch.remove_interface_from_bond('ge-0/0/1')
 
     def test_remove_interface_from_bond_not_in_bond(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces/>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                    <ether-options>
-                    </ether-options>
-                  </interface>
-                </interfaces>
-            """))
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+                <ether-options>
+                </ether-options>
+              </interface>
+            </interfaces>
+        """))
 
         with self.assertRaises(InterfaceNotInBond) as expect:
             self.switch.remove_interface_from_bond('ge-0/0/1')
 
     def test_change_bond_speed_update_slaves_and_interface_at_same_time(self):
-        with self.expecting_successful_transaction():
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+                <ether-options>
+                  <ieee-802.3ad>
+                    <bundle>ae10</bundle>
+                  </ieee-802.3ad>
+                </ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/2</name>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ae10</name>
+                    <aggregated-ether-options>
+                      <link-speed>1g</link-speed>
+                    </ether-options>
                   </interface>
                   <interface>
                     <name>ge-0/0/1</name>
                     <ether-options>
-                      <ieee-802.3ad>
-                        <bundle>ae10</bundle>
-                      </ieee-802.3ad>
+                      <speed>
+                        <ethernet-1g/>
+                      </speed>
                     </ether-options>
                   </interface>
-                  <interface>
-                    <name>ge-0/0/2</name>
-                  </interface>
                 </interfaces>
-            """))
-
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ae10</name>
-                        <aggregated-ether-options>
-                          <link-speed>1g</link-speed>
-                        </ether-options>
-                      </interface>
-                      <interface>
-                        <name>ge-0/0/1</name>
-                        <ether-options>
-                          <speed>
-                            <ethernet-1g/>
-                          </speed>
-                        </ether-options>
-                      </interface>
-                    </interfaces>
-                  </configuration>
-                </config>""")).and_return(an_ok_response())
+              </configuration>
+            </config>""")).and_return(an_ok_response())
 
         self.switch.set_bond_link_speed(10, '1g')
 
     def test_change_bond_speed_on_unknown_bond(self):
-        with self.expecting_failed_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces />
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
-                <interfaces>
-                  <interface>
-                    <name>ae10</name>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/1</name>
-                    <ether-options>
-                      <ieee-802.3ad>
-                        <bundle>ae10</bundle>
-                      </ieee-802.3ad>
-                    </ether-options>
-                  </interface>
-                  <interface>
-                    <name>ge-0/0/2</name>
-                  </interface>
-                </interfaces>
-            """))
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+                <ether-options>
+                  <ieee-802.3ad>
+                    <bundle>ae10</bundle>
+                  </ieee-802.3ad>
+                </ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/2</name>
+              </interface>
+            </interfaces>
+        """))
 
         with self.assertRaises(UnknownBond):
             self.switch.set_bond_link_speed(20, '1g')
 
     def test_get_bond(self):
+        self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
@@ -4690,7 +4521,8 @@ class JuniperTest(unittest.TestCase):
         assert_that(if3.members, equal_to(['ge-1/0/1']))
 
     def test_get_unknown_bond(self):
-        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+        self.switch.in_transaction = True
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
                 <interfaces/>
@@ -4704,6 +4536,8 @@ class JuniperTest(unittest.TestCase):
 
 
     def test_get_bonds(self):
+        self.switch.in_transaction = False
+
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
@@ -4834,70 +4668,51 @@ class JuniperTest(unittest.TestCase):
         assert_that(if3.members, equal_to(['ge-1/0/1']))
 
     def test_enable_lldp_from_nothing(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
                   </interface>
                 </interfaces>
-            """))
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.enable_lldp('ge-0/0/6', True)
 
     def test_enable_lldp_when_disabled(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -4907,50 +4722,48 @@ class JuniperTest(unittest.TestCase):
                   <lldp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <disable/>
                     </interface>
                   </lldp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <lldp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <disable/>
+                </interface>
+              </lldp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <disable operation="delete"/>
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <disable operation="delete"/>
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.enable_lldp('ge-0/0/6', True)
 
     def test_disable_lldp_when_disabled(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
@@ -4960,58 +4773,71 @@ class JuniperTest(unittest.TestCase):
                   <lldp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <disable/>
                     </interface>
                   </lldp>
                 </protocols>
-            """))
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+            <protocols>
+              <lldp>
+                <interface>
+                  <name>ge-0/0/6</name>
+                  <disable/>
+                </interface>
+              </lldp>
+            </protocols>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").never()
 
         self.switch.enable_lldp('ge-0/0/6', False)
 
     def test_disable_lldp_when_enabled(self):
-        with self.expecting_successful_transaction():
-
-            self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-                <filter>
-                  <configuration>
-                    <interfaces>
-                      <interface>
-                        <name>ge-0/0/6</name>
-                      </interface>
-                    </interfaces>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </filter>
-            """)).and_return(a_configuration("""
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
                   </interface>
                 </interfaces>
-            """))
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/6</name>
+              </interface>
+            </interfaces>
+        """))
 
-            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <protocols>
-                      <lldp>
-                        <interface>
-                          <name>ge-0/0/6</name>
-                          <disable />
-                        </interface>
-                      </lldp>
-                    </protocols>
-                  </configuration>
-                </config>
-            """)).and_return(an_ok_response())
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                      <disable />
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
         self.switch.enable_lldp('ge-0/0/6', False)
 
@@ -5213,24 +5039,6 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("discard_changes").with_args().once().ordered()
 
         self.switch.rollback_transaction()
-
-    @contextmanager
-    def expecting_successful_transaction(self):
-        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered()
-
-        yield
-
-        self.netconf_mock.should_receive("commit").with_args().once().ordered()
-        self.netconf_mock.should_receive("unlock").with_args(target="candidate").once().ordered()
-
-    @contextmanager
-    def expecting_failed_transaction(self):
-        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered()
-
-        yield
-
-        self.netconf_mock.should_receive("discard_changes").with_args().once().ordered()
-        self.netconf_mock.should_receive("unlock").with_args(target="candidate").once().ordered()
 
 
 def a_configuration(inner_data=""):
