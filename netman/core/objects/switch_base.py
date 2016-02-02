@@ -183,6 +183,48 @@ class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):
         self.switch_descriptor = switch_descriptor
         self.logger = logging.getLogger("{module}.{hostname}".format(module=self.__module__, hostname=self.switch_descriptor.hostname))
+        self.connected = False
+        self.in_transaction = False
+
+    def connect(self):
+        self._connect()
+        self.connected = True
+
+    def disconnect(self):
+        self._disconnect()
+        self.connected = False
+
+    def start_transaction(self):
+        self._start_transaction()
+        self.in_transaction = True
+
+    def end_transaction(self):
+        self._end_transaction()
+        self.in_transaction = False
+
+    def _connect(self):
+        """
+        Adpapters should implement this rather than connect
+        """
+        raise NotImplementedError()
+
+    def _disconnect(self):
+        """
+        Adpapters should implement this rather than disconnect
+        """
+        raise NotImplementedError()
+
+    def _start_transaction(self):
+        """
+        Adpapters should implement this rather than connect
+        """
+        raise NotImplementedError()
+
+    def _end_transaction(self):
+        """
+        Adpapters should implement this rather than disconnect
+        """
+        raise NotImplementedError()
 
     @contextmanager
     def transaction(self):

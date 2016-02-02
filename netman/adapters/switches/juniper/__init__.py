@@ -15,12 +15,12 @@
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def standard_factory(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Juniper(
+    return FlowControlSwitch(
+        wrapped_switch=Juniper(
             switch_descriptor=switch_descriptor,
             custom_strategies=JuniperCustomStrategies()
         ),
@@ -29,8 +29,8 @@ def standard_factory(switch_descriptor, lock):
 
 
 def qfx_copper_factory(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Juniper(
+    return FlowControlSwitch(
+        wrapped_switch=Juniper(
             switch_descriptor=switch_descriptor,
             custom_strategies=JuniperQfxCopperCustomStrategies()
         ),

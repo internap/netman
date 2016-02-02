@@ -20,28 +20,28 @@ from netman.core.objects.exceptions import InterfaceInWrongPortMode, UnknownVlan
     BadVlanNumber, TrunkVlanNotSet, VlanAlreadyExist
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import TRUNK, ACCESS
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.core.objects.vlan import Vlan
 
 
 def factory_ssh(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Dell10G(switch_descriptor=switch_descriptor, shell_factory=SshClient),
+    return FlowControlSwitch(
+        wrapped_switch=Dell10G(switch_descriptor=switch_descriptor, shell_factory=SshClient),
         lock=lock,
     )
 
 
 def factory_telnet(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=Dell10G(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
+    return FlowControlSwitch(
+        wrapped_switch=Dell10G(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
         lock=lock,
     )
 
 
 class Dell10G(Dell):
 
-    def connect(self):
-        super(Dell10G, self).connect()
+    def _connect(self):
+        super(Dell10G, self)._connect()
 
         self.shell.do("terminal length 0")
 

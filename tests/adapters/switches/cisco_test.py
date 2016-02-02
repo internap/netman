@@ -31,15 +31,15 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     UnknownBond
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def test_factory():
     lock = mock.Mock()
     switch = cisco.factory(SwitchDescriptor(hostname='hostname', model='cisco', username='username', password='password', port=22), lock)
 
-    assert_that(switch, instance_of(SwitchTransactional))
-    assert_that(switch.impl, instance_of(Cisco))
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Cisco))
     assert_that(switch.lock, is_(lock))
     assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
     assert_that(switch.switch_descriptor.model, equal_to("cisco"))

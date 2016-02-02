@@ -38,7 +38,7 @@ class Brocade(SwitchBase):
         self.shell_factory = shell_factory
         self.shell = None
 
-    def connect(self):
+    def _connect(self):
         shell_params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
@@ -55,14 +55,14 @@ class Brocade(SwitchBase):
 
         self.shell.do("skip-page-display")
 
-    def disconnect(self):
+    def _disconnect(self):
         self.shell.quit("exit")
         self.logger.info(self.shell.full_log)
 
-    def end_transaction(self):
+    def _end_transaction(self):
         pass
 
-    def start_transaction(self):
+    def _start_transaction(self):
         pass
 
     def commit_transaction(self):
