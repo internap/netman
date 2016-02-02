@@ -96,13 +96,13 @@ class CachedSwitch(SwitchBase):
         self.interfaces_cache = InterfaceCache().invalidated()
         self.bonds_cache = BondCache().invalidated()
 
-    def connect(self):
+    def _connect(self):
         return self.real_switch.connect()
 
-    def disconnect(self):
+    def _disconnect(self):
         return self.real_switch.disconnect()
 
-    def start_transaction(self):
+    def _start_transaction(self):
         return self.real_switch.start_transaction()
 
     def commit_transaction(self):
@@ -111,7 +111,7 @@ class CachedSwitch(SwitchBase):
     def rollback_transaction(self):
         return self.real_switch.rollback_transaction()
 
-    def end_transaction(self):
+    def _end_transaction(self):
         return self.real_switch.end_transaction()
 
     def get_vlan(self, number):

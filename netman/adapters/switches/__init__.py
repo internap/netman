@@ -15,17 +15,17 @@ from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
 
 from netman.adapters.switches.backward_compatible_brocade import BackwardCompatibleBrocade
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def brocade_factory_ssh(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=SshClient),
+    return FlowControlSwitch(
+        wrapped_switch=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=SshClient),
         lock=lock
     )
 
 def brocade_factory_telnet(switch_descriptor, lock):
-    return SwitchTransactional(
-        impl=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
+    return FlowControlSwitch(
+        wrapped_switch=BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
         lock=lock
     )

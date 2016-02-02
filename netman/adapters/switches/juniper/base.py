@@ -40,7 +40,7 @@ class Juniper(SwitchBase):
 
         self.in_transaction = False
 
-    def connect(self):
+    def _connect(self):
         params = dict(
             host=self.switch_descriptor.hostname,
             username=self.switch_descriptor.username,
@@ -55,7 +55,7 @@ class Juniper(SwitchBase):
 
         self.netconf = manager.connect(**params)
 
-    def disconnect(self):
+    def _disconnect(self):
         try:
             self.netconf.close_session()
         except TimeoutExpiredError:

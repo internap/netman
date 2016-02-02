@@ -28,7 +28,7 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyExist
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
-from netman.core.objects.switch_transactional import SwitchTransactional
+from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def test_factory_ssh():
@@ -36,9 +36,9 @@ def test_factory_ssh():
     descriptor = SwitchDescriptor(hostname='hostname', model='dell10g', username='username', password='password', port=22)
     switch = dell10g.factory_ssh(descriptor, lock)
 
-    assert_that(switch, instance_of(SwitchTransactional))
-    assert_that(switch.impl, instance_of(Dell10G))
-    assert_that(switch.impl.shell_factory, equal_to(SshClient))
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Dell10G))
+    assert_that(switch.wrapped_switch.shell_factory, equal_to(SshClient))
     assert_that(switch.lock, is_(lock))
     assert_that(switch.switch_descriptor, is_(descriptor))
 
@@ -48,9 +48,9 @@ def test_factory_telnet():
     descriptor = SwitchDescriptor(hostname='hostname', model='dell10g', username='username', password='password', port=22)
     switch = dell10g.factory_telnet(descriptor, lock)
 
-    assert_that(switch, instance_of(SwitchTransactional))
-    assert_that(switch.impl, instance_of(Dell10G))
-    assert_that(switch.impl.shell_factory, equal_to(TelnetClient))
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Dell10G))
+    assert_that(switch.wrapped_switch.shell_factory, equal_to(TelnetClient))
     assert_that(switch.lock, is_(lock))
     assert_that(switch.switch_descriptor, is_(descriptor))
 
