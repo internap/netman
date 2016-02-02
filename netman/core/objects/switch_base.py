@@ -178,6 +178,10 @@ class SwitchOperations(object):
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         raise NotImplementedError()
 
+    #Adapters until external calls are changed
+    def remove_access_vlan(self, interface_id):
+        return self.unset_access_vlan(interface_id)
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):
