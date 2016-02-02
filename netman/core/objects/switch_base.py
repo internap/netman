@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
 import logging
+from contextlib import contextmanager
+
+from netman.core.objects.backward_compatible_switch_operations import BackwardCompatibleSwitchOperations
 
 
-class SwitchOperations(object):
+class SwitchOperations(BackwardCompatibleSwitchOperations):
 
     def connect(self):
         raise NotImplementedError()
@@ -57,7 +59,7 @@ class SwitchOperations(object):
     def set_access_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         raise NotImplementedError()
 
     def set_access_mode(self, interface_id):

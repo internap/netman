@@ -208,8 +208,8 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_access_vlan(interface_id, vlan)
         self.interfaces_cache[interface_id].access_vlan = vlan
 
-    def remove_access_vlan(self, interface_id):
-        self.real_switch.remove_access_vlan(interface_id)
+    def unset_access_vlan(self, interface_id):
+        self.real_switch.unset_access_vlan(interface_id)
         self.interfaces_cache[interface_id].access_vlan = None
 
     def configure_native_vlan(self, interface_id, vlan):

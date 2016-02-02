@@ -76,7 +76,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.set_access_vlan(self.test_port, vlan=2999)
 
-        self.client.remove_access_vlan(self.test_port)
+        self.client.unset_access_vlan(self.test_port)
 
         self.client.remove_vlan(2999)
 
@@ -185,7 +185,7 @@ class VlanManagementTest(ConfiguredTestCase):
             self.client.set_access_vlan('42/9999', 1234)
 
         with self.assertRaises(UnknownInterface):
-            self.client.remove_access_vlan('42/9999')
+            self.client.unset_access_vlan('42/9999')
 
         # TODO(jprovost) Unify switch adapters to raise the same exception
         # Dell 10G raises UnknownInterface

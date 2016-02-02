@@ -151,7 +151,7 @@ class Cisco(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport access vlan {}'.format(vlan))
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no switchport access vlan')
 

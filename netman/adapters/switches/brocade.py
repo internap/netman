@@ -159,7 +159,7 @@ class Brocade(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.shell.do("disable")
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         content = self.shell.do("show vlan brief | include {}"
                               .format(_to_short_name(interface_id)))
         if len(content) == 0:
@@ -172,7 +172,7 @@ class Brocade(SwitchBase):
             self.shell.do("no untagged {}".format(interface_id))
 
     def remove_native_vlan(self, interface_id):
-        return self.remove_access_vlan(interface_id)
+        return self.unset_access_vlan(interface_id)
 
     def remove_trunk_vlan(self, interface_id, vlan):
         self._get_vlan(vlan)

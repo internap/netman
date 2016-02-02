@@ -264,7 +264,7 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         interface = self.get_interface(interface_id)
 
         if interface.port_mode == TRUNK:

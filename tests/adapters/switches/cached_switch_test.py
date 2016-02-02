@@ -194,15 +194,15 @@ class CacheSwitchTest(unittest.TestCase):
             is_([Interface('eth0', access_vlan=123)])
         )
 
-    def test_remove_access_vlan(self):
+    def test_unset_access_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once().and_return(
             [Interface('eth0', access_vlan=123)])
         self.switch.get_interfaces()
 
-        self.real_switch_mock.should_receive("remove_access_vlan").once() \
+        self.real_switch_mock.should_receive("unset_access_vlan").once() \
             .with_args('eth0')
 
-        self.switch.remove_access_vlan('eth0')
+        self.switch.unset_access_vlan('eth0')
 
         assert_that(
             self.switch.get_interfaces(),

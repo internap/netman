@@ -163,7 +163,7 @@ class RemoteSwitch(SwitchBase):
     def set_access_vlan(self, interface_id, vlan):
         self.put("/interfaces/" + interface_id + '/access-vlan', raw_data=str(vlan))
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/access-vlan')
 
     def configure_native_vlan(self, interface_id, vlan):
