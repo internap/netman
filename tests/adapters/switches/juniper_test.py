@@ -553,7 +553,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(vlan.ips[0].ip), equal_to("2.1.1.1"))
 
-    def test_get_vlan_where_vlan_interfaces_can_also_be_called_irb_not_found(self):
+    def test_get_vlan_where_vlan_interfaces_not_found(self):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
