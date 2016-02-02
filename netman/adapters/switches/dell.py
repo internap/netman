@@ -165,7 +165,7 @@ class Dell(SwitchBase):
                 .on_result_matching(".*VLAN ID not found.*", UnknownVlan, vlan)\
                 .on_result_matching(".*Interface not in Access Mode.*", InterfaceInWrongPortMode, "trunk")
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.shell.do("no switchport access vlan")
 

@@ -558,22 +558,22 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a general mode interface"))
 
-    def test_remove_access_vlan(self):
+    def test_unset_access_vlan(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.remove_access_vlan("tengigabitethernet 1/0/10")
+        self.switch.unset_access_vlan("tengigabitethernet 1/0/10")
 
-    def test_remove_access_vlan_invalid_interface(self):
+    def test_unset_access_vlan_invalid_interface(self):
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
                 "An invalid interface has been used for this function."
             ])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_access_vlan("tengigabitethernet 1/0/99")
+            self.switch.unset_access_vlan("tengigabitethernet 1/0/99")
 
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 

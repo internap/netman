@@ -540,7 +540,7 @@ class CiscoTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
-    def test_remove_access_vlan(self):
+    def test_unset_access_vlan(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -548,9 +548,9 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.remove_access_vlan("FastEthernet0/4")
+        self.switch.unset_access_vlan("FastEthernet0/4")
 
-    def test_remove_access_vlan_invalid_interface_raises(self):
+    def test_unset_access_vlan_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -561,7 +561,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_access_vlan("SlowEthernet42/9999")
+            self.switch.unset_access_vlan("SlowEthernet42/9999")
 
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 

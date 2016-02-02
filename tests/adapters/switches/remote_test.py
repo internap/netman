@@ -762,7 +762,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_access_vlan("ge-0/0/6", 1000)
 
-    def test_remove_access_vlan(self):
+    def test_unset_access_vlan(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/access-vlan',
             headers=self.headers
@@ -771,7 +771,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_access_vlan("ge-0/0/6")
+        self.switch.unset_access_vlan("ge-0/0/6")
 
     def test_set_native_vlan(self):
         self.requests_mock.should_receive("put").once().with_args(

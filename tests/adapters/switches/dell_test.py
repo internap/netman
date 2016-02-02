@@ -719,7 +719,7 @@ class DellTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a trunk mode interface"))
 
-    def test_remove_access_vlan(self):
+    def test_unset_access_vlan(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").once().ordered().and_return([
@@ -728,16 +728,16 @@ class DellTest(unittest.TestCase):
             ])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.remove_access_vlan("ethernet 1/g10")
+        self.switch.unset_access_vlan("ethernet 1/g10")
 
-    def test_remove_access_vlan_invalid_interface(self):
+    def test_unset_access_vlan_invalid_interface(self):
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g99").once().ordered().and_return([
                 "An invalid interface has been used for this function."
             ])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_access_vlan("ethernet 1/g99")
+            self.switch.unset_access_vlan("ethernet 1/g99")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 

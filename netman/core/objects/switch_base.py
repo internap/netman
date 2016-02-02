@@ -57,7 +57,7 @@ class SwitchOperations(object):
     def set_access_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
-    def remove_access_vlan(self, interface_id):
+    def unset_access_vlan(self, interface_id):
         raise NotImplementedError()
 
     def set_access_mode(self, interface_id):

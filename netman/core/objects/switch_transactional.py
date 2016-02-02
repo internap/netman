@@ -167,8 +167,8 @@ class SwitchTransactional(SwitchOperations):
         self.impl.set_access_vlan(interface_id, vlan)
 
     @transactional
-    def remove_access_vlan(self, interface_id):
-        self.impl.remove_access_vlan(interface_id)
+    def unset_access_vlan(self, interface_id):
+        self.impl.unset_access_vlan(interface_id)
 
     @transactional
     def remove_vlan_access_group(self, vlan_number, direction):

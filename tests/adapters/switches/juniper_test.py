@@ -1764,7 +1764,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
-    def test_remove_access_vlan_removes_the_vlan_members(self):
+    def test_unset_access_vlan_removes_the_vlan_members(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -1812,9 +1812,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.remove_access_vlan("ge-0/0/6")
+        self.switch.unset_access_vlan("ge-0/0/6")
 
-    def test_remove_access_vlan_with_no_vlan_raises(self):
+    def test_unset_access_vlan_with_no_vlan_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -1841,11 +1841,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(AccessVlanNotSet) as expect:
-            self.switch.remove_access_vlan("ge-0/0/6")
+            self.switch.unset_access_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Access Vlan is not set on interface ge-0/0/6"))
 
-    def test_remove_access_vlan_on_trunk_mode_raises(self):
+    def test_unset_access_vlan_on_trunk_mode_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -1876,11 +1876,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
-            self.switch.remove_access_vlan("ge-0/0/6")
+            self.switch.unset_access_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a trunk mode interface"))
 
-    def test_remove_access_vlan_on_unknown_interface_raises(self):
+    def test_unset_access_vlan_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -1893,7 +1893,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_access_vlan("ge-0/0/6")
+            self.switch.unset_access_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 

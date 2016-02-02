@@ -46,8 +46,8 @@ class BackwardCompatibleBrocade(Brocade):
     def remove_native_vlan(self, interface_id):
         return super(BackwardCompatibleBrocade, self).remove_native_vlan(_add_ethernet(interface_id))
 
-    def remove_access_vlan(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).remove_access_vlan(_add_ethernet(interface_id))
+    def unset_access_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_access_vlan(_add_ethernet(interface_id))
 
     def openup_interface(self, interface_id):
         return super(BackwardCompatibleBrocade, self).openup_interface(_add_ethernet(interface_id))

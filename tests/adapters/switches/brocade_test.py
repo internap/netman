@@ -475,7 +475,7 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_remove_access_vlan(self):
+    def test_unset_access_vlan(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
         ])
@@ -485,13 +485,13 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("no untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.remove_access_vlan("ethernet 1/4")
+        self.switch.unset_access_vlan("ethernet 1/4")
 
-    def test_remove_access_vlan_invalid_interface_raises(self):
+    def test_unset_access_vlan_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 9/999").once().ordered().and_return([])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_access_vlan("ethernet 9/999")
+            self.switch.unset_access_vlan("ethernet 9/999")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
