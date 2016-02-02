@@ -270,6 +270,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlan40.ips, has_length(0))
 
     def test_get_vlan_with_no_interface(self):
+        self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
@@ -300,6 +301,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlan.ips, has_length(0))
 
     def test_get_vlan_with_unknown_vlan(self):
+        self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
@@ -321,6 +323,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 10 not found"))
 
     def test_get_vlan_with_interface(self):
+        self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
@@ -409,6 +412,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlan20ip1.prefixlen, equal_to(24))
 
     def test_get_vlan_with_interface_multi_ip(self):
+        self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
@@ -490,7 +494,8 @@ class JuniperTest(unittest.TestCase):
         assert_that(vlanip3.prefixlen, equal_to(24))
 
     def test_get_vlan_where_vlan_interfaces_can_also_be_called_irb(self):
-        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+        self.switch.in_transaction = True
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
                 <vlans>
@@ -560,6 +565,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(vlan.ips[0].ip), equal_to("2.1.1.1"))
 
     def test_get_vlan_where_vlan_interfaces_not_found(self):
+        self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
