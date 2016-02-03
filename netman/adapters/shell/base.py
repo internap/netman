@@ -14,9 +14,6 @@
 
 
 class TerminalClient(object):
-    _default_command_timeout = 300
-    _default_connect_timeout = 60
-
     def do(self, command, wait_for=None, include_last_line=False):
         raise NotImplemented()
 
@@ -28,11 +25,3 @@ class TerminalClient(object):
 
     def get_current_prompt(self):
         raise NotImplemented()
-
-    @staticmethod
-    def set_default_command_timeout(command_timeout):
-        TerminalClient._default_command_timeout = command_timeout
-
-    @staticmethod
-    def set_default_connect_timeout(connect_timeout):
-        TerminalClient._default_connect_timeout = connect_timeout

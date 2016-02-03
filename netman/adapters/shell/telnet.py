@@ -16,6 +16,7 @@ import re
 import telnetlib
 from telnetlib import IAC, DO, DONT, WILL, WONT
 
+from netman.adapters import shell
 from netman.adapters.shell.base import TerminalClient
 from netman.core.objects.exceptions import CouldNotConnect, CommandTimeout, ConnectTimeout
 
@@ -25,11 +26,11 @@ class TelnetClient(TerminalClient):
     def __init__(self, host, username, password, port=23, prompt=('>', '#'),
                  connect_timeout=None, command_timeout=None, **_):
         self.prompt = prompt
-        self.command_timeout = command_timeout or self._default_command_timeout
-        self.connect_timeout = connect_timeout or self._default_connect_timeout
+        self.command_timeout = command_timeout or shell.default_command_timeout
+        connect_timeout = connect_timeout or shell.default_connect_timeout
         self.full_log = ""
 
-        self.telnet = _connect(host, port, self.connect_timeout)
+        self.telnet = _connect(host, port, connect_timeout)
         self._login(username, password)
 
     def do(self, command, wait_for=None, include_last_line=False):
