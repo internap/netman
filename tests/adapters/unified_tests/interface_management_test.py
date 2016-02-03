@@ -28,12 +28,12 @@ class InterfaceManagementTest(ConfiguredTestCase):
 
     @skip_on_switches("cisco", "brocade", "brocade_telnet")
     def test_edit_spanning_tree(self):
-        self.client.edit_interface_spanning_tree(self.test_port, edge=True)
+        self.client.set_interface_spanning_tree_state(self.test_port, edge=True)
 
     @skip_on_switches("cisco", "brocade", "brocade_telnet")
-    def test_enable_lldp(self):
-        self.client.enable_lldp(self.test_port, enabled=True)
+    def test_set_interface_lldp_state(self):
+        self.client.set_interface_lldp_state(self.test_port, enabled=True)
 
     @skip_on_switches("cisco", "brocade", "brocade_telnet")
     def test_disable_lldp(self):
-        self.client.enable_lldp(self.test_port, enabled=False)
+        self.client.set_interface_lldp_state(self.test_port, enabled=False)

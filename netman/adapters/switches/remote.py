@@ -123,7 +123,7 @@ class RemoteSwitch(SwitchBase):
             direction={IN: 'in', OUT: 'out'}[direction]
         ), raw_data=name)
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         self.delete('/vlans/{vlan_number}/access-groups/{direction}'.format(
             vlan_number=vlan_number,
             direction={IN: 'in', OUT: 'out'}[direction]
@@ -145,7 +145,7 @@ class RemoteSwitch(SwitchBase):
             vlan_number=vlan_number
         ), raw_data=str(vrf_name))
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         self.delete('/vlans/{vlan_number}/vrf-forwarding'.format(vlan_number=vlan_number))
 
     def set_access_mode(self, interface_id):
@@ -166,16 +166,16 @@ class RemoteSwitch(SwitchBase):
     def unset_access_vlan(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/access-vlan')
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_native_vlan(self, interface_id, vlan):
         self.put("/interfaces/" + interface_id + '/trunk-native-vlan', raw_data=str(vlan))
 
-    def remove_native_vlan(self, interface_id):
+    def unset_native_vlan(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/trunk-native-vlan')
 
-    def configure_bond_native_vlan(self, bond_number, vlan):
+    def set_bond_native_vlan(self, bond_number, vlan):
         self.put("/bonds/" + str(bond_number) + '/trunk-native-vlan', raw_data=str(vlan))
 
-    def remove_bond_native_vlan(self, bond_number):
+    def unset_bond_native_vlan(self, bond_number):
         self.delete("/bonds/" + str(bond_number) + '/trunk-native-vlan')
 
     def add_trunk_vlan(self, interface_id, vlan):
@@ -193,16 +193,16 @@ class RemoteSwitch(SwitchBase):
     def set_interface_description(self, interface_id, description):
         self.put("/interfaces/" + interface_id + '/description', raw_data=description)
 
-    def remove_interface_description(self, interface_id):
+    def unset_interface_description(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/description')
 
     def set_bond_description(self, bond_number, description):
         self.put("/bonds/" + str(bond_number) + '/description', raw_data=description)
 
-    def remove_bond_description(self, bond_number):
+    def unset_bond_description(self, bond_number):
         self.delete("/bonds/" + str(bond_number) + '/description')
 
-    def edit_interface_spanning_tree(self, interface_id, edge=None):
+    def set_interface_spanning_tree_state(self, interface_id, edge=None):
         data = {}
         if edge is not None:
             data["edge"] = edge
@@ -230,7 +230,7 @@ class RemoteSwitch(SwitchBase):
     def set_bond_link_speed(self, number, speed):
         self.put("/bonds/{0}/link-speed".format(number), raw_data=speed)
 
-    def edit_bond_spanning_tree(self, number, edge=None):
+    def set_bond_interface_spanning_tree_state(self, number, edge=None):
         data = {}
         if edge is not None:
             data["edge"] = edge
@@ -255,7 +255,7 @@ class RemoteSwitch(SwitchBase):
         self.delete("/vlans/{}/dhcp-relay-server/{}".format(
             vlan_number, ip_address))
 
-    def enable_lldp(self, interface_id, enabled):
+    def set_interface_lldp_state(self, interface_id, enabled):
         self.put("/interfaces/{}/lldp".format(interface_id),
                  raw_data=_get_json_boolean(enabled))
 

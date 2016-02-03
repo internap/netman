@@ -99,9 +99,9 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.set_trunk_mode(self.test_port)
 
-        self.client.configure_native_vlan(self.test_port, vlan=2999)
+        self.client.set_native_vlan(self.test_port, vlan=2999)
 
-        self.client.remove_native_vlan(self.test_port)
+        self.client.unset_native_vlan(self.test_port)
 
         self.client.set_access_mode(self.test_port)
 
@@ -114,7 +114,7 @@ class VlanManagementTest(ConfiguredTestCase):
         self.client.add_vlan(1400)
 
         self.client.set_trunk_mode(self.test_port)
-        self.client.configure_native_vlan(self.test_port, vlan=1200)
+        self.client.set_native_vlan(self.test_port, vlan=1200)
         self.client.add_trunk_vlan(self.test_port, vlan=1100)
         self.client.add_trunk_vlan(self.test_port, vlan=1300)
         self.client.add_trunk_vlan(self.test_port, vlan=1400)
@@ -155,7 +155,7 @@ class VlanManagementTest(ConfiguredTestCase):
             self.client.add_trunk_vlan(self.test_port, vlan=2999)
 
         with self.assertRaises(UnknownVlan):
-            self.client.configure_native_vlan(self.test_port, vlan=2999)
+            self.client.set_native_vlan(self.test_port, vlan=2999)
 
         with self.assertRaises(UnknownVlan):
             self.client.add_trunk_vlan(self.test_port, vlan=2999)
@@ -198,7 +198,7 @@ class VlanManagementTest(ConfiguredTestCase):
         # Dell 10G raises NativeVlanNotSet
         # Cisco does not raise
         try:
-            self.client.remove_native_vlan(self.test_port)
+            self.client.unset_native_vlan(self.test_port)
         except UnknownResource:
             pass
 
@@ -214,7 +214,7 @@ class VlanManagementTest(ConfiguredTestCase):
             self.client.remove_trunk_vlan('42/9999', 2999)
 
         with self.assertRaises(UnknownInterface):
-            self.client.configure_native_vlan('42/9999', 2999)
+            self.client.set_native_vlan('42/9999', 2999)
 
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_vrf_management(self):
@@ -226,7 +226,7 @@ class VlanManagementTest(ConfiguredTestCase):
         vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_('DEFAULT-LAN'))
 
-        self.client.remove_vlan_vrf(2999)
+        self.client.unset_vlan_vrf(2999)
 
         vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_(none()))

@@ -80,10 +80,10 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def openup_interface(self, interface_id):
         raise NotImplementedError()
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_native_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
-    def remove_native_vlan(self, interface_id):
+    def unset_native_vlan(self, interface_id):
         raise NotImplementedError()
 
     def add_ip_to_vlan(self, vlan_number, ip_network):
@@ -95,22 +95,22 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_vlan_access_group(self, vlan_number, direction, name):
         raise NotImplementedError()
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         raise NotImplementedError()
 
     def set_vlan_vrf(self, vlan_number, vrf_name):
         raise NotImplementedError()
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         raise NotImplementedError()
 
     def set_interface_description(self, interface_id, description):
         raise NotImplementedError()
 
-    def remove_interface_description(self, interface_id):
+    def unset_interface_description(self, interface_id):
         raise NotImplementedError()
 
-    def edit_interface_spanning_tree(self, interface_id, edge=None):
+    def set_interface_spanning_tree_state(self, interface_id, edge=None):
         raise NotImplementedError()
 
     def add_bond(self, number):
@@ -137,7 +137,7 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_bond_description(self, number, description):
         raise NotImplementedError()
 
-    def remove_bond_description(self, number):
+    def unset_bond_description(self, number):
         raise NotImplementedError()
 
     def set_bond_trunk_mode(self, number):
@@ -152,13 +152,13 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def remove_bond_trunk_vlan(self, number, vlan):
         raise NotImplementedError()
 
-    def configure_bond_native_vlan(self, number, vlan):
+    def set_bond_native_vlan(self, number, vlan):
         raise NotImplementedError()
 
-    def remove_bond_native_vlan(self, number):
+    def unset_bond_native_vlan(self, number):
         raise NotImplementedError()
 
-    def edit_bond_spanning_tree(self, number, edge=None):
+    def set_bond_interface_spanning_tree_state(self, number, edge=None):
         raise NotImplementedError()
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
@@ -174,7 +174,7 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def remove_dhcp_relay_server(self, vlan_number, ip_address):
         raise NotImplementedError()
 
-    def enable_lldp(self, interface_id, enabled):
+    def set_interface_lldp_state(self, interface_id, enabled):
         raise NotImplementedError()
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):

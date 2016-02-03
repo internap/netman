@@ -148,7 +148,7 @@ class Brocade(SwitchBase):
             if result:
                 raise UnknownInterface(interface_id)
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_native_vlan(self, interface_id, vlan):
         return self.set_access_vlan(interface_id, vlan)
 
     def openup_interface(self, interface_id):
@@ -171,7 +171,7 @@ class Brocade(SwitchBase):
         with self.config(), self.vlan(int(matches.groups()[0])):
             self.shell.do("no untagged {}".format(interface_id))
 
-    def remove_native_vlan(self, interface_id):
+    def unset_native_vlan(self, interface_id):
         return self.unset_access_vlan(interface_id)
 
     def remove_trunk_vlan(self, interface_id, vlan):
@@ -267,7 +267,7 @@ class Brocade(SwitchBase):
             if len(result) > 0 and not result[0].startswith("Warning:"):
                 raise ValueError("Access group name \"{}\" is invalid".format(name))
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
         if vlan.access_groups[direction] is None:
@@ -283,7 +283,7 @@ class Brocade(SwitchBase):
             if regex.match("^Error.*", result[0]):
                 raise UnknownVrf(vrf_name)
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
         if vlan.vlan_interface_name is None or vlan.vrf_forwarding is None:
             raise VlanVrfNotSet(vlan_number)

@@ -191,13 +191,13 @@ class Cisco(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no shutdown')
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_native_vlan(self, interface_id, vlan):
         self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport trunk native vlan {}'.format(vlan))
 
-    def remove_native_vlan(self, interface_id):
+    def unset_native_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no switchport trunk native vlan')
 
@@ -250,7 +250,7 @@ class Cisco(SwitchBase):
             if len(result) > 0:
                 raise ValueError("Access group name \"{}\" is invalid".format(name))
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         vlan = self.get_vlan_interface_data(vlan_number)
 
         if vlan.access_groups[direction] is None:
@@ -267,7 +267,7 @@ class Cisco(SwitchBase):
             if len(result) > 0:
                 raise UnknownVrf(vrf_name)
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         vlan = self.get_vlan_interface_data(vlan_number)
 
         if vlan.vrf_forwarding is None:
@@ -310,13 +310,13 @@ class Cisco(SwitchBase):
         with NamedBond(number) as bond:
             return self.remove_trunk_vlan(bond.name, vlan)
 
-    def configure_bond_native_vlan(self, number, vlan):
+    def set_bond_native_vlan(self, number, vlan):
         with NamedBond(number) as bond:
-            return self.configure_native_vlan(bond.name, vlan)
+            return self.set_native_vlan(bond.name, vlan)
 
-    def remove_bond_native_vlan(self, number):
+    def unset_bond_native_vlan(self, number):
         with NamedBond(number) as bond:
-            return self.remove_native_vlan(bond.name)
+            return self.unset_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')
