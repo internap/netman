@@ -43,12 +43,10 @@ class SwitchSessionManager(object):
         if session_id in self.sessions:
             raise SessionAlreadyExists(session_id)
 
-        switch.connect()
         try:
             switch.start_transaction()
         except:
             self.logger.exception("Session {} caught an exception while trying to start transaction".format(session_id))
-            switch.disconnect()
             raise
 
         self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
@@ -98,7 +96,6 @@ class SwitchSessionManager(object):
         finally:
             self._remove_session(session_id)
             self._stop_timer(session_id)
-            switch.disconnect()
 
     def _cancel_session(self, session_id):
         self.logger.info("Inactivity timeout reached for session {}".format(session_id))

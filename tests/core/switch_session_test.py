@@ -36,24 +36,20 @@ class SwitchSessionManagerTest(TestCase):
 
     def test_open_session_generates_with_passed_session_id(self):
         self.session_manager.session_storage = flexmock()
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
         ).once()
-        self.switch_mock.should_receive('disconnect').never()
 
         assert_that(self.session_manager.open_session(self.switch_mock, 'patate'), is_('patate'))
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(self.switch_mock))
 
     def test_open_session_with_session_that_already_exists_raises_an_exception(self):
         self.session_manager.session_storage = flexmock()
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
         ).once()
-        self.switch_mock.should_receive('disconnect').never()
 
         self.session_manager.open_session(self.switch_mock, 'patate')
 
@@ -62,16 +58,13 @@ class SwitchSessionManagerTest(TestCase):
 
     def test_open_failing_session_closes_connection(self):
         self.session_manager.session_storage = flexmock()
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered().and_raise(NetmanException())
-        self.switch_mock.should_receive('disconnect').once().ordered()
 
         with self.assertRaises(NetmanException):
             self.session_manager.open_session(self.switch_mock, 'patate')
 
     def test_close_session(self):
         self.session_manager.session_storage = flexmock()
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
@@ -82,7 +75,6 @@ class SwitchSessionManagerTest(TestCase):
 
         self.switch_mock.should_receive('end_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('remove').with_args('patate')
-        self.switch_mock.should_receive('disconnect').once().ordered()
 
         self.session_manager.close_session('patate')
 
@@ -92,7 +84,6 @@ class SwitchSessionManagerTest(TestCase):
     def test_close_session_catches_exception_if_remote_remove_fails(self):
         self.session_manager.session_storage = flexmock()
 
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
@@ -101,60 +92,54 @@ class SwitchSessionManagerTest(TestCase):
         self.session_manager.open_session(self.switch_mock, 'patate')
 
         self.switch_mock.should_receive('end_transaction').once().ordered()
-        self.switch_mock.should_receive('disconnect').once().ordered()
 
         self.session_manager.session_storage.should_receive('remove').with_args('patate').and_raise(NetmanException)
 
         self.session_manager.close_session('patate')
 
     def test_session_should_close_itself_after_timeout(self):
-        self.session_manager.session_inactivity_timeout = 0.5
+        self.session_manager.session_inactivity_timeout = 0.01
 
         switch_mock = Mock()
 
         assert_that(self.session_manager.open_session(switch_mock, 'patate'), is_('patate'))
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch_mock))
 
-        switch_mock.connect.assert_called_with()
         switch_mock.start_transaction.assert_called_with()
 
-        time.sleep(0.6)
+        time.sleep(0.02)
 
         switch_mock.rollback_transaction.assert_called_with()
         switch_mock.end_transaction.assert_called_with()
-        switch_mock.disconnect.assert_called_with()
 
         with self.assertRaises(UnknownResource):
             self.session_manager.get_switch_for_session('patate')
 
     def test_session_timeout_should_reset_on_activity(self):
-        self.session_manager.session_inactivity_timeout = 1
+        self.session_manager.session_inactivity_timeout = 0.1
 
         switch_mock = Mock()
 
         assert_that(self.session_manager.open_session(switch_mock, 'patate'), is_('patate'))
         assert_that(self.session_manager.get_switch_for_session('patate'), is_(switch_mock))
 
-        switch_mock.connect.assert_called_with()
         switch_mock.start_transaction.assert_called_with()
 
-        time.sleep(0.5)
+        time.sleep(0.05)
 
         self.session_manager.keep_alive('patate')
 
-        time.sleep(0.5)
+        time.sleep(0.05)
 
         assert_that(switch_mock.rollback_transaction.called, is_(False))
         assert_that(switch_mock.end_transaction.called, is_(False))
-        assert_that(switch_mock.disconnect.called, is_(False))
 
         self.session_manager.keep_alive('patate')
 
-        time.sleep(1.1)
+        time.sleep(0.11)
 
         switch_mock.rollback_transaction.assert_called_with()
         switch_mock.end_transaction.assert_called_with()
-        switch_mock.disconnect.assert_called_with()
 
         with self.assertRaises(UnknownResource):
             self.session_manager.get_switch_for_session('patate')
@@ -163,7 +148,6 @@ class SwitchSessionManagerTest(TestCase):
         self.session_manager.keep_alive = Mock()
         self.session_manager.session_storage = flexmock()
 
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
@@ -183,7 +167,6 @@ class SwitchSessionManagerTest(TestCase):
         self.session_manager.keep_alive = Mock()
         self.session_manager.session_storage = flexmock()
 
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
@@ -207,7 +190,6 @@ class SwitchSessionManagerTest(TestCase):
 
         self.session_manager.session_storage = flexmock()
 
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage.should_receive('add').with_args(
             'patate', self.switch_mock.switch_descriptor
@@ -217,7 +199,6 @@ class SwitchSessionManagerTest(TestCase):
 
         self.switch_mock.should_receive('end_transaction').and_raise(OperationNotCompleted()).once().ordered()
         self.session_manager.session_storage.should_receive('remove').with_args('patate')
-        self.switch_mock.should_receive('disconnect').once().ordered()
 
         with self.assertRaises(OperationNotCompleted):
             self.session_manager.close_session('patate')
@@ -226,7 +207,6 @@ class SwitchSessionManagerTest(TestCase):
             self.session_manager.get_switch_for_session('patate')
 
     def test_add_session_catches_exception_if_remote_add_fails(self):
-        self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('start_transaction').once().ordered()
         self.session_manager.session_storage = flexmock()
         self.session_manager.session_storage.should_receive('add').with_args(
