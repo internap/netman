@@ -18,9 +18,11 @@ import unittest
 
 import MockSSH
 from hamcrest import equal_to, assert_that, is_, starts_with
+from mock import patch, Mock
 
 from twisted.internet.protocol import Factory
 
+from netman.adapters import shell
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
 from netman.core.objects.exceptions import CouldNotConnect, CommandTimeout, ConnectTimeout
@@ -184,6 +186,9 @@ class TerminalClientTest(unittest.TestCase):
 
         assert_that(res, equal_to(['working -> done!']))
 
+    def _get_some_credentials(self):
+        return {'host': "host.com", 'username': "user", 'password': "pass"}
+
 
 class SshClientTest(TerminalClientTest):
     __test__ = True
@@ -191,12 +196,62 @@ class SshClientTest(TerminalClientTest):
     client = SshClient
     port = 10010
 
+    @patch('netman.adapters.shell.ssh.SshClient._open_channel')
+    def test_changing_default_connect_timeout(self, open_channel_method_mock):
+        shell.default_connect_timeout = 60
+
+        SshClient(**self._get_some_credentials())
+        self.assertEqual(60, open_channel_method_mock.call_args[0][4])
+
+        shell.default_connect_timeout = 120
+
+        SshClient(**self._get_some_credentials())
+        self.assertEqual(120, open_channel_method_mock.call_args[0][4])
+
+    @patch('netman.adapters.shell.ssh.SshClient._open_channel', Mock())
+    def test_changing_default_command_timeout(self):
+        shell.base.default_command_timeout = 300
+
+        ssh = SshClient(**self._get_some_credentials())
+        self.assertEqual(300, ssh.command_timeout)
+
+        shell.default_command_timeout = 600
+
+        ssh2 = SshClient(**self._get_some_credentials())
+        self.assertEqual(600, ssh2.command_timeout)
+
 
 class TelnetClientTest(TerminalClientTest):
     __test__ = True
 
     client = TelnetClient
     port = 10011
+
+    @patch('netman.adapters.shell.telnet._connect')
+    @patch('netman.adapters.shell.telnet.TelnetClient._login', Mock())
+    def test_changing_default_connect_timeout(self, connect_method_mock):
+        shell.default_connect_timeout = 60
+
+        TelnetClient(**self._get_some_credentials())
+        self.assertEqual(60, connect_method_mock.call_args[0][2])
+
+        shell.default_connect_timeout = 120
+
+        TelnetClient(**self._get_some_credentials())
+        self.assertEqual(120, connect_method_mock.call_args[0][2])
+
+    @patch('netman.adapters.shell.telnet._connect', Mock())
+    @patch('netman.adapters.shell.telnet.TelnetClient._login', Mock())
+    def test_changing_default_command_timeout(self):
+        shell.default_command_timeout = 300
+
+        telnet = TelnetClient(**self._get_some_credentials())
+        self.assertEqual(300, telnet.command_timeout)
+
+        shell.default_command_timeout = 600
+
+        telnet2 = TelnetClient(**self._get_some_credentials())
+        self.assertEqual(600, telnet2.command_timeout)
 
 
 class SwitchTelnetFactory(Factory):

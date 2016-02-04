@@ -15,6 +15,7 @@ from unittest import TestCase
 
 from flexmock import flexmock
 from hamcrest import assert_that, is_
+from mock import patch, Mock
 
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_base import SwitchBase
@@ -28,6 +29,7 @@ class SwitchTransactionalTest(TestCase):
     Backward compatibility test
     """
 
+    @patch("netman.core.objects.switch_transactional.warnings.warn", Mock())
     def setUp(self):
         self.switch_impl = flexmock(SwitchBase(SwitchDescriptor("cisco", "name")))
         self.switch_impl.connected = True
@@ -42,10 +44,10 @@ class SwitchTransactionalTest(TestCase):
         with self.switch.transaction():
             assert_that(self.switch.in_transaction, is_(True))
 
-            result = transactional_method(self.switch)
+            result = self.decorated_method(self.switch)
             assert_that(result, is_("Good"))
 
-            result = transactional_method(self.switch)
+            result = self.decorated_method(self.switch)
             assert_that(result, is_("Good"))
 
             self.switch_impl.should_receive("commit_transaction").with_args().once().ordered()
@@ -73,7 +75,7 @@ class SwitchTransactionalTest(TestCase):
         self.switch_impl.should_receive("_end_transaction").with_args().once().ordered()
         self.lock.should_receive("release").with_args().once().ordered()
 
-        result = transactional_method(self.switch)
+        result = self.decorated_method(self.switch)
 
         assert_that(self.switch.in_transaction, is_(False))
 
@@ -85,13 +87,19 @@ class SwitchTransactionalTest(TestCase):
         self.lock.should_receive("release").with_args().once().ordered()
 
         with self.assertRaises(NetmanException):
-            transactional_method(self.switch)
+            self.decorated_method(self.switch)
 
         assert_that(self.switch.in_transaction, is_(False))
 
+    @property
+    @patch("netman.core.objects.switch_transactional.warnings.warn", Mock())
+    def decorated_method(self):
+        @transactional
+        def transactional_method(self):
+            if self.in_transaction is False:
+                raise AssertionError("I'm not in a transaction")
+            return "Good"
+        return transactional_method
 
-@transactional
-def transactional_method(self):
-    if self.in_transaction is False:
-        raise AssertionError("I'm not in a transaction")
-    return "Good"
+
+
