@@ -29,7 +29,7 @@ def get_available_switch(model):
 class NetmanTestApp(object):
     def __init__(self, ip=None, port=None, session_inactivity_timeout=2):
         self.ip = ip or "127.0.0.1"
-        self.port = port or random.randrange(30000, 40000)
+        self.port = port or random.randrange(49152, 65535)
         self.session_inactivity_timeout = session_inactivity_timeout
 
     def __enter__(self):
