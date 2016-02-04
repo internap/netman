@@ -14,6 +14,8 @@
 from unittest import TestCase
 
 from flexmock import flexmock
+from mock import patch, Mock
+
 from netman.core.objects.switch_base import SwitchOperations
 
 
@@ -21,6 +23,7 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
     def setUp(self):
         self.switch = flexmock(SwitchOperations())
 
+    @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
     def test_remove_access_vlan_call_unset_access_vlan(self):
         self.switch.should_receive("unset_access_vlan").with_args(1000).once()
 
