@@ -374,7 +374,7 @@ class SwitchApiTest(BaseApiTest):
         })
         assert_that(code, equal_to(200))
 
-    def test_set_interface_state_OFF(self):
+    def test_set_interface_state_off(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).once().ordered()
@@ -384,7 +384,7 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_set_interface_state_ON(self):
+    def test_set_interface_state_on(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', ON).once().ordered()
@@ -394,7 +394,7 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_set_interface_state_OFF_invalid_argument(self):
+    def test_set_interface_state_off_invalid_argument(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
         self.switch_mock.should_receive('connect').never()
         self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).never()
@@ -405,7 +405,7 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unreadable content "patate". Should be either "true" or "false"'}))
 
-    def test_set_interface_state_OFF_no_argument(self):
+    def test_set_interface_state_off_no_argument(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
         self.switch_mock.should_receive('connect').never()
         self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).never()

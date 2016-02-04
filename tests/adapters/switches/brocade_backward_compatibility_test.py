@@ -108,7 +108,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.remove_trunk_vlan("1/11", vlan=2999)
 
-    def test_set_interface_state_OFF_accepts_no_ethernet(self):
+    def test_set_interface_state_off_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("disable").and_return([]).once().ordered()
@@ -116,7 +116,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_interface_state("1/4", OFF)
 
-    def test_set_interface_state_ON_accepts_no_ethernet(self):
+    def test_set_interface_state_on_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()

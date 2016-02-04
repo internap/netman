@@ -756,7 +756,7 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_set_interface_state_OFF(self):
+    def test_set_interface_state_off(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("disable").and_return([]).once().ordered()
@@ -764,7 +764,7 @@ class BrocadeTest(unittest.TestCase):
 
         self.switch.set_interface_state("ethernet 1/4", OFF)
 
-    def test_set_interface_state_OFF_invalid_interface_raises(self):
+    def test_set_interface_state_off_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 9/999").once().ordered().and_return([
             'Invalid input -> 9/999'
@@ -777,7 +777,7 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_set_interface_state_ON(self):
+    def test_set_interface_state_on(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
@@ -785,7 +785,7 @@ class BrocadeTest(unittest.TestCase):
 
         self.switch.set_interface_state("ethernet 1/4", ON)
 
-    def test_set_interface_state_ON_invalid_interface_raises(self):
+    def test_set_interface_state_on_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 9/999").once().ordered().and_return([
             'Invalid input -> 9/999'

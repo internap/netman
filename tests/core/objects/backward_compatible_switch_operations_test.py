@@ -17,6 +17,7 @@ from flexmock import flexmock
 from mock import patch, Mock
 
 from netman.core.objects.access_groups import IN
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_base import SwitchOperations
 
 
@@ -94,3 +95,15 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
         self.switch.should_receive("set_interface_lldp_state").with_args("ethernet 1/g10", True).once()
 
         self.switch.enable_lldp("ethernet 1/g10", True)
+
+    @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
+    def test_shutdown_interface_call_set_interface_state(self):
+        self.switch.should_receive("set_interface_state").with_args("ethernet 1/g10", OFF).once()
+
+        self.switch.shutdown_interface("ethernet 1/g10")
+
+    @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
+    def test_openup_interface_call_set_interface_state(self):
+        self.switch.should_receive("set_interface_state").with_args("ethernet 1/g10", ON).once()
+
+        self.switch.openup_interface("ethernet 1/g10")

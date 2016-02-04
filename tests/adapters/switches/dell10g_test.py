@@ -125,7 +125,7 @@ class Dell10GTest(unittest.TestCase):
         self.switch.shell.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
-    def test_set_interface_state_OFF(self):
+    def test_set_interface_state_off(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/4").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("shutdown").once().ordered().and_return([])
@@ -133,7 +133,7 @@ class Dell10GTest(unittest.TestCase):
 
         self.switch.set_interface_state("tengigabitethernet 1/0/4", OFF)
 
-    def test_set_interface_state_OFF_invalid_interface_raises(self):
+    def test_set_interface_state_off_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -145,7 +145,7 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
-    def test_set_interface_state_ON(self):
+    def test_set_interface_state_on(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/4").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
@@ -153,7 +153,7 @@ class Dell10GTest(unittest.TestCase):
 
         self.switch.set_interface_state("tengigabitethernet 1/0/4", ON)
 
-    def test_set_interface_state_ON_invalid_interface_raises(self):
+    def test_set_interface_state_on_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
             "An invalid interface has been used for this function."

@@ -19,11 +19,11 @@ class InterfaceManagementTest(ConfiguredTestCase):
     __test__ = False
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
-    def test_set_interface_state_OFF(self):
+    def test_set_interface_state_off(self):
         self.client.set_interface_state(self.test_port, OFF)
 
     @skip_on_switches("juniper", "juniper_qfx_copper")
-    def test_set_interface_state_ON(self):
+    def test_set_interface_state_on(self):
         self.client.set_interface_state(self.test_port, ON)
 
     @skip_on_switches("cisco", "brocade", "brocade_telnet")

@@ -277,7 +277,7 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.remove_trunk_vlan('xe-1/0/2', 1)
 
 
-    def test_set_interface_state_OFF(self):
+    def test_set_interface_state_off(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2', shutdown=False)])
         self.switch.get_interfaces()
@@ -291,7 +291,7 @@ class CacheSwitchTest(unittest.TestCase):
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', shutdown=True)]))
 
-    def test_set_interface_state_ON(self):
+    def test_set_interface_state_on(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2')])
         self.switch.get_interfaces()

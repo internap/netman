@@ -123,7 +123,7 @@ class DellTest(unittest.TestCase):
         self.switch.shell.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
-    def test_set_interface_state_OFF(self):
+    def test_set_interface_state_off(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g4").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("shutdown").once().ordered().and_return([])
@@ -131,7 +131,7 @@ class DellTest(unittest.TestCase):
 
         self.switch.set_interface_state("ethernet 1/g4", OFF)
 
-    def test_set_interface_state_OFF_invalid_interface_raises(self):
+    def test_set_interface_state_off_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 99/g99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -143,7 +143,7 @@ class DellTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 99/g99"))
 
-    def test_set_interface_state_ON(self):
+    def test_set_interface_state_on(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g4").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
@@ -151,7 +151,7 @@ class DellTest(unittest.TestCase):
 
         self.switch.set_interface_state("ethernet 1/g4", ON)
 
-    def test_set_interface_state_ON_invalid_interface_raises(self):
+    def test_set_interface_state_on_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 99/g99").once().ordered().and_return([
             "An invalid interface has been used for this function."

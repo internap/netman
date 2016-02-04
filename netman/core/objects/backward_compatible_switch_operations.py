@@ -13,6 +13,8 @@
 # limitations under the License.
 import warnings
 
+from netman.core.objects.interface_states import OFF, ON
+
 
 class BackwardCompatibleSwitchOperations(object):
     """
@@ -65,3 +67,11 @@ class BackwardCompatibleSwitchOperations(object):
     def enable_lldp(self, interface_id, enabled):
         warnings.warn("Deprecated, use set_interface_lldp_state(interface_id, enabled) instead")
         return self.set_interface_lldp_state(interface_id, enabled)
+
+    def shutdown_interface(self, interface_id):
+        warnings.warn("Deprecated, use set_interface_state(interface_id, state) instead")
+        return self.set_interface_state(interface_id, OFF)
+
+    def openup_interface(self, interface_id):
+        warnings.warn("Deprecated, use set_interface_state(interface_id, state) instead")
+        return self.set_interface_state(interface_id, ON)
