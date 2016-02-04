@@ -21,7 +21,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, UnknownBond, UnknownState
+    VlanAlreadyExist, UnknownBond
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF
 from netman.core.objects.interface_states import ON
@@ -186,14 +186,8 @@ class Cisco(SwitchBase):
             self.ssh.do('switchport trunk allowed vlan remove {}'.format(vlan))
 
     def set_interface_state(self, interface_id, state):
-        if state is OFF:
-            with self.config(), self.interface(interface_id):
-                self.ssh.do('shutdown')
-        elif state is ON:
-            with self.config(), self.interface(interface_id):
-                self.ssh.do('no shutdown')
-        else:
-            raise UnknownState(state)
+        with self.config(), self.interface(interface_id):
+            self.ssh.do('shutdown' if state is OFF else "no shutdown")
 
     def set_native_vlan(self, interface_id, vlan):
         self._get_vlan_run_conf(vlan)

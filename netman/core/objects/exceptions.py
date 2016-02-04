@@ -252,8 +252,3 @@ class CommandTimeout(Exception):
 class CouldNotConnect(Exception):
     def __init__(self, host=None, port=None):
         super(CouldNotConnect, self).__init__("Could not connect to {} on port {}".format(host, port))
-
-
-class UnknownState(UnknownResource):
-    def __init__(self, state=None):
-        super(UnknownState, self).__init__("State {} does not exist".format(state))

@@ -24,7 +24,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
-    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, UnknownState
+    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -153,15 +153,8 @@ class Brocade(SwitchBase):
         return self.set_access_vlan(interface_id, vlan)
 
     def set_interface_state(self, interface_id, state):
-        if state is OFF:
-            with self.config(), self.interface(interface_id):
-                self.shell.do("disable")
-        elif state is ON:
-            with self.config(), self.interface(interface_id):
-                self.shell.do("enable")
-        else:
-            raise UnknownState(state)
-
+        with self.config(), self.interface(interface_id):
+            self.shell.do("disable" if state is OFF else "enable")
 
     def unset_access_vlan(self, interface_id):
         content = self.shell.do("show vlan brief | include {}"

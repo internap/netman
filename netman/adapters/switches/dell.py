@@ -24,7 +24,7 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond, UnknownState
+    VlanAlreadyExist, UnknownBond
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -85,14 +85,8 @@ class Dell(SwitchBase):
         self.shell.send_key("y")
 
     def set_interface_state(self, interface_id, state):
-        if state is OFF:
-            with self.config(), self.interface(interface_id):
-                self.shell.do('shutdown')
-        elif state is ON:
-            with self.config(), self.interface(interface_id):
-                self.shell.do('no shutdown')
-        else:
-            raise UnknownState(state)
+        with self.config(), self.interface(interface_id):
+            self.shell.do('shutdown' if state is OFF else 'no shutdown')
 
     def get_vlans(self):
         result = self.shell.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
