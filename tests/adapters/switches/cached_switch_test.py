@@ -436,10 +436,10 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.unset_interface_description('xe-1/0/2')
 
     def test_set_interface_spanning_tree(self):
-        self.real_switch_mock.should_receive("set_interface_spanning_tree_state").once() \
+        self.real_switch_mock.should_receive("edit_interface_spanning_tree").once() \
             .with_args('xe-1/0/2', edge=None)
 
-        self.switch.set_interface_spanning_tree_state('xe-1/0/2')
+        self.switch.edit_interface_spanning_tree('xe-1/0/2')
 
     def test_add_bond_first(self):
         all_bonds = [Bond(1), Bond(2), Bond(123)]

@@ -215,7 +215,7 @@ class Dell(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.set("switchport {} allowed vlan remove {}", actual_port_mode, vlan)
 
-    def set_interface_spanning_tree_state(self, interface_id, edge=None):
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
         commands = []
         if edge is not None:
             commands.append("{}spanning-tree portfast".format("" if edge else "no "))

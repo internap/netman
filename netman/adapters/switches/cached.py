@@ -267,9 +267,9 @@ class CachedSwitch(SwitchBase):
         # No cache to update
         self.real_switch.unset_bond_description(bond_number)
 
-    def set_interface_spanning_tree_state(self, interface_id, edge=None):
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
         # No cache to update
-        self.real_switch.set_interface_spanning_tree_state(interface_id, edge=edge)
+        self.real_switch.edit_interface_spanning_tree(interface_id, edge=edge)
 
     def set_interface_state(self, interface_id, state):
         self.real_switch.set_interface_state(interface_id, state)

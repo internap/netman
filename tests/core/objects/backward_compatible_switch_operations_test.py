@@ -61,8 +61,8 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
         self.switch.remove_interface_description("ethernet 1/g10")
 
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_edit_interface_spanning_tree_state_call_set_interface_spanning_tree_state(self):
-        self.switch.should_receive("set_interface_spanning_tree_state").with_args("ethernet 1/g10").once()
+    def test_edit_interface_spanning_tree_state_call_edit_interface_spanning_tree(self):
+        self.switch.should_receive("edit_interface_spanning_tree").with_args("ethernet 1/g10").once()
 
         self.switch.edit_interface_spanning_tree("ethernet 1/g10")
 

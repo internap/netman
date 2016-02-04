@@ -392,7 +392,7 @@ class Juniper(SwitchBase):
             if e.severity != "warning":
                 raise UnknownInterface(interface_id)
 
-    def set_interface_spanning_tree_state(self, interface_id, edge=None):
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
         config = self.query(one_interface(interface_id), one_protocol_interface("rstp", interface_id))
         self.get_interface_config(interface_id, config)
 
@@ -556,7 +556,7 @@ class Juniper(SwitchBase):
         return self.unset_interface_native_vlan(bond_name(number))
 
     def set_bond_interface_spanning_tree_state(self, number, edge=None):
-        return self.set_interface_spanning_tree_state(bond_name(number), edge=edge)
+        return self.edit_interface_spanning_tree(bond_name(number), edge=edge)
 
     def _push(self, configuration):
         config = new_ele('config')

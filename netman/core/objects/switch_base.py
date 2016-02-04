@@ -107,7 +107,7 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def unset_interface_description(self, interface_id):
         raise NotImplementedError()
 
-    def set_interface_spanning_tree_state(self, interface_id, edge=None):
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
         raise NotImplementedError()
 
     def add_bond(self, number):

@@ -1192,10 +1192,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_set_interface_spanning_tree_state(self):
+    def test_edit_interface_spanning_tree(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('set_interface_spanning_tree_state').with_args("FastEthernet0/4", edge=True).once().ordered()
+        self.switch_mock.should_receive('edit_interface_spanning_tree').with_args("FastEthernet0/4", edge=True).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree",
@@ -1203,17 +1203,17 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_set_interface_spanning_tree_state_optional_params(self):
+    def test_edit_interface_spanning_tree_optional_params(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('set_interface_spanning_tree_state').with_args("FastEthernet0/4").once().ordered()
+        self.switch_mock.should_receive('edit_interface_spanning_tree').with_args("FastEthernet0/4").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree", raw_data="{}")
 
         assert_that(code, equal_to(204))
 
-    def test_editset_interface_spanning_tree_state_with_wrong_params(self):
+    def test_editedit_interface_spanning_tree_with_wrong_params(self):
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree",
                                 raw_data="whizzle")
 

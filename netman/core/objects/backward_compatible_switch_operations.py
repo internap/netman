@@ -44,10 +44,6 @@ class BackwardCompatibleSwitchOperations(object):
         warnings.warn("Deprecated, use unset_interface_description(interface_id) instead")
         return self.unset_interface_description(interface_id)
 
-    def edit_interface_spanning_tree(self, interface_id):
-        warnings.warn("Deprecated, use set_interface_spanning_tree_state(interface_id, edge=None) instead")
-        return self.set_interface_spanning_tree_state(interface_id)
-
     def remove_bond_description(self, number):
         warnings.warn("Deprecated, use unset_bond_description(number) instead")
         return self.unset_bond_description(number)

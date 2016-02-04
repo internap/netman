@@ -3415,7 +3415,7 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.unset_interface_description("ge-0/0/99")
 
-    def test_set_interface_spanning_tree_state_enable_edge_from_nothing(self):
+    def test_edit_interface_spanning_tree_enable_edge_from_nothing(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3464,9 +3464,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=True)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-    def test_set_interface_spanning_tree_state_enable_edge_when_all_is_already_set(self):
+    def test_edit_interface_spanning_tree_enable_edge_when_all_is_already_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3503,9 +3503,9 @@ class JuniperTest(unittest.TestCase):
 
         self.netconf_mock.should_receive("edit_config").never()
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=True)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-    def test_set_interface_spanning_tree_state_enable_edge_when_only_edge_is_already_set(self):
+    def test_edit_interface_spanning_tree_enable_edge_when_only_edge_is_already_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3554,9 +3554,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=True)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-    def test_set_interface_spanning_tree_state_enable_edge_when_only_no_root_port_is_already_set(self):
+    def test_edit_interface_spanning_tree_enable_edge_when_only_no_root_port_is_already_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3605,9 +3605,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=True)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=True)
 
-    def test_set_interface_spanning_tree_state_disable_edge_when_all_is_set(self):
+    def test_edit_interface_spanning_tree_disable_edge_when_all_is_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3658,9 +3658,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=False)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
-    def test_set_interface_spanning_tree_state_disable_edge_when_all_is_only_edge_is_set(self):
+    def test_edit_interface_spanning_tree_disable_edge_when_all_is_only_edge_is_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3709,9 +3709,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=False)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
-    def test_set_interface_spanning_tree_state_disable_edge_when_all_is_only_no_root_port_is_set(self):
+    def test_edit_interface_spanning_tree_disable_edge_when_all_is_only_no_root_port_is_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3760,9 +3760,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=False)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
-    def test_set_interface_spanning_tree_state_disable_edge_when_nothing_is_set(self):
+    def test_edit_interface_spanning_tree_disable_edge_when_nothing_is_set(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3797,9 +3797,9 @@ class JuniperTest(unittest.TestCase):
 
         self.netconf_mock.should_receive("edit_config").never()
 
-        self.switch.set_interface_spanning_tree_state('ge-0/0/6', edge=False)
+        self.switch.edit_interface_spanning_tree('ge-0/0/6', edge=False)
 
-    def test_set_interface_spanning_tree_state_unknown_interface(self):
+    def test_edit_interface_spanning_tree_unknown_interface(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3822,7 +3822,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_interface_spanning_tree_state('ge-0/0/99', edge=True)
+            self.switch.edit_interface_spanning_tree('ge-0/0/99', edge=True)
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
@@ -4898,9 +4898,9 @@ class JuniperTest(unittest.TestCase):
 
     def test_set_bond_interface_spanning_tree_state(self):
         switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
-        switch.set_interface_spanning_tree_state = mock.Mock()
+        switch.edit_interface_spanning_tree = mock.Mock()
         switch.set_bond_interface_spanning_tree_state(6, edge=False)
-        switch.set_interface_spanning_tree_state.assert_called_with('ae6', edge=False)
+        switch.edit_interface_spanning_tree.assert_called_with('ae6', edge=False)
 
     @mock.patch("ncclient.manager.connect")
     def test_connect(self, connect_mock):

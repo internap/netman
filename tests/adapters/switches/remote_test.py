@@ -912,7 +912,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.unset_bond_description(123)
 
-    def test_set_interface_spanning_tree_state_succeeds(self):
+    def test_edit_interface_spanning_tree_succeeds(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/spanning-tree',
             headers=self.headers,
@@ -922,9 +922,9 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.set_interface_spanning_tree_state("ge-0/0/6", edge=True)
+        self.switch.edit_interface_spanning_tree("ge-0/0/6", edge=True)
 
-    def test_set_interface_spanning_tree_state_optional_params(self):
+    def test_edit_interface_spanning_tree_optional_params(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/spanning-tree',
             headers=self.headers,
@@ -934,7 +934,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.set_interface_spanning_tree_state("ge-0/0/6")
+        self.switch.edit_interface_spanning_tree("ge-0/0/6")
 
     def test_enable_interface(self):
         self.requests_mock.should_receive("put").once().with_args(

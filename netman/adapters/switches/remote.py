@@ -203,7 +203,7 @@ class RemoteSwitch(SwitchBase):
     def unset_bond_description(self, bond_number):
         self.delete("/bonds/" + str(bond_number) + '/description')
 
-    def set_interface_spanning_tree_state(self, interface_id, edge=None):
+    def edit_interface_spanning_tree(self, interface_id, edge=None):
         data = {}
         if edge is not None:
             data["edge"] = edge

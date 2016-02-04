@@ -55,7 +55,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/bond-master', view_func=self.remove_interface_from_bond, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.set_interface_description, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.unset_interface_description, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.set_interface_spanning_tree_state, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.edit_interface_spanning_tree, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.set_interface_lldp_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
@@ -722,7 +722,7 @@ class SwitchApi(SwitchApiBase):
     @content(is_dict_with(
         edge=optional(is_type(bool))))
     @resource(Switch, Interface)
-    def set_interface_spanning_tree_state(self, switch, interface_id, **params):
+    def edit_interface_spanning_tree(self, switch, interface_id, **params):
         """
         Edit interface spanning tree properties
 
@@ -731,7 +731,7 @@ class SwitchApi(SwitchApiBase):
             .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
         """
 
-        switch.set_interface_spanning_tree_state(interface_id, **params)
+        switch.edit_interface_spanning_tree(interface_id, **params)
 
         return 204, None
 

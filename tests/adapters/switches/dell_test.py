@@ -1352,26 +1352,26 @@ class DellTest(unittest.TestCase):
 
         self.switch.remove_bond_trunk_vlan(10, 1000)
 
-    def test_set_interface_spanning_tree_state_enable_edge(self):
+    def test_edit_interface_spanning_tree_enable_edge(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("spanning-tree portfast").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.set_interface_spanning_tree_state('ethernet 1/g10', edge=True)
+        self.switch.edit_interface_spanning_tree('ethernet 1/g10', edge=True)
 
-    def test_set_interface_spanning_tree_state_disable_edge(self):
+    def test_edit_interface_spanning_tree_disable_edge(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no spanning-tree portfast").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.set_interface_spanning_tree_state('ethernet 1/g10', edge=False)
+        self.switch.edit_interface_spanning_tree('ethernet 1/g10', edge=False)
 
-    def test_set_interface_spanning_tree_state_optional_params(self):
+    def test_edit_interface_spanning_tree_optional_params(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
-        self.switch.set_interface_spanning_tree_state("ethernet 1/g10")
+        self.switch.edit_interface_spanning_tree("ethernet 1/g10")
 
     def test_set_interface_lldp_state(self):
         with self.configuring_and_committing():
