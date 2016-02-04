@@ -18,6 +18,7 @@ from netaddr import IPNetwork, IPAddress
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan, UnknownInterface, \
     UnknownResource
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_switches
 
@@ -169,10 +170,10 @@ class VlanManagementTest(ConfiguredTestCase):
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_invalid_interface_parameter_fails(self):
         with self.assertRaises(UnknownInterface):
-            self.client.openup_interface('42/9999')
+            self.client.set_interface_state('42/9999', ON)
 
         with self.assertRaises(UnknownInterface):
-            self.client.shutdown_interface('42/9999')
+            self.client.set_interface_state('42/9999', OFF)
 
         with self.assertRaises(UnknownInterface):
             self.client.set_access_mode('42/9999')

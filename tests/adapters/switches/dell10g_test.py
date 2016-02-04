@@ -26,6 +26,7 @@ from netman.adapters.switches.dell10g import Dell10G
 from netman.adapters.switches.util import SubShell
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyExist
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -124,15 +125,15 @@ class Dell10GTest(unittest.TestCase):
         self.switch.shell.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_OFF(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/4").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("shutdown").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.shutdown_interface("tengigabitethernet 1/0/4")
+        self.switch.set_interface_state("tengigabitethernet 1/0/4", OFF)
 
-    def test_shutdown_interface_invalid_interface_raises(self):
+    def test_set_interface_state_OFF_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -140,19 +141,19 @@ class Dell10GTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("tengigabitethernet 1/0/99")
+            self.switch.set_interface_state("tengigabitethernet 1/0/99", OFF)
 
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_ON(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/4").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().and_return([])
 
-        self.switch.openup_interface("tengigabitethernet 1/0/4")
+        self.switch.set_interface_state("tengigabitethernet 1/0/4", ON)
 
-    def test_openup_interface_invalid_interface_raises(self):
+    def test_set_interface_state_ON_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface tengigabitethernet 1/0/99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -160,7 +161,7 @@ class Dell10GTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("tengigabitethernet 1/0/99")
+            self.switch.set_interface_state("tengigabitethernet 1/0/99", ON)
 
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 1/0/99"))
 

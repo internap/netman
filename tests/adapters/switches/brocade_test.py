@@ -28,6 +28,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
     BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
     VlanAlreadyExist
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -755,15 +756,15 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_OFF(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("disable").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.shutdown_interface("ethernet 1/4")
+        self.switch.set_interface_state("ethernet 1/4", OFF)
 
-    def test_shutdown_interface_invalid_interface_raises(self):
+    def test_set_interface_state_OFF_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 9/999").once().ordered().and_return([
             'Invalid input -> 9/999'
@@ -772,19 +773,19 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("ethernet 9/999")
+            self.switch.set_interface_state("ethernet 9/999", OFF)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_ON(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.openup_interface("ethernet 1/4")
+        self.switch.set_interface_state("ethernet 1/4", ON)
 
-    def test_openup_interface_invalid_interface_raises(self):
+    def test_set_interface_state_ON_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 9/999").once().ordered().and_return([
             'Invalid input -> 9/999'
@@ -793,7 +794,7 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("ethernet 9/999")
+            self.switch.set_interface_state("ethernet 9/999", ON)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 

@@ -16,7 +16,9 @@ from collections import OrderedDict
 import copy
 
 from netman.core.objects.bond import Bond
+from netman.core.objects.exceptions import UnknownState
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
@@ -270,13 +272,15 @@ class CachedSwitch(SwitchBase):
         # No cache to update
         self.real_switch.set_interface_spanning_tree_state(interface_id, edge=edge)
 
-    def openup_interface(self, interface_id):
-        self.real_switch.openup_interface(interface_id)
-        self.interfaces_cache[interface_id].shutdown = False
-
-    def shutdown_interface(self, interface_id):
-        self.real_switch.shutdown_interface(interface_id)
-        self.interfaces_cache[interface_id].shutdown = True
+    def set_interface_state(self, interface_id, state):
+        if state is ON:
+            self.real_switch.set_interface_state(interface_id, ON)
+            self.interfaces_cache[interface_id].shutdown = False
+        elif state is OFF:
+            self.real_switch.set_interface_state(interface_id, OFF)
+            self.interfaces_cache[interface_id].shutdown = True
+        else:
+            raise UnknownState(state)
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)

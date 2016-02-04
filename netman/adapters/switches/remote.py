@@ -21,8 +21,9 @@ import requests
 from netman import raw_or_json
 from netman.api import NETMAN_API_VERSION
 
-from netman.core.objects.exceptions import NetmanException
+from netman.core.objects.exceptions import NetmanException, UnknownState
 from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_base import SwitchBase
 from netman.api.objects import vlan
 from netman.api.objects import interface
@@ -209,11 +210,13 @@ class RemoteSwitch(SwitchBase):
 
         self.put("/interfaces/" + interface_id + '/spanning-tree', data=data)
 
-    def openup_interface(self, interface_id):
-        self.put("/interfaces/" + interface_id + '/shutdown', raw_data='false')
-
-    def shutdown_interface(self, interface_id):
-        self.put("/interfaces/" + interface_id + '/shutdown', raw_data='true')
+    def set_interface_state(self, interface_id, state):
+        if state is OFF:
+            self.put("/interfaces/" + interface_id + '/shutdown', raw_data='true')
+        elif state is ON:
+            self.put("/interfaces/" + interface_id + '/shutdown', raw_data='false')
+        else:
+            raise UnknownState(state)
 
     def add_bond(self, number):
         self.post("/bonds", data={'number': number})

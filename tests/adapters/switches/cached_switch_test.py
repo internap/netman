@@ -22,6 +22,7 @@ from netman.adapters.switches.cached import CachedSwitch
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.vlan import Vlan
@@ -276,29 +277,29 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.remove_trunk_vlan('xe-1/0/2', 1)
 
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_OFF(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2', shutdown=False)])
         self.switch.get_interfaces()
 
-        self.real_switch_mock.should_receive("shutdown_interface").once() \
-            .with_args('xe-1/0/2')
+        self.real_switch_mock.should_receive("set_interface_state").once() \
+            .with_args('xe-1/0/2', OFF)
 
-        self.switch.shutdown_interface('xe-1/0/2')
+        self.switch.set_interface_state('xe-1/0/2', OFF)
 
         assert_that(
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', shutdown=True)]))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_ON(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2')])
         self.switch.get_interfaces()
 
-        self.real_switch_mock.should_receive("openup_interface").once() \
-            .with_args('xe-1/0/2')
+        self.real_switch_mock.should_receive("set_interface_state").once() \
+            .with_args('xe-1/0/2', ON)
 
-        self.switch.openup_interface('xe-1/0/2')
+        self.switch.set_interface_state('xe-1/0/2', ON)
 
         assert_that(
             self.switch.get_interfaces(),

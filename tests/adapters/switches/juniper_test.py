@@ -31,6 +31,7 @@ from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
     BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -3839,7 +3840,7 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.openup_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", ON)
 
     def test_enable_interface_on_unkown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
@@ -3862,7 +3863,7 @@ class JuniperTest(unittest.TestCase):
             </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("ge-0/0/99")
+            self.switch.set_interface_state("ge-0/0/99", ON)
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
@@ -3880,7 +3881,7 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.shutdown_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", OFF)
 
     def test_disable_interface_on_unkown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
@@ -3903,7 +3904,7 @@ class JuniperTest(unittest.TestCase):
             </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("ge-0/0/99")
+            self.switch.set_interface_state("ge-0/0/99", OFF)
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 

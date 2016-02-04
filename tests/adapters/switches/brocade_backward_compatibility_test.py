@@ -19,6 +19,7 @@ from netaddr.ip import IPAddress
 
 from netman.adapters.switches.backward_compatible_brocade import BackwardCompatibleBrocade
 from netman.adapters.switches.util import SubShell
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from tests.adapters.switches.brocade_test import vlan_with_vif_display, vlan_display
 
@@ -107,21 +108,21 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.remove_trunk_vlan("1/11", vlan=2999)
 
-    def test_shutdown_interface_accepts_no_ethernet(self):
+    def test_set_interface_state_OFF_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("disable").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.shutdown_interface("1/4")
+        self.switch.set_interface_state("1/4", OFF)
 
-    def test_openup_interface_accepts_no_ethernet(self):
+    def test_set_interface_state_ON_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.openup_interface("1/4")
+        self.switch.set_interface_state("1/4", ON)
 
     def test_set_native_vlan_backward_compatibility(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(

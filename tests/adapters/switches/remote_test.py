@@ -21,6 +21,7 @@ from ncclient.operations import RPCError
 from netaddr import IPAddress
 from flexmock import flexmock, flexmock_teardown
 
+from netman.core.objects.interface_states import OFF, ON
 from tests import ExactIpNetwork
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
@@ -945,7 +946,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.openup_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", ON)
 
     def test_disable_interface(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -957,7 +958,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.shutdown_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", OFF)
 
     def test_add_bond(self):
         self.requests_mock.should_receive("post").once().with_args(

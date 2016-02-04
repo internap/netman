@@ -17,6 +17,7 @@ from hamcrest import assert_that, equal_to, is_
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.vrrp_group import VrrpGroup
 from tests import ExactIpNetwork
 from tests.api import matches_fixture
@@ -373,30 +374,30 @@ class SwitchApiTest(BaseApiTest):
         })
         assert_that(code, equal_to(200))
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_OFF(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='true')
 
         assert_that(code, equal_to(204))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_ON(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('openup_interface').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', ON).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='false')
 
         assert_that(code, equal_to(204))
 
-    def test_shutdown_interface_invalid_argument(self):
+    def test_set_interface_state_OFF_invalid_argument(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
         self.switch_mock.should_receive('connect').never()
-        self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').never()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).never()
         self.switch_mock.should_receive('disconnect').never()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='Patate')
@@ -404,10 +405,10 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unreadable content "patate". Should be either "true" or "false"'}))
 
-    def test_shutdown_interface_no_argument(self):
+    def test_set_interface_state_OFF_no_argument(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
         self.switch_mock.should_receive('connect').never()
-        self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').never()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).never()
         self.switch_mock.should_receive('disconnect').never()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown")

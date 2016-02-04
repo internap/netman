@@ -21,6 +21,8 @@ from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface,
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
     is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type
+from netman.core.objects.interface_states import OFF, ON
+
 
 class SwitchApi(SwitchApiBase):
 
@@ -289,9 +291,9 @@ class SwitchApi(SwitchApiBase):
         """
 
         if state:
-            switch.shutdown_interface(interface_id)
+            switch.set_interface_state(interface_id, OFF)
         else:
-            switch.openup_interface(interface_id)
+            switch.set_interface_state(interface_id, ON)
 
         return 204, None
 

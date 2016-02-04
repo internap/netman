@@ -29,6 +29,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, VrrpAlreadyExistsForVlan, BadVrrpTimers, \
     BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, \
     UnknownBond
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -972,7 +973,7 @@ class CiscoTest(unittest.TestCase):
 
         self.switch.remove_bond_trunk_vlan(4, vlan=303)
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_OFF(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -980,9 +981,9 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.shutdown_interface("FastEthernet0/4")
+        self.switch.set_interface_state("FastEthernet0/4", OFF)
 
-    def test_shutdown_interface_invalid_interface_raises(self):
+    def test_set_interface_state_OFF_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -993,11 +994,11 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("SlowEthernet42/9999")
+            self.switch.set_interface_state("SlowEthernet42/9999", OFF)
 
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_ON(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -1005,9 +1006,9 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.openup_interface("FastEthernet0/4")
+        self.switch.set_interface_state("FastEthernet0/4", ON)
 
-    def test_openup_interface_invalid_interface_raises(self):
+    def test_set_interface_state_ON_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
         ])
@@ -1018,7 +1019,7 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("SlowEthernet42/9999")
+            self.switch.set_interface_state("SlowEthernet42/9999", ON)
 
         assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
 

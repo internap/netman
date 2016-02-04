@@ -21,8 +21,9 @@ from netman import regex
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted
+    BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted, UnknownState
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
@@ -409,29 +410,32 @@ class Juniper(SwitchBase):
 
                 self._push(update)
 
-    def shutdown_interface(self, interface_id):
-        update = Update()
-        update.add_interface(interface_main_update(interface_id, [
-            to_ele("<disable />")
-        ]))
+    def set_interface_state(self, interface_id, state):
+        if state is OFF:
+            update = Update()
+            update.add_interface(interface_main_update(interface_id, [
+                to_ele("<disable />")
+            ]))
 
-        try:
-            self._push(update)
-        except RPCError as e:
-            self.logger.info("actual setting error was {}".format(e))
-            raise UnknownInterface(interface_id)
+            try:
+                self._push(update)
+            except RPCError as e:
+                self.logger.info("actual setting error was {}".format(e))
+                raise UnknownInterface(interface_id)
+        elif state is ON:
+            update = Update()
+            update.add_interface(interface_main_update(interface_id, [
+                to_ele("<enable />")
+            ]))
 
-    def openup_interface(self, interface_id):
-        update = Update()
-        update.add_interface(interface_main_update(interface_id, [
-            to_ele("<enable />")
-        ]))
+            try:
+                self._push(update)
+            except RPCError as e:
+                self.logger.info("actual setting error was {}".format(e))
+                raise UnknownInterface(interface_id)
+        else:
+            raise UnknownState(state)
 
-        try:
-            self._push(update)
-        except RPCError as e:
-            self.logger.info("actual setting error was {}".format(e))
-            raise UnknownInterface(interface_id)
 
     def set_interface_lldp_state(self, interface_id, enabled):
         config = self.query(one_interface(interface_id), one_protocol_interface("lldp", interface_id))

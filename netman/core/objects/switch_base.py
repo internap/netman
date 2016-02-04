@@ -74,10 +74,7 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def remove_trunk_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
-    def shutdown_interface(self, interface_id):
-        raise NotImplementedError()
-
-    def openup_interface(self, interface_id):
+    def set_interface_state(self, interface_id, state):
         raise NotImplementedError()
 
     def set_native_vlan(self, interface_id, vlan):

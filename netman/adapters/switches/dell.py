@@ -13,6 +13,7 @@
 # limitations under the License.
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.interface import Interface
@@ -23,7 +24,7 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond
+    VlanAlreadyExist, UnknownBond, UnknownState
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -83,13 +84,15 @@ class Dell(SwitchBase):
         self.shell.do("copy running-config startup-config", wait_for="? (y/n) ")
         self.shell.send_key("y")
 
-    def openup_interface(self, interface_id):
-        with self.config(), self.interface(interface_id):
-            self.shell.do('no shutdown')
-
-    def shutdown_interface(self, interface_id):
-        with self.config(), self.interface(interface_id):
-            self.shell.do('shutdown')
+    def set_interface_state(self, interface_id, state):
+        if state is OFF:
+            with self.config(), self.interface(interface_id):
+                self.shell.do('shutdown')
+        elif state is ON:
+            with self.config(), self.interface(interface_id):
+                self.shell.do('no shutdown')
+        else:
+            raise UnknownState(state)
 
     def get_vlans(self):
         result = self.shell.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
