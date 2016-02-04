@@ -17,6 +17,7 @@ import logging
 import time
 
 import paramiko
+from netman.adapters import shell
 
 from netman.adapters.shell.base import TerminalClient
 from netman.core.objects.exceptions import CouldNotConnect, ConnectTimeout, CommandTimeout
@@ -24,7 +25,7 @@ from netman.core.objects.exceptions import CouldNotConnect, ConnectTimeout, Comm
 
 class SshClient(TerminalClient):
 
-    def __init__(self, host, username, password, port=22, prompt=('>', '#'), connect_timeout=60, command_timeout=300,
+    def __init__(self, host, username, password, port=22, prompt=('>', '#'), connect_timeout=None, command_timeout=None,
                  reading_interval=0.01, reading_chunk_size=9999):
         self.logger = logging.getLogger(__name__)
 
@@ -32,7 +33,8 @@ class SshClient(TerminalClient):
         self.port = port
         self.username = username
         self.prompt = prompt
-        self.command_timeout = command_timeout
+        self.command_timeout = command_timeout or shell.default_command_timeout
+        connect_timeout = connect_timeout or shell.default_connect_timeout
         self.reading_interval = reading_interval
         self.reading_chunk_size = reading_chunk_size
 
