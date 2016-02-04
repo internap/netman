@@ -15,18 +15,18 @@
 #!/usr/bin/env python
 import argparse
 from logging import DEBUG, getLogger
-import logging.config
 
 from flask import request
 from flask.app import Flask
+
 from adapters.threading_lock_factory import ThreadingLockFactory
-from netman.api.netman_api import NetmanApi
-from netman.core.switch_sessions import SwitchSessionManager
 from netman.adapters.memory_storage import MemoryStorage
 from netman.api.api_utils import RegexConverter
+from netman.api.netman_api import NetmanApi
 from netman.api.switch_api import SwitchApi
 from netman.api.switch_session_api import SwitchSessionApi
 from netman.core.switch_factory import SwitchFactory
+from netman.core.switch_sessions import SwitchSessionManager
 
 app = Flask('netman')
 app.url_map.converters['regex'] = RegexConverter
@@ -36,8 +36,8 @@ def log_request():
     logger = getLogger("netman.api")
     logger.info("{} : {}".format(request.method, request.url))
     if logger.isEnabledFor(DEBUG):
-        logging.getLogger("netman.api").debug("body : {}".format(repr(request.data) if request.data else "<<empty>>"))
-        logging.getLogger("netman.api").debug("Headers : " + ", ".join(["{0}={1}".format(h[0], h[1]) for h in request.headers]))
+        logger.debug("body : {}".format(repr(request.data) if request.data else "<<empty>>"))
+        logger.debug("Headers : " + ", ".join(["{0}={1}".format(h[0], h[1]) for h in request.headers]))
 
 switch_factory = SwitchFactory(MemoryStorage(), ThreadingLockFactory())
 switch_session_manager = SwitchSessionManager()
@@ -47,16 +47,24 @@ SwitchApi(switch_factory, switch_session_manager).hook_to(app)
 SwitchSessionApi(switch_factory, switch_session_manager).hook_to(app)
 
 
-if __name__ == '__main__':
+def load_app(session_inactivity_timeout=None):
+    if session_inactivity_timeout:
+        switch_session_manager.session_inactivity_timeout = session_inactivity_timeout
+    
+    return app
 
+
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Netman Server')
     parser.add_argument('--host', nargs='?', default="127.0.0.1")
     parser.add_argument('--port', type=int, nargs='?', default=5000)
-    parser.add_argument('--session_inactivity_timeout', type=int, nargs='?')
-
+    parser.add_argument('--session-inactivity-timeout', type=int, nargs='?')
+    
     args = parser.parse_args()
 
+    params = {}
     if args.session_inactivity_timeout:
-        switch_session_manager.session_inactivity_timeout = args.session_inactivity_timeout
+        params["session_inactivity_timeout"] = args.session_inactivity_timeout
 
-    app.run(host=args.host, port=args.port)
+    load_app(**params).run(host=args.host, port=args.port, threaded=True)
+
