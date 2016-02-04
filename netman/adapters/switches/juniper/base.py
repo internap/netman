@@ -21,7 +21,7 @@ from netman import regex
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted, UnknownState
+    BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
@@ -411,30 +411,17 @@ class Juniper(SwitchBase):
                 self._push(update)
 
     def set_interface_state(self, interface_id, state):
-        if state is OFF:
-            update = Update()
-            update.add_interface(interface_main_update(interface_id, [
-                to_ele("<disable />")
-            ]))
+        update = Update()
+        update.add_interface(interface_main_update(interface_id, [
+            to_ele("<disable />") if state is OFF else to_ele("<enable />")
+        ]))
 
-            try:
-                self._push(update)
-            except RPCError as e:
-                self.logger.info("actual setting error was {}".format(e))
-                raise UnknownInterface(interface_id)
-        elif state is ON:
-            update = Update()
-            update.add_interface(interface_main_update(interface_id, [
-                to_ele("<enable />")
-            ]))
+        try:
+            self._push(update)
+        except RPCError as e:
+            self.logger.info("actual setting error was {}".format(e))
+            raise UnknownInterface(interface_id)
 
-            try:
-                self._push(update)
-            except RPCError as e:
-                self.logger.info("actual setting error was {}".format(e))
-                raise UnknownInterface(interface_id)
-        else:
-            raise UnknownState(state)
 
 
     def set_interface_lldp_state(self, interface_id, enabled):
