@@ -59,7 +59,7 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_access_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         raise NotImplementedError()
 
     def set_access_mode(self, interface_id):
@@ -77,10 +77,10 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_interface_state(self, interface_id, state):
         raise NotImplementedError()
 
-    def set_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
-    def unset_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         raise NotImplementedError()
 
     def add_ip_to_vlan(self, vlan_number, ip_network):

@@ -43,17 +43,17 @@ class BackwardCompatibleBrocade(Brocade):
     def remove_trunk_vlan(self, interface_id, vlan):
         super(BackwardCompatibleBrocade, self).remove_trunk_vlan(_add_ethernet(interface_id), vlan)
 
-    def unset_native_vlan(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).unset_native_vlan(_add_ethernet(interface_id))
+    def unset_interface_native_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_native_vlan(_add_ethernet(interface_id))
 
-    def unset_access_vlan(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).unset_access_vlan(_add_ethernet(interface_id))
+    def unset_interface_access_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_access_vlan(_add_ethernet(interface_id))
 
     def interface(self, interface_id):
         return super(BackwardCompatibleBrocade, self).interface(_add_ethernet(interface_id))
 
-    def set_native_vlan(self, interface_id, vlan):
-        return super(BackwardCompatibleBrocade, self).set_native_vlan(_add_ethernet(interface_id), vlan)
+    def set_interface_native_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).set_interface_native_vlan(_add_ethernet(interface_id), vlan)
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
                        track_id=None, track_decrement=None):

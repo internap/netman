@@ -195,15 +195,15 @@ class CacheSwitchTest(unittest.TestCase):
             is_([Interface('eth0', access_vlan=123)])
         )
 
-    def test_unset_access_vlan(self):
+    def test_unset_interface_access_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once().and_return(
             [Interface('eth0', access_vlan=123)])
         self.switch.get_interfaces()
 
-        self.real_switch_mock.should_receive("unset_access_vlan").once() \
+        self.real_switch_mock.should_receive("unset_interface_access_vlan").once() \
             .with_args('eth0')
 
-        self.switch.unset_access_vlan('eth0')
+        self.switch.unset_interface_access_vlan('eth0')
 
         assert_that(
             self.switch.get_interfaces(),
@@ -305,29 +305,29 @@ class CacheSwitchTest(unittest.TestCase):
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', shutdown=False)]))
 
-    def test_set_native_vlan(self):
+    def test_set_interface_native_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2')])
         self.switch.get_interfaces()
 
-        self.real_switch_mock.should_receive("set_native_vlan").once() \
+        self.real_switch_mock.should_receive("set_interface_native_vlan").once() \
             .with_args('xe-1/0/2', 20)
 
-        self.switch.set_native_vlan('xe-1/0/2', 20)
+        self.switch.set_interface_native_vlan('xe-1/0/2', 20)
 
         assert_that(
             self.switch.get_interfaces(),
             is_([Interface('xe-1/0/2', trunk_native_vlan=20)]))
 
-    def test_unset_native_vlan(self):
+    def test_unset_interface_native_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2', trunk_native_vlan=20)])
         self.switch.get_interfaces()
 
-        self.real_switch_mock.should_receive("unset_native_vlan").once() \
+        self.real_switch_mock.should_receive("unset_interface_native_vlan").once() \
             .with_args('xe-1/0/2')
 
-        self.switch.unset_native_vlan('xe-1/0/2')
+        self.switch.unset_interface_native_vlan('xe-1/0/2')
 
         assert_that(
             self.switch.get_interfaces(),

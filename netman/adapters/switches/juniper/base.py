@@ -265,7 +265,7 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         interface = self.get_interface(interface_id)
 
         if interface.port_mode == TRUNK:
@@ -279,7 +279,7 @@ class Juniper(SwitchBase):
         else:
             raise AccessVlanNotSet(interface_id)
 
-    def set_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         update_attributes = []
 
         config = self.query(all_interfaces, all_vlans)
@@ -313,7 +313,7 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
-    def unset_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         interface = self.get_interface(interface_id)
 
         if interface.trunk_native_vlan is None:
@@ -550,10 +550,10 @@ class Juniper(SwitchBase):
         return self.remove_trunk_vlan(bond_name(number), vlan)
 
     def set_bond_native_vlan(self, number, vlan):
-        return self.set_native_vlan(bond_name(number), vlan)
+        return self.set_interface_native_vlan(bond_name(number), vlan)
 
     def unset_bond_native_vlan(self, number):
-        return self.unset_native_vlan(bond_name(number))
+        return self.unset_interface_native_vlan(bond_name(number))
 
     def set_bond_interface_spanning_tree_state(self, number, edge=None):
         return self.set_interface_spanning_tree_state(bond_name(number), edge=edge)

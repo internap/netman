@@ -48,7 +48,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_access_vlan("1/4", vlan=2999)
 
-    def test_unset_access_vlan_accepts_no_ethernet(self):
+    def test_unset_interface_access_vlan_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
         ])
@@ -58,7 +58,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("no untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.unset_access_vlan("1/4")
+        self.switch.unset_interface_access_vlan("1/4")
 
     def test_set_access_mode_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan ethernet 1/4").once().ordered().and_return([
@@ -124,7 +124,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_interface_state("1/4", ON)
 
-    def test_set_native_vlan_backward_compatibility(self):
+    def test_set_interface_native_vlan_backward_compatibility(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
         )
@@ -134,9 +134,9 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.set_native_vlan("1/4", vlan=2999)
+        self.switch.set_interface_native_vlan("1/4", vlan=2999)
 
-    def test_unset_native_vlan_on_trunk_accepts_no_ethernet(self):
+    def test_unset_interface_native_vlan_on_trunk_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
         ])
@@ -146,7 +146,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("no untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.unset_native_vlan("1/4")
+        self.switch.unset_interface_native_vlan("1/4")
 
     def test_add_vrrp_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(

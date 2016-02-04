@@ -457,10 +457,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_unset_access_vlan(self):
+    def test_unset_interface_access_vlan(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('unset_access_vlan').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('unset_interface_access_vlan').with_args('FastEthernet0/4').once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan")
@@ -564,10 +564,10 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Vlan number is invalid'}))
 
-    def test_set_native_vlan_on_trunk(self):
+    def test_set_interface_native_vlan_on_trunk(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('set_native_vlan').with_args('FastEthernet0/4', 2999).once().ordered()
+        self.switch_mock.should_receive('set_interface_native_vlan').with_args('FastEthernet0/4', 2999).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/trunk-native-vlan",

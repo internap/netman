@@ -153,7 +153,7 @@ class Cisco(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport access vlan {}'.format(vlan))
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no switchport access vlan')
 
@@ -189,13 +189,13 @@ class Cisco(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.ssh.do('shutdown' if state is OFF else "no shutdown")
 
-    def set_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport trunk native vlan {}'.format(vlan))
 
-    def unset_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no switchport trunk native vlan')
 
@@ -310,11 +310,11 @@ class Cisco(SwitchBase):
 
     def set_bond_native_vlan(self, number, vlan):
         with NamedBond(number) as bond:
-            return self.set_native_vlan(bond.name, vlan)
+            return self.set_interface_native_vlan(bond.name, vlan)
 
     def unset_bond_native_vlan(self, number):
         with NamedBond(number) as bond:
-            return self.unset_native_vlan(bond.name)
+            return self.unset_interface_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')

@@ -24,20 +24,20 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
     def setUp(self):
         self.switch = flexmock(SwitchOperations())
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_remove_access_vlan_call_unset_access_vlan(self):
-        self.switch.should_receive("unset_access_vlan").with_args(1000).once()
+    def test_remove_access_vlan_call_unset_interface_access_vlan(self):
+        self.switch.should_receive("unset_interface_access_vlan").with_args(1000).once()
 
         self.switch.remove_access_vlan(1000)
 
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_configure_native_vlan_call_set_native_vlan(self):
-        self.switch.should_receive("set_native_vlan").with_args("ethernet 1/g10", 1000).once()
+    def test_configure_native_vlan_call_set_interface_native_vlan(self):
+        self.switch.should_receive("set_interface_native_vlan").with_args("ethernet 1/g10", 1000).once()
 
         self.switch.configure_native_vlan("ethernet 1/g10", 1000)
 
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_remove_native_vlan_call_unset_native_vlan(self):
-        self.switch.should_receive("unset_native_vlan").with_args(1000).once()
+    def test_remove_native_vlan_call_unset_interface_native_vlan(self):
+        self.switch.should_receive("unset_interface_native_vlan").with_args(1000).once()
 
         self.switch.remove_native_vlan(1000)
 

@@ -162,11 +162,11 @@ class Dell(SwitchBase):
                 .on_result_matching(".*VLAN ID not found.*", UnknownVlan, vlan)\
                 .on_result_matching(".*Interface not in Access Mode.*", InterfaceInWrongPortMode, "trunk")
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.shell.do("no switchport access vlan")
 
-    def set_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         interface_data = self.get_interface_data(interface_id)
 
         actual_port_mode = resolve_port_mode(interface_data)
@@ -181,7 +181,7 @@ class Dell(SwitchBase):
 
             self.set("switchport general pvid {}", vlan).on_any_result(UnknownVlan, vlan)
 
-    def unset_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         interface_data = self.get_interface_data(interface_id)
         assert_native_vlan_is_set(interface_id, interface_data)
 
@@ -253,11 +253,11 @@ class Dell(SwitchBase):
 
     def set_bond_native_vlan(self, number, vlan):
         with NamedBond(number) as bond:
-            return self.set_native_vlan(bond.name, vlan)
+            return self.set_interface_native_vlan(bond.name, vlan)
 
     def unset_bond_native_vlan(self, number):
         with NamedBond(number) as bond:
-            return self.unset_native_vlan(bond.name)
+            return self.unset_interface_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')

@@ -209,16 +209,16 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_access_vlan(interface_id, vlan)
         self.interfaces_cache[interface_id].access_vlan = vlan
 
-    def unset_access_vlan(self, interface_id):
-        self.real_switch.unset_access_vlan(interface_id)
+    def unset_interface_access_vlan(self, interface_id):
+        self.real_switch.unset_interface_access_vlan(interface_id)
         self.interfaces_cache[interface_id].access_vlan = None
 
-    def set_native_vlan(self, interface_id, vlan):
-        self.real_switch.set_native_vlan(interface_id, vlan)
+    def set_interface_native_vlan(self, interface_id, vlan):
+        self.real_switch.set_interface_native_vlan(interface_id, vlan)
         self.interfaces_cache[interface_id].trunk_native_vlan = vlan
 
-    def unset_native_vlan(self, interface_id):
-        self.real_switch.unset_native_vlan(interface_id)
+    def unset_interface_native_vlan(self, interface_id):
+        self.real_switch.unset_interface_native_vlan(interface_id)
         self.interfaces_cache[interface_id].trunk_native_vlan = None
 
     def set_bond_native_vlan(self, bond_number, vlan):

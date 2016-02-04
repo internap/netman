@@ -149,14 +149,14 @@ class Brocade(SwitchBase):
             if result:
                 raise UnknownInterface(interface_id)
 
-    def set_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         return self.set_access_vlan(interface_id, vlan)
 
     def set_interface_state(self, interface_id, state):
         with self.config(), self.interface(interface_id):
             self.shell.do("disable" if state is OFF else "enable")
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         content = self.shell.do("show vlan brief | include {}"
                               .format(_to_short_name(interface_id)))
         if len(content) == 0:
@@ -168,8 +168,8 @@ class Brocade(SwitchBase):
         with self.config(), self.vlan(int(matches.groups()[0])):
             self.shell.do("no untagged {}".format(interface_id))
 
-    def unset_native_vlan(self, interface_id):
-        return self.unset_access_vlan(interface_id)
+    def unset_interface_native_vlan(self, interface_id):
+        return self.unset_interface_access_vlan(interface_id)
 
     def remove_trunk_vlan(self, interface_id, vlan):
         self._get_vlan(vlan)

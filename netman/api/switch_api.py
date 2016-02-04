@@ -46,11 +46,11 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/shutdown', view_func=self.set_shutdown_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/port-mode', view_func=self.set_port_mode, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.set_access_vlan, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.unset_access_vlan, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.unset_interface_access_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-vlans', view_func=self.add_trunk_vlan, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-vlans/<vlan_number>', view_func=self.remove_trunk_vlan, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.set_native_vlan, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.unset_native_vlan, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.set_interface_native_vlan, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.unset_interface_native_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/bond-master', view_func=self.add_interface_to_bond, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/bond-master', view_func=self.remove_interface_from_bond, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.set_interface_description, methods=['PUT'])
@@ -360,7 +360,7 @@ class SwitchApi(SwitchApiBase):
 
     @to_response
     @resource(Switch, Interface)
-    def unset_access_vlan(self, switch, interface_id):
+    def unset_interface_access_vlan(self, switch, interface_id):
         """
         Removes the access vlan of an interface
 
@@ -368,7 +368,7 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
 
         """
-        switch.unset_access_vlan(interface_id)
+        switch.unset_interface_access_vlan(interface_id)
         return 204, None
 
     @to_response
@@ -464,7 +464,7 @@ class SwitchApi(SwitchApiBase):
     @to_response
     @content(is_vlan_number)
     @resource(Switch, Interface)
-    def set_native_vlan(self, switch, interface_id, vlan_number):
+    def set_interface_native_vlan(self, switch, interface_id, vlan_number):
         """
         Sets the native vlan of an interface
 
@@ -475,12 +475,12 @@ class SwitchApi(SwitchApiBase):
 
         """
 
-        switch.set_native_vlan(interface_id, vlan_number)
+        switch.set_interface_native_vlan(interface_id, vlan_number)
         return 204, None
 
     @to_response
     @resource(Switch, Interface)
-    def unset_native_vlan(self, switch, interface_id):
+    def unset_interface_native_vlan(self, switch, interface_id):
         """
         Removes the native vlan of an interface
 
@@ -488,7 +488,7 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
 
         """
-        switch.unset_native_vlan(interface_id)
+        switch.unset_interface_native_vlan(interface_id)
         return 204, None
 
     @to_response
