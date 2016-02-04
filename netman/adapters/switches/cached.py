@@ -273,7 +273,7 @@ class CachedSwitch(SwitchBase):
 
     def set_interface_state(self, interface_id, state):
         self.real_switch.set_interface_state(interface_id, state)
-        self.interfaces_cache[interface_id].shutdown = True if state is OFF else False
+        self.interfaces_cache[interface_id].shutdown = (state == OFF)
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)

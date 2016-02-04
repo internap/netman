@@ -15,8 +15,8 @@
 from netaddr.ip import IPNetwork, IPAddress
 
 from netman import regex
-from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
 from netman.adapters.shell import ssh
+from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
@@ -24,7 +24,6 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     VlanAlreadyExist, UnknownBond
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF
-from netman.core.objects.interface_states import ON
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.switch_transactional import FlowControlSwitch
