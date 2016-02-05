@@ -56,10 +56,6 @@ class BackwardCompatibleSwitchOperations(object):
         warnings.warn("Deprecated, use unset_bond_native_vlan(number) instead")
         return self.unset_bond_native_vlan(number)
 
-    def edit_bond_spanning_tree(self, number, edge=None):
-        warnings.warn("Deprecated, use set_bond_interface_spanning_tree_state(number, edge=None) instead")
-        return self.set_bond_interface_spanning_tree_state(number)
-
     def enable_lldp(self, interface_id, enabled):
         warnings.warn("Deprecated, use set_interface_lldp_state(interface_id, enabled) instead")
         return self.set_interface_lldp_state(interface_id, enabled)

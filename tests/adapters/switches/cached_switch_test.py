@@ -696,11 +696,11 @@ class CacheSwitchTest(unittest.TestCase):
             self.switch.get_bonds(),
             is_([Bond(2, trunk_native_vlan=None)]))
 
-    def test_set_bond_interface_spanning_tree_state(self):
-        self.real_switch_mock.should_receive("set_bond_interface_spanning_tree_state").once() \
+    def test_edit_bond_spanning_tree(self):
+        self.real_switch_mock.should_receive("edit_bond_spanning_tree").once() \
             .with_args(2, edge=None)
 
-        self.switch.set_bond_interface_spanning_tree_state(2)
+        self.switch.edit_bond_spanning_tree(2)
 
     def test_add_vrrp_group(self):
         self.real_switch_mock.should_receive("get_vlans").once() \

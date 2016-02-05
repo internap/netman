@@ -228,7 +228,7 @@ class RemoteSwitch(SwitchBase):
     def set_bond_link_speed(self, number, speed):
         self.put("/bonds/{0}/link-speed".format(number), raw_data=speed)
 
-    def set_bond_interface_spanning_tree_state(self, number, edge=None):
+    def edit_bond_spanning_tree(self, number, edge=None):
         data = {}
         if edge is not None:
             data["edge"] = edge

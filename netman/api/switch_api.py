@@ -71,7 +71,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-native-vlan', view_func=self.unset_bond_native_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.set_bond_description, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.unset_bond_description, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.set_bond_interface_spanning_tree_state, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.edit_bond_spanning_tree, methods=['PUT'])
         return self
 
     @to_response
@@ -705,7 +705,7 @@ class SwitchApi(SwitchApiBase):
     @content(is_dict_with(
         edge=optional(is_type(bool))))
     @resource(Switch, Bond)
-    def set_bond_interface_spanning_tree_state(self, switch, bond_number, **params):
+    def edit_bond_spanning_tree(self, switch, bond_number, **params):
         """
         Edit bond spanning tree properties
 
@@ -714,7 +714,7 @@ class SwitchApi(SwitchApiBase):
             .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
         """
 
-        switch.set_bond_interface_spanning_tree_state(bond_number, **params)
+        switch.edit_bond_spanning_tree(bond_number, **params)
 
         return 204, None
 

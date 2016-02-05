@@ -301,8 +301,8 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_bond_link_speed(number, speed)
         self.bonds_cache[number].link_speed = speed
 
-    def set_bond_interface_spanning_tree_state(self, number, edge=None):
-        self.real_switch.set_bond_interface_spanning_tree_state(number, edge=edge)
+    def edit_bond_spanning_tree(self, number, edge=None):
+        self.real_switch.edit_bond_spanning_tree(number, edge=edge)
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None,
                        hello_interval=None, dead_interval=None ,track_id=None,

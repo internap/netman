@@ -555,7 +555,7 @@ class Juniper(SwitchBase):
     def unset_bond_native_vlan(self, number):
         return self.unset_interface_native_vlan(bond_name(number))
 
-    def set_bond_interface_spanning_tree_state(self, number, edge=None):
+    def edit_bond_spanning_tree(self, number, edge=None):
         return self.edit_interface_spanning_tree(bond_name(number), edge=edge)
 
     def _push(self, configuration):

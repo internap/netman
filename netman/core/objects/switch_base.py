@@ -155,7 +155,7 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def unset_bond_native_vlan(self, number):
         raise NotImplementedError()
 
-    def set_bond_interface_spanning_tree_state(self, number, edge=None):
+    def edit_bond_spanning_tree(self, number, edge=None):
         raise NotImplementedError()
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,

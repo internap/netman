@@ -85,8 +85,8 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
         self.switch.remove_bond_native_vlan(295)
 
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_edit_bond_spanning_tree_call_set_bond_interface_spanning_tree_state(self):
-        self.switch.should_receive("set_bond_interface_spanning_tree_state").with_args(295).once()
+    def test_edit_bond_spanning_tree_call_edit_bond_spanning_tree(self):
+        self.switch.should_receive("edit_bond_spanning_tree").with_args(295).once()
 
         self.switch.edit_bond_spanning_tree(295)
 

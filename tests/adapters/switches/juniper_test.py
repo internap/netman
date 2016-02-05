@@ -4896,10 +4896,10 @@ class JuniperTest(unittest.TestCase):
         switch.unset_bond_native_vlan(6)
         switch.unset_interface_native_vlan.assert_called_with('ae6')
 
-    def test_set_bond_interface_spanning_tree_state(self):
+    def test_edit_bond_spanning_tree(self):
         switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
         switch.edit_interface_spanning_tree = mock.Mock()
-        switch.set_bond_interface_spanning_tree_state(6, edge=False)
+        switch.edit_bond_spanning_tree(6, edge=False)
         switch.edit_interface_spanning_tree.assert_called_with('ae6', edge=False)
 
     @mock.patch("ncclient.manager.connect")
