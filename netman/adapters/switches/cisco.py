@@ -15,14 +15,15 @@
 from netaddr.ip import IPNetwork, IPAddress
 
 from netman import regex
-from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
 from netman.adapters.shell import ssh
+from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
     VlanAlreadyExist, UnknownBond
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -151,7 +152,7 @@ class Cisco(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport access vlan {}'.format(vlan))
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no switchport access vlan')
 
@@ -183,21 +184,17 @@ class Cisco(SwitchBase):
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport trunk allowed vlan remove {}'.format(vlan))
 
-    def shutdown_interface(self, interface_id):
+    def set_interface_state(self, interface_id, state):
         with self.config(), self.interface(interface_id):
-            self.ssh.do('shutdown')
+            self.ssh.do('shutdown' if state is OFF else "no shutdown")
 
-    def openup_interface(self, interface_id):
-        with self.config(), self.interface(interface_id):
-            self.ssh.do('no shutdown')
-
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         self._get_vlan_run_conf(vlan)
 
         with self.config(), self.interface(interface_id):
             self.ssh.do('switchport trunk native vlan {}'.format(vlan))
 
-    def remove_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.ssh.do('no switchport trunk native vlan')
 
@@ -250,7 +247,7 @@ class Cisco(SwitchBase):
             if len(result) > 0:
                 raise ValueError("Access group name \"{}\" is invalid".format(name))
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         vlan = self.get_vlan_interface_data(vlan_number)
 
         if vlan.access_groups[direction] is None:
@@ -267,7 +264,7 @@ class Cisco(SwitchBase):
             if len(result) > 0:
                 raise UnknownVrf(vrf_name)
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         vlan = self.get_vlan_interface_data(vlan_number)
 
         if vlan.vrf_forwarding is None:
@@ -310,13 +307,13 @@ class Cisco(SwitchBase):
         with NamedBond(number) as bond:
             return self.remove_trunk_vlan(bond.name, vlan)
 
-    def configure_bond_native_vlan(self, number, vlan):
+    def set_bond_native_vlan(self, number, vlan):
         with NamedBond(number) as bond:
-            return self.configure_native_vlan(bond.name, vlan)
+            return self.set_interface_native_vlan(bond.name, vlan)
 
-    def remove_bond_native_vlan(self, number):
+    def unset_bond_native_vlan(self, number):
         with NamedBond(number) as bond:
-            return self.remove_native_vlan(bond.name)
+            return self.unset_interface_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.ssh, enter="configure terminal", exit_cmd='exit')

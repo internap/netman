@@ -28,6 +28,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
     BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
     VlanAlreadyExist
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -574,7 +575,7 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_unset_access_vlan(self):
+    def test_unset_interface_access_vlan(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
         ])
@@ -584,13 +585,13 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("no untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.unset_access_vlan("ethernet 1/4")
+        self.switch.unset_interface_access_vlan("ethernet 1/4")
 
-    def test_unset_access_vlan_invalid_interface_raises(self):
+    def test_unset_interface_access_vlan_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 9/999").once().ordered().and_return([])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.unset_access_vlan("ethernet 9/999")
+            self.switch.unset_interface_access_vlan("ethernet 9/999")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
@@ -755,15 +756,15 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_off(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("disable").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.shutdown_interface("ethernet 1/4")
+        self.switch.set_interface_state("ethernet 1/4", OFF)
 
-    def test_shutdown_interface_invalid_interface_raises(self):
+    def test_set_interface_state_off_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 9/999").once().ordered().and_return([
             'Invalid input -> 9/999'
@@ -772,19 +773,19 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("ethernet 9/999")
+            self.switch.set_interface_state("ethernet 9/999", OFF)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_on(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("enable").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.openup_interface("ethernet 1/4")
+        self.switch.set_interface_state("ethernet 1/4", ON)
 
-    def test_openup_interface_invalid_interface_raises(self):
+    def test_set_interface_state_on_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 9/999").once().ordered().and_return([
             'Invalid input -> 9/999'
@@ -793,11 +794,11 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("ethernet 9/999")
+            self.switch.set_interface_state("ethernet 9/999", ON)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_configure_native_vlan_on_trunk(self):
+    def test_set_interface_native_vlan_on_trunk(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
         )
@@ -807,9 +808,9 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.configure_native_vlan("ethernet 1/4", vlan=2999)
+        self.switch.set_interface_native_vlan("ethernet 1/4", vlan=2999)
 
-    def test_configure_native_vlan_on_trunk_invalid_interface_raises(self):
+    def test_set_interface_native_vlan_on_trunk_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
         )
@@ -823,11 +824,11 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.configure_native_vlan("ethernet 9/999", vlan=2999)
+            self.switch.set_interface_native_vlan("ethernet 9/999", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
-    def test_configure_native_vlan_on_trunk_invalid_vlan_raises(self):
+    def test_set_interface_native_vlan_on_trunk_invalid_vlan_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return([
             "Error: vlan 2999 is not configured"
         ])
@@ -835,11 +836,11 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("configure terminal").never()
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.configure_native_vlan("ethernet 1/4", vlan=2999)
+            self.switch.set_interface_native_vlan("ethernet 1/4", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 not found"))
 
-    def test_remove_native_vlan_on_trunk(self):
+    def test_unset_interface_native_vlan_on_trunk(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
         ])
@@ -849,13 +850,13 @@ class BrocadeTest(unittest.TestCase):
         self.shell_mock.should_receive("do").with_args("no untagged ethernet 1/4").and_return([]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.remove_native_vlan("ethernet 1/4")
+        self.switch.unset_interface_native_vlan("ethernet 1/4")
 
-    def test_remove_native_vlan_on_trunk_invalid_interface_raises(self):
+    def test_unset_interface_native_vlan_on_trunk_invalid_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 9/999").once().ordered().and_return([])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_native_vlan("ethernet 9/999")
+            self.switch.unset_interface_native_vlan("ethernet 9/999")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
 
@@ -1187,7 +1188,7 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 
-    def test_remove_vlan_vrf_success(self):
+    def test_unset_vlan_vrf_success(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
             vlan_with_vif_display(2500, 2500)
         )
@@ -1206,9 +1207,9 @@ class BrocadeTest(unittest.TestCase):
         ])
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.remove_vlan_vrf(2500)
+        self.switch.unset_vlan_vrf(2500)
 
-    def test_remove_vlan_vrf_not_set(self):
+    def test_unset_vlan_vrf_not_set(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
             vlan_with_vif_display(2500, 2500)
         )
@@ -1219,26 +1220,26 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(VlanVrfNotSet) as expect:
-            self.switch.remove_vlan_vrf(2500)
+            self.switch.unset_vlan_vrf(2500)
 
         assert_that(str(expect.exception), equal_to("VRF is not set on vlan 2500"))
 
-    def test_remove_vlan_vrf_from_known_vlan_with_no_interface(self):
+    def test_unset_vlan_vrf_from_known_vlan_with_no_interface(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
             vlan_display(2500)
         )
 
         with self.assertRaises(VlanVrfNotSet) as expect:
-            self.switch.remove_vlan_vrf(2500)
+            self.switch.unset_vlan_vrf(2500)
 
         assert_that(str(expect.exception), equal_to("VRF is not set on vlan 2500"))
 
-    def test_remove_vlan_vrf_from_unknown_vlan(self):
+    def test_unset_vlan_vrf_from_unknown_vlan(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return([
             "Error: vlan 2500 is not configured"
         ])
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.remove_vlan_vrf(2500)
+            self.switch.unset_vlan_vrf(2500)
 
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 
@@ -1357,7 +1358,7 @@ class BrocadeTest(unittest.TestCase):
         ]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.remove_vlan_access_group(2500, IN)
+        self.switch.unset_vlan_access_group(2500, IN)
 
     def test_remove_access_group_out(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
@@ -1379,7 +1380,7 @@ class BrocadeTest(unittest.TestCase):
         ]).once().ordered()
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        self.switch.remove_vlan_access_group(2500, OUT)
+        self.switch.unset_vlan_access_group(2500, OUT)
 
     def test_remove_access_group_unknown_access_group_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(
@@ -1393,7 +1394,7 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(UnknownAccessGroup) as expect:
-            self.switch.remove_vlan_access_group(2500, IN)
+            self.switch.unset_vlan_access_group(2500, IN)
 
         assert_that(str(expect.exception), equal_to("Inbound IP access group not found"))
 
@@ -1403,7 +1404,7 @@ class BrocadeTest(unittest.TestCase):
         )
 
         with self.assertRaises(UnknownAccessGroup) as expect:
-            self.switch.remove_vlan_access_group(2500, OUT)
+            self.switch.unset_vlan_access_group(2500, OUT)
 
         assert_that(str(expect.exception), equal_to("Outgoing IP access group not found"))
 
@@ -1413,7 +1414,7 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.remove_vlan_access_group(2500, OUT)
+            self.switch.unset_vlan_access_group(2500, OUT)
 
         assert_that(str(expect.exception), equal_to("Vlan 2500 not found"))
 

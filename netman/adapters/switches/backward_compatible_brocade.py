@@ -28,8 +28,8 @@ class BackwardCompatibleBrocade(Brocade):
     def add_trunk_vlan(self, interface_id, vlan):
         return super(BackwardCompatibleBrocade, self).add_trunk_vlan(_add_ethernet(interface_id), vlan)
 
-    def shutdown_interface(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).shutdown_interface(_add_ethernet(interface_id))
+    def set_interface_state(self, interface_id, state):
+        return super(BackwardCompatibleBrocade, self).set_interface_state(_add_ethernet(interface_id), state)
 
     def set_trunk_mode(self, interface_id):
         return super(BackwardCompatibleBrocade, self).set_trunk_mode(_add_ethernet(interface_id))
@@ -43,20 +43,17 @@ class BackwardCompatibleBrocade(Brocade):
     def remove_trunk_vlan(self, interface_id, vlan):
         super(BackwardCompatibleBrocade, self).remove_trunk_vlan(_add_ethernet(interface_id), vlan)
 
-    def remove_native_vlan(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).remove_native_vlan(_add_ethernet(interface_id))
+    def unset_interface_native_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_native_vlan(_add_ethernet(interface_id))
 
-    def unset_access_vlan(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).unset_access_vlan(_add_ethernet(interface_id))
-
-    def openup_interface(self, interface_id):
-        return super(BackwardCompatibleBrocade, self).openup_interface(_add_ethernet(interface_id))
+    def unset_interface_access_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_access_vlan(_add_ethernet(interface_id))
 
     def interface(self, interface_id):
         return super(BackwardCompatibleBrocade, self).interface(_add_ethernet(interface_id))
 
-    def configure_native_vlan(self, interface_id, vlan):
-        return super(BackwardCompatibleBrocade, self).configure_native_vlan(_add_ethernet(interface_id), vlan)
+    def set_interface_native_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).set_interface_native_vlan(_add_ethernet(interface_id), vlan)
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
                        track_id=None, track_decrement=None):

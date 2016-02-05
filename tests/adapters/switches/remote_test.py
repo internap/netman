@@ -21,6 +21,7 @@ from ncclient.operations import RPCError
 from netaddr import IPAddress
 from flexmock import flexmock, flexmock_teardown
 
+from netman.core.objects.interface_states import OFF, ON
 from tests import ExactIpNetwork
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
@@ -643,7 +644,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_vlan_access_group(2500, IN)
+        self.switch.unset_vlan_access_group(2500, IN)
 
     def test_remove_access_groups_out(self):
         self.requests_mock.should_receive("delete").once().with_args(
@@ -654,7 +655,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_vlan_access_group(2500, OUT)
+        self.switch.unset_vlan_access_group(2500, OUT)
 
     def test_add_ip_to_vlan(self):
         self.requests_mock.should_receive("post").once().with_args(
@@ -691,7 +692,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_vlan_vrf(2500, "DEFAULT_LAN")
 
-    def test_remove_vlan_vrf(self):
+    def test_unset_vlan_vrf(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/vlans/2500/vrf-forwarding',
             headers=self.headers
@@ -700,7 +701,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_vlan_vrf(2500)
+        self.switch.unset_vlan_vrf(2500)
 
     def test_port_mode_access(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -762,7 +763,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_access_vlan("ge-0/0/6", 1000)
 
-    def test_unset_access_vlan(self):
+    def test_unset_interface_access_vlan(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/access-vlan',
             headers=self.headers
@@ -771,9 +772,9 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.unset_access_vlan("ge-0/0/6")
+        self.switch.unset_interface_access_vlan("ge-0/0/6")
 
-    def test_set_native_vlan(self):
+    def test_set_interface_native_vlan(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/trunk-native-vlan',
             headers=self.headers,
@@ -783,9 +784,9 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.configure_native_vlan("ge-0/0/6", 1000)
+        self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
-    def test_remove_native_vlan(self):
+    def test_unset_interface_native_vlan(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/trunk-native-vlan',
             headers=self.headers,
@@ -794,7 +795,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_native_vlan("ge-0/0/6")
+        self.switch.unset_interface_native_vlan("ge-0/0/6")
 
     def test_set_bond_native_vlan(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -806,9 +807,9 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.configure_bond_native_vlan(123, 1000)
+        self.switch.set_bond_native_vlan(123, 1000)
 
-    def test_remove_bond_native_vlan(self):
+    def test_unset_bond_native_vlan(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/bonds/123/trunk-native-vlan',
             headers=self.headers,
@@ -817,7 +818,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_bond_native_vlan(123)
+        self.switch.unset_bond_native_vlan(123)
 
     def test_add_trunk_vlan(self):
         self.requests_mock.should_receive("post").once().with_args(
@@ -877,7 +878,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_interface_description("ge-0/0/6", "Resistance is futile")
 
-    def test_remove_interface_description(self):
+    def test_unset_interface_description(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/description',
             headers=self.headers
@@ -886,7 +887,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_interface_description("ge-0/0/6")
+        self.switch.unset_interface_description("ge-0/0/6")
 
     def test_set_bond_description(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -900,7 +901,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_bond_description(123, "Resistance is futile")
 
-    def test_remove_bond_description(self):
+    def test_unset_bond_description(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/bonds/123/description',
             headers=self.headers
@@ -909,7 +910,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.remove_bond_description(123)
+        self.switch.unset_bond_description(123)
 
     def test_edit_interface_spanning_tree_succeeds(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -945,7 +946,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.openup_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", ON)
 
     def test_disable_interface(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -957,7 +958,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.shutdown_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", OFF)
 
     def test_add_bond(self):
         self.requests_mock.should_receive("post").once().with_args(
@@ -1151,7 +1152,7 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.remove_dhcp_relay_server(2000, '1.2.3.4')
 
-    def test_enable_lldp(self):
+    def test_set_interface_lldp_state(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/lldp',
             headers=self.headers,
@@ -1161,7 +1162,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.enable_lldp("ge-0/0/6", True)
+        self.switch.set_interface_lldp_state("ge-0/0/6", True)
 
     def test_disable_lldp(self):
         self.requests_mock.should_receive("put").once().with_args(
@@ -1173,7 +1174,7 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=204))
 
-        self.switch.enable_lldp("ge-0/0/6", False)
+        self.switch.set_interface_lldp_state("ge-0/0/6", False)
 
     def test_set_vlan_icmp_redirects_state_False_should_send_false(self):
         self.requests_mock.should_receive("put").once().with_args(
