@@ -61,12 +61,6 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
         self.switch.remove_interface_description("ethernet 1/g10")
 
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_edit_interface_spanning_tree_state_call_edit_interface_spanning_tree(self):
-        self.switch.should_receive("edit_interface_spanning_tree").with_args("ethernet 1/g10").once()
-
-        self.switch.edit_interface_spanning_tree("ethernet 1/g10")
-
-    @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
     def test_remove_bond_description_call_unset_bond_description(self):
         self.switch.should_receive("unset_bond_description").with_args(295).once()
 
@@ -83,12 +77,6 @@ class BackwardCompatibleSwitchOperationsTest(TestCase):
         self.switch.should_receive("unset_bond_native_vlan").with_args(295).once()
 
         self.switch.remove_bond_native_vlan(295)
-
-    @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
-    def test_edit_bond_spanning_tree_call_edit_bond_spanning_tree(self):
-        self.switch.should_receive("edit_bond_spanning_tree").with_args(295).once()
-
-        self.switch.edit_bond_spanning_tree(295)
 
     @patch("netman.core.objects.backward_compatible_switch_operations.warnings.warn", Mock())
     def test_enable_lldp_call_set_interface_lldp_state(self):
