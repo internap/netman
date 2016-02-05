@@ -15,13 +15,48 @@
 import unittest
 
 from flexmock import flexmock, flexmock_teardown
+from hamcrest import assert_that, instance_of, is_, equal_to
+from mock import patch, Mock
 from netaddr.ip import IPAddress
 
-from netman.adapters.switches.backward_compatible_brocade import BackwardCompatibleBrocade
+from netman.adapters.switches.brocade import Brocade, BackwardCompatibleBrocade
+from netman.core.objects.flow_control_switch import FlowControlSwitch
+
+from netman.adapters.switches import brocade_factory_ssh, brocade_factory_telnet
 from netman.adapters.switches.util import SubShell
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from tests.adapters.switches.brocade_test import vlan_with_vif_display, vlan_display
+
+
+@patch("netman.adapters.switches.warnings.warn", Mock())
+def test_factory_ssh():
+    lock = Mock()
+    switch = brocade_factory_ssh(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=22), lock)
+
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Brocade))
+    assert_that(switch.lock, is_(lock))
+    assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
+    assert_that(switch.switch_descriptor.model, equal_to("brocade"))
+    assert_that(switch.switch_descriptor.username, equal_to("username"))
+    assert_that(switch.switch_descriptor.password, equal_to("password"))
+    assert_that(switch.switch_descriptor.port, equal_to(22))
+
+
+@patch("netman.adapters.switches.warnings.warn", Mock())
+def test_factory_telnet():
+    lock = Mock()
+    switch = brocade_factory_telnet(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=23), lock)
+
+    assert_that(switch, instance_of(FlowControlSwitch))
+    assert_that(switch.wrapped_switch, instance_of(Brocade))
+    assert_that(switch.lock, is_(lock))
+    assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
+    assert_that(switch.switch_descriptor.model, equal_to("brocade"))
+    assert_that(switch.switch_descriptor.username, equal_to("username"))
+    assert_that(switch.switch_descriptor.password, equal_to("password"))
+    assert_that(switch.switch_descriptor.port, equal_to(23))
 
 
 class BrocadeBackwardCompatibilityTest(unittest.TestCase):
@@ -36,6 +71,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
     def tearDown(self):
         flexmock_teardown()
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_set_access_vlan_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
@@ -48,6 +84,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_access_vlan("1/4", vlan=2999)
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_unset_interface_access_vlan_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
@@ -60,6 +97,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.unset_interface_access_vlan("1/4")
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_set_access_mode_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan ethernet 1/4").once().ordered().and_return([
             "VLAN: 100  Tagged",
@@ -75,6 +113,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_access_mode("1/4")
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_set_trunk_mode_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan ethernet 1/4").once().ordered().and_return([
             "VLAN: 1  Untagged"
@@ -84,6 +123,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_trunk_mode("1/4")
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_add_trunk_vlan_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
@@ -96,6 +136,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.add_trunk_vlan("1/1", vlan=2999)
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_remove_trunk_vlan_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
@@ -108,6 +149,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.remove_trunk_vlan("1/11", vlan=2999)
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_set_interface_state_off_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
@@ -116,6 +158,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_interface_state("1/4", OFF)
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_set_interface_state_on_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
         self.shell_mock.should_receive("do").with_args("interface ethernet 1/4").and_return([]).once().ordered()
@@ -124,6 +167,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_interface_state("1/4", ON)
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_set_interface_native_vlan_backward_compatibility(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2999").once().ordered().and_return(
             vlan_display(2999)
@@ -136,6 +180,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.set_interface_native_vlan("1/4", vlan=2999)
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_unset_interface_native_vlan_on_trunk_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
             "1202     your-name-                                        1202  -  Untagged Ports : ethe 1/10"
@@ -148,6 +193,7 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.unset_interface_native_vlan("1/4")
 
+    @patch("netman.adapters.switches.brocade.warnings.warn", Mock())
     def test_add_vrrp_accepts_no_ethernet(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
             vlan_with_vif_display(1234, 1234)

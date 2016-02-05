@@ -24,9 +24,10 @@ from hamcrest import assert_that, has_length, equal_to, contains_string, has_key
 from ncclient.devices.junos import JunosDeviceHandler
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import NCElement, to_ele, to_xml
+from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
 
 from netman.adapters.switches import juniper
-from netman.adapters.switches.juniper import Juniper, JuniperCustomStrategies
+from netman.adapters.switches.juniper import Juniper
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
@@ -54,10 +55,7 @@ def test_factory():
 class JuniperTest(unittest.TestCase):
 
     def setUp(self):
-        self.switch = Juniper(
-            switch_descriptor=SwitchDescriptor(model='juniper', hostname="toto"),
-            custom_strategies=JuniperCustomStrategies()
-        )
+        self.switch = juniper.standard.netconf(SwitchDescriptor(model='juniper', hostname="toto"))
 
         self.netconf_mock = flexmock()
         self.switch.netconf = self.netconf_mock
@@ -4849,55 +4847,55 @@ class JuniperTest(unittest.TestCase):
         self.switch.set_interface_lldp_state('ge-0/0/6', False)
 
     def test_bond_port_mode_access(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_access_mode = mock.Mock()
         switch.set_bond_access_mode(6)
         switch.set_access_mode.assert_called_with('ae6')
 
     def test_bond_port_mode_trunk(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_trunk_mode = mock.Mock()
         switch.set_bond_trunk_mode(6)
         switch.set_trunk_mode.assert_called_with('ae6')
 
     def test_set_bond_description_succeeds(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_interface_description = mock.Mock()
         switch.set_bond_description(6, "Resistance is futile")
         switch.set_interface_description.assert_called_with('ae6', "Resistance is futile")
 
     def test_unset_bond_description_succeeds(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.unset_interface_description = mock.Mock()
         switch.unset_bond_description(6)
         switch.unset_interface_description.assert_called_with('ae6')
 
     def test_add_bond_trunk_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.add_trunk_vlan = mock.Mock()
         switch.add_bond_trunk_vlan(6, 1000)
         switch.add_trunk_vlan.assert_called_with('ae6', 1000)
 
     def test_remove_bond_trunk_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.remove_trunk_vlan = mock.Mock()
         switch.remove_bond_trunk_vlan(6, 1000)
         switch.remove_trunk_vlan.assert_called_with('ae6', 1000)
 
     def test_set_bond_native_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_interface_native_vlan = mock.Mock()
         switch.set_bond_native_vlan(6, 1000)
         switch.set_interface_native_vlan.assert_called_with('ae6', 1000)
 
     def test_unset_bond_native_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.unset_interface_native_vlan = mock.Mock()
         switch.unset_bond_native_vlan(6)
         switch.unset_interface_native_vlan.assert_called_with('ae6')
 
     def test_edit_bond_spanning_tree(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.edit_interface_spanning_tree = mock.Mock()
         switch.edit_bond_spanning_tree(6, edge=False)
         switch.edit_interface_spanning_tree.assert_called_with('ae6', edge=False)

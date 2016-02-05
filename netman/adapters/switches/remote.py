@@ -16,6 +16,7 @@ import importlib
 import json
 import __builtin__
 import uuid
+import warnings
 
 import requests
 from netman import raw_or_json
@@ -31,6 +32,7 @@ from netman.api.objects import bond
 
 
 def factory(switch_descriptor):
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch")
     return RemoteSwitch(switch_descriptor)
 
 

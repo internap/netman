@@ -34,32 +34,6 @@ from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
-def test_factory_ssh():
-    lock = mock.Mock()
-    switch = brocade_factory_ssh(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=22), lock)
-
-    assert_that(switch, instance_of(FlowControlSwitch))
-    assert_that(switch.wrapped_switch, instance_of(Brocade))
-    assert_that(switch.lock, is_(lock))
-    assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
-    assert_that(switch.switch_descriptor.model, equal_to("brocade"))
-    assert_that(switch.switch_descriptor.username, equal_to("username"))
-    assert_that(switch.switch_descriptor.password, equal_to("password"))
-    assert_that(switch.switch_descriptor.port, equal_to(22))
-
-def test_factory_telnet():
-    lock = mock.Mock()
-    switch = brocade_factory_telnet(SwitchDescriptor(hostname='hostname', model='brocade', username='username', password='password', port=23), lock)
-
-    assert_that(switch, instance_of(FlowControlSwitch))
-    assert_that(switch.wrapped_switch, instance_of(Brocade))
-    assert_that(switch.lock, is_(lock))
-    assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
-    assert_that(switch.switch_descriptor.model, equal_to("brocade"))
-    assert_that(switch.switch_descriptor.username, equal_to("username"))
-    assert_that(switch.switch_descriptor.password, equal_to("password"))
-    assert_that(switch.switch_descriptor.port, equal_to(23))
-
 
 class BrocadeTest(unittest.TestCase):
 
@@ -1994,7 +1968,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(list(result), equal_to(["shizzle 1/1", "shizzle 1/3", "shizzle 1/4", "shizzle 1/5", "shizzle 1/7"]))
 
 
-    @mock.patch("netman.adapters.switches.SshClient")
+    @mock.patch("netman.adapters.switches.brocade.SshClient")
     def test_connect(self, ssh_client_class_mock):
         self.switch = brocade_factory_ssh(SwitchDescriptor(
             hostname="my.hostname", username="the_user", password="the_password", model="brocade", port=22), mock.Mock())
@@ -2015,7 +1989,7 @@ class BrocadeTest(unittest.TestCase):
             port=22
         )
 
-    @mock.patch("netman.adapters.switches.TelnetClient")
+    @mock.patch("netman.adapters.switches.brocade.TelnetClient")
     def test_connect_without_port_uses_default(self, telnet_client_class_mock):
         self.switch = brocade_factory_telnet(SwitchDescriptor(
             hostname="my.hostname", username="the_user", password="the_password", model="brocade"), mock.Mock())
@@ -2035,7 +2009,7 @@ class BrocadeTest(unittest.TestCase):
             password="the_password"
         )
 
-    @mock.patch("netman.adapters.switches.SshClient")
+    @mock.patch("netman.adapters.switches.brocade.SshClient")
     def test_auto_enabled_switch_doesnt_require_enable(self, ssh_client_class_mock):
         self.switch = brocade_factory_ssh(SwitchDescriptor(hostname="my.hostname", username="the_user", password="the_password", model="brocade", port=8000), mock.Mock())
 
