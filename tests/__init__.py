@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from functools import wraps
+import warnings
 
 from tests.adapters.model_list import available_models
 from netaddr import IPNetwork
@@ -44,3 +46,13 @@ class ExactIpNetwork(object):
 
     def __repr__(self):
         return "{}/{}".format(self.ip, self.mask)
+
+
+def ignore_deprecation_warning(func):
+    @wraps(func)
+    def func_wrapper(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            ret = func(*args, **kwargs)
+            return ret
+    return func_wrapper
