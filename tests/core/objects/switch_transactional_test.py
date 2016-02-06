@@ -20,8 +20,8 @@ from mock import patch, Mock
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.switch_descriptor import SwitchDescriptor
-from netman.core.objects.switch_transactional import transactional, \
-    SwitchTransactional
+from netman.core.objects import switch_transactional
+from tests import ignore_deprecation_warnings
 
 
 class SwitchTransactionalTest(TestCase):
@@ -29,13 +29,14 @@ class SwitchTransactionalTest(TestCase):
     Backward compatibility test
     """
 
-    @patch("netman.core.objects.switch_transactional.warnings.warn", Mock())
+    @ignore_deprecation_warnings
     def setUp(self):
         self.switch_impl = flexmock(SwitchBase(SwitchDescriptor("cisco", "name")))
         self.switch_impl.connected = True
         self.lock = flexmock()
-        self.switch = SwitchTransactional(self.switch_impl, self.lock)
+        self.switch = switch_transactional.SwitchTransactional(self.switch_impl, self.lock)
 
+    @ignore_deprecation_warnings
     def test_transactional_annotation_does_nothing_in_a_transaction(self):
 
         self.lock.should_receive("acquire").with_args().once().ordered()
@@ -67,6 +68,7 @@ class SwitchTransactionalTest(TestCase):
 
         assert_that(self.switch.in_transaction, is_(False))
 
+    @ignore_deprecation_warnings
     def test_transactional_annotation_runs_the_method_in_a_transaction_when_not_in_one(self):
 
         self.lock.should_receive("acquire").with_args().once().ordered()
@@ -81,6 +83,7 @@ class SwitchTransactionalTest(TestCase):
 
         assert_that(result, is_("Good"))
 
+    @ignore_deprecation_warnings
     def test_lock_is_released_if_start_transaction_fails_using_annotation(self):
         self.lock.should_receive("acquire").with_args().once().ordered()
         self.switch_impl.should_receive("_start_transaction").with_args().and_raise(NetmanException()).once().ordered()
@@ -92,9 +95,8 @@ class SwitchTransactionalTest(TestCase):
         assert_that(self.switch.in_transaction, is_(False))
 
     @property
-    @patch("netman.core.objects.switch_transactional.warnings.warn", Mock())
     def decorated_method(self):
-        @transactional
+        @switch_transactional.transactional
         def transactional_method(self):
             if self.in_transaction is False:
                 raise AssertionError("I'm not in a transaction")

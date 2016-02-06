@@ -48,7 +48,7 @@ class ExactIpNetwork(object):
         return "{}/{}".format(self.ip, self.mask)
 
 
-def ignore_deprecation_warning(func):
+def ignore_deprecation_warnings(func):
     @wraps(func)
     def func_wrapper(*args, **kwargs):
         with warnings.catch_warnings():
