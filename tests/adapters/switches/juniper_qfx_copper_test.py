@@ -20,13 +20,14 @@ from hamcrest import assert_that, equal_to, is_, instance_of
 
 from netman.adapters.switches import juniper
 from netman.adapters.switches.juniper import Juniper
-from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from tests import ignore_deprecation_warnings
 from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
 
 
+@ignore_deprecation_warnings
 def test_factory():
     lock = mock.Mock()
     switch = juniper.qfx_copper_factory(SwitchDescriptor(hostname='hostname', model='juniper_qfx_copper', username='username', password='password', port=22), lock)

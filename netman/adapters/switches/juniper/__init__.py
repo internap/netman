@@ -21,12 +21,12 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def standard_factory(switch_descriptor, lock):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch", DeprecationWarning)
 
     return FlowControlSwitch(wrapped_switch=standard.netconf(switch_descriptor), lock=lock)
 
 
 def qfx_copper_factory(switch_descriptor, lock):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch", DeprecationWarning)
 
     return FlowControlSwitch(wrapped_switch=qfx_copper.netconf(switch_descriptor), lock=lock)

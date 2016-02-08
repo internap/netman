@@ -36,7 +36,7 @@ class AnException(Exception):
     pass
 
 
-@mock.patch("netman.adapters.switches.remote.warnings.warn", mock.Mock())
+@ignore_deprecation_warnings
 def test_factory():
     switch = factory(SwitchDescriptor(hostname='hostname', model='juniper', username='username', password='password', port=22))
 

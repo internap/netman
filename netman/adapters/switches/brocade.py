@@ -574,6 +574,6 @@ class BackwardCompatibleBrocade(Brocade):
 
 def _add_ethernet(interface_id):
     if interface_id is not None and re.match("^\d.*", interface_id):
-        warnings.warn("The brocade interface naming without the \"ethernet\" prefix has been deprecated")
+        warnings.warn("The brocade interface naming without the \"ethernet\" prefix has been deprecated", DeprecationWarning)
         return "ethernet {}".format(interface_id)
     return interface_id

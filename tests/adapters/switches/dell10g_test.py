@@ -30,9 +30,10 @@ from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from tests import ignore_deprecation_warnings
 
 
-@mock.patch("netman.adapters.switches.dell.warnings.warn", mock.Mock())
+@ignore_deprecation_warnings
 def test_factory_ssh():
     lock = mock.Mock()
     descriptor = SwitchDescriptor(hostname='hostname', model='dell10g', username='username', password='password', port=22)
@@ -45,7 +46,7 @@ def test_factory_ssh():
     assert_that(switch.switch_descriptor, is_(descriptor))
 
 
-@mock.patch("netman.adapters.switches.dell.warnings.warn", mock.Mock())
+@ignore_deprecation_warnings
 def test_factory_telnet():
     lock = mock.Mock()
     descriptor = SwitchDescriptor(hostname='hostname', model='dell10g', username='username', password='password', port=22)

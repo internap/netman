@@ -16,7 +16,7 @@ import unittest
 
 import mock
 from flexmock import flexmock, flexmock_teardown
-from hamcrest import assert_that, has_length, equal_to, is_, instance_of, none, empty
+from hamcrest import assert_that, has_length, equal_to, is_, none, empty
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
@@ -31,8 +31,6 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
-from netman.core.objects.switch_transactional import FlowControlSwitch
-
 
 
 class BrocadeTest(unittest.TestCase):
