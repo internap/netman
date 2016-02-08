@@ -17,9 +17,11 @@ from functools import wraps
 
 from netman.core.objects.switch_base import SwitchOperations
 
+
 def do_not_wrap_with_flow_control(fn):
     setattr(fn, "_do_not_wrap_with_flow_control", True)
     return fn
+
 
 class FlowControlSwitch(SwitchOperations):
     """

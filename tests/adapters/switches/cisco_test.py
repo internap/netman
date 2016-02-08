@@ -33,9 +33,10 @@ from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from tests import ignore_deprecation_warnings
 
 
-@mock.patch("netman.adapters.switches.cisco.warnings.warn", mock.Mock())
+@ignore_deprecation_warnings
 def test_factory():
     lock = mock.Mock()
     switch = cisco.factory(SwitchDescriptor(hostname='hostname', model='cisco', username='username', password='password', port=22), lock)

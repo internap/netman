@@ -32,7 +32,7 @@ from netman.api.objects import bond
 
 
 def factory(switch_descriptor):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch", DeprecationWarning)
     return RemoteSwitch(switch_descriptor)
 
 

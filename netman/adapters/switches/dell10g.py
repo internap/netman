@@ -35,12 +35,12 @@ def telnet(switch_descriptor):
 
 
 def factory_ssh(switch_descriptor, lock):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
     return FlowControlSwitch(wrapped_switch=ssh(switch_descriptor), lock=lock)
 
 
 def factory_telnet(switch_descriptor, lock):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
     return FlowControlSwitch(wrapped_switch=telnet(switch_descriptor), lock=lock)
 
 

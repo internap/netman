@@ -18,14 +18,14 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
 def brocade_factory_ssh(switch_descriptor, lock):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
     return FlowControlSwitch(
         wrapped_switch=brocade.ssh(switch_descriptor=switch_descriptor),
         lock=lock
     )
 
 def brocade_factory_telnet(switch_descriptor, lock):
-    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
     return FlowControlSwitch(
         wrapped_switch=brocade.telnet(switch_descriptor=switch_descriptor),
         lock=lock

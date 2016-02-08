@@ -36,8 +36,10 @@ from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from tests import ignore_deprecation_warnings
 
 
+@ignore_deprecation_warnings
 def test_factory():
     lock = mock.Mock()
     switch = juniper.standard_factory(SwitchDescriptor(hostname='hostname', model='juniper', username='username', password='password', port=22), lock)

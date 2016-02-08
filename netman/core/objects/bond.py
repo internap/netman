@@ -25,8 +25,7 @@ class Bond(BaseInterface):
 
     @property
     def interface(self):
-        warnings.warn('Deprecated: Use directly the members of Bond instead.',
-                      category=DeprecationWarning)
+        warnings.warn('Deprecated: Use directly the members of Bond instead.', DeprecationWarning)
         return Interface(
             shutdown=self.shutdown,
             port_mode=self.port_mode,
