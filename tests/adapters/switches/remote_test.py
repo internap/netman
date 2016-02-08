@@ -22,7 +22,7 @@ from netaddr import IPAddress
 from flexmock import flexmock, flexmock_teardown
 
 from netman.core.objects.interface_states import OFF, ON
-from tests import ExactIpNetwork
+from tests import ExactIpNetwork, ignore_deprecation_warnings
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
@@ -438,6 +438,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(if4.shutdown, equal_to(False))
         assert_that(if4.bond_master, equal_to(12))
 
+    @ignore_deprecation_warnings
     def test_get_bond_v1(self):
         self.requests_mock.should_receive("get").once().with_args(
             url=self.netman_url+'/switches/toto/bonds/3',
