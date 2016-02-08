@@ -36,6 +36,7 @@ class AnException(Exception):
     pass
 
 
+@mock.patch("netman.adapters.switches.remote.warnings.warn", mock.Mock())
 def test_factory():
     switch = factory(SwitchDescriptor(hostname='hostname', model='juniper', username='username', password='password', port=22))
 
@@ -45,6 +46,7 @@ def test_factory():
     assert_that(switch.switch_descriptor.username, equal_to("username"))
     assert_that(switch.switch_descriptor.password, equal_to("password"))
     assert_that(switch.switch_descriptor.port, equal_to(22))
+
 
 class RemoteSwitchTest(unittest.TestCase):
     netman_url = 'http://netman.example.org:1234'

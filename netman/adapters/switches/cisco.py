@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
 
 from netaddr.ip import IPNetwork, IPAddress
 
 from netman import regex
-from netman.adapters.shell import ssh
+from netman.adapters.shell.ssh import SshClient
 from netman.adapters.switches.util import SubShell, split_on_dedent, split_on_bang, no_output
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
@@ -31,14 +32,14 @@ from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
 
 
-__all__ = ['factory', 'Cisco']
+def ssh(switch_descriptor):
+    return Cisco(switch_descriptor=switch_descriptor)
 
 
 def factory(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Cisco(switch_descriptor=switch_descriptor),
-        lock=lock
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+
+    return FlowControlSwitch(wrapped_switch=ssh(switch_descriptor), lock=lock)
 
 
 class Cisco(SwitchBase):
@@ -56,7 +57,7 @@ class Cisco(SwitchBase):
         if self.switch_descriptor.port:
             params["port"] = self.switch_descriptor.port
 
-        self.ssh = ssh.SshClient(**params)
+        self.ssh = SshClient(**params)
 
         if self.ssh.get_current_prompt().endswith(">"):
             self.ssh.do("enable", wait_for=": ")

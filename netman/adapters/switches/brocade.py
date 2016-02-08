@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 import re
+import warnings
 
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
 from netman import regex
+from netman.adapters.shell.ssh import SshClient
+from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.switches.util import SubShell, split_on_bang, split_on_dedent, no_output, \
     ResultChecker
 from netman.core.objects.access_groups import IN, OUT
@@ -31,6 +34,14 @@ from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
+
+
+def ssh(switch_descriptor):
+    return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=SshClient)
+
+
+def telnet(switch_descriptor):
+    return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient)
 
 
 class Brocade(SwitchBase):
@@ -514,3 +525,55 @@ class BrocadeIPNetwork(IPNetwork):
         self.is_secondary = kwargs.pop('is_secondary', False)
 
         super(BrocadeIPNetwork, self).__init__(*args, **kwargs)
+
+
+class BackwardCompatibleBrocade(Brocade):
+    def __init__(self, switch_descriptor, shell_factory):
+        super(BackwardCompatibleBrocade, self).__init__(switch_descriptor, shell_factory)
+
+        self.logger = logging.getLogger(
+                "{module}.{hostname}".format(module=Brocade.__module__,
+                                             hostname=self.switch_descriptor.hostname))
+
+    def add_trunk_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).add_trunk_vlan(_add_ethernet(interface_id), vlan)
+
+    def set_interface_state(self, interface_id, state):
+        return super(BackwardCompatibleBrocade, self).set_interface_state(_add_ethernet(interface_id), state)
+
+    def set_trunk_mode(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).set_trunk_mode(_add_ethernet(interface_id))
+
+    def set_access_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).set_access_vlan(_add_ethernet(interface_id), vlan)
+
+    def set_access_mode(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).set_access_mode(_add_ethernet(interface_id))
+
+    def remove_trunk_vlan(self, interface_id, vlan):
+        super(BackwardCompatibleBrocade, self).remove_trunk_vlan(_add_ethernet(interface_id), vlan)
+
+    def unset_interface_native_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_native_vlan(_add_ethernet(interface_id))
+
+    def unset_interface_access_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_access_vlan(_add_ethernet(interface_id))
+
+    def interface(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).interface(_add_ethernet(interface_id))
+
+    def set_interface_native_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).set_interface_native_vlan(_add_ethernet(interface_id), vlan)
+
+    def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
+                       track_id=None, track_decrement=None):
+        return super(BackwardCompatibleBrocade, self).add_vrrp_group(vlan_number, group_id, ips, priority,
+                                                                     hello_interval, dead_interval,
+                                                                     _add_ethernet(track_id), track_decrement)
+
+
+def _add_ethernet(interface_id):
+    if interface_id is not None and re.match("^\d.*", interface_id):
+        warnings.warn("The brocade interface naming without the \"ethernet\" prefix has been deprecated")
+        return "ethernet {}".format(interface_id)
+    return interface_id

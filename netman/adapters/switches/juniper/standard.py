@@ -15,7 +15,11 @@
 from ncclient.xml_ import to_ele
 
 from netman.adapters.switches.juniper.base import interface_speed, interface_replace, interface_speed_update, \
-    first_text, bond_name
+    first_text, bond_name, Juniper
+
+
+def netconf(switch_descriptor, *args, **kwargs):
+    return Juniper(switch_descriptor, custom_strategies=JuniperCustomStrategies(), *args, **kwargs)
 
 
 class JuniperCustomStrategies(object):

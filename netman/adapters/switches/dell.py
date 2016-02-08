@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
+
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
 from netman.core.objects.interface_states import OFF, ON
@@ -28,21 +30,22 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
 from netman.core.objects.switch_base import SwitchBase
 
 
-__all__ = ['factory_ssh', 'factory_telnet', 'Dell']
+def ssh(switch_descriptor):
+    return Dell(switch_descriptor, shell_factory=SshClient)
+
+
+def telnet(switch_descriptor):
+    return Dell(switch_descriptor, shell_factory=TelnetClient)
 
 
 def factory_ssh(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Dell(switch_descriptor=switch_descriptor, shell_factory=SshClient),
-        lock=lock,
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+    return FlowControlSwitch(wrapped_switch=ssh(switch_descriptor), lock=lock)
 
 
 def factory_telnet(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
-        lock=lock,
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch")
+    return FlowControlSwitch(wrapped_switch=telnet(switch_descriptor), lock=lock)
 
 
 class Dell(SwitchBase):

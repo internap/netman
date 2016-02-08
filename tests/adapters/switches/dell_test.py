@@ -32,6 +32,7 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
+@mock.patch("netman.adapters.switches.dell.warnings.warn", mock.Mock())
 def test_factory_ssh():
     lock = mock.Mock()
     descriptor = SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22)
@@ -44,6 +45,7 @@ def test_factory_ssh():
     assert_that(switch.switch_descriptor, is_(descriptor))
 
 
+@mock.patch("netman.adapters.switches.dell.warnings.warn", mock.Mock())
 def test_factory_telnet():
     lock = mock.Mock()
     descriptor = SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22)

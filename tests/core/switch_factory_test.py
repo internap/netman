@@ -16,6 +16,10 @@ import unittest
 
 from hamcrest import assert_that, equal_to, instance_of, is_, is_not
 import mock
+from netman.core.objects.flow_control_switch import FlowControlSwitch
+
+from netman.core import switch_factory
+
 from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade_factory_ssh, brocade_factory_telnet
 from netman.core.objects.switch_base import SwitchBase
 from netman.adapters.switches.remote import RemoteSwitch
@@ -29,95 +33,64 @@ class SwitchFactoryTest(unittest.TestCase):
         self.semaphore_mocks = {}
         self.factory = SwitchFactory(switch_source=None, lock_factory=MockLockFactory(self.semaphore_mocks))
 
-    def test_get_connection_to_anonymous_switch(self):
-        class FakeCiscoSwitch(SwitchBase):
-            pass
+        switch_factory.factories['test_model'] = _FakeSwitch
 
+    def tearDown(self):
+        switch_factory.factories.pop('test_model')
+
+    def test_get_connection_to_anonymous_switch(self):
         my_semaphore = mock.Mock()
         self.semaphore_mocks['hostname'] = my_semaphore
-        expected_switch = FakeCiscoSwitch(SwitchDescriptor(model='some_model', hostname='hello'))
-        factory_mock = mock.Mock()
-        factory_mock.return_value = expected_switch
-        self.factory.factories['some_model'] = factory_mock
 
-        switch = self.factory.get_anonymous_switch(hostname='hostname', model='some_model', username='username',
+        switch = self.factory.get_anonymous_switch(hostname='hostname', model='test_model', username='username',
                                                    password='password', port=22)
 
-        factory_mock.assert_called_with(SwitchDescriptor(hostname='hostname', model='some_model', username='username',
-                                                         password='password', port=22), lock=my_semaphore)
-        assert_that(switch, is_(expected_switch))
-
-    def test_factories_are_well_wired(self):
-
-        assert_that(self.factory.factories, is_({
-            "cisco": cisco.factory,
-            "brocade": brocade_factory_ssh,
-            "brocade_ssh": brocade_factory_ssh,
-            "brocade_telnet": brocade_factory_telnet,
-            "juniper": juniper.standard_factory,
-            "juniper_qfx_copper": juniper.qfx_copper_factory,
-            "dell": dell.factory_ssh,
-            "dell_ssh": dell.factory_ssh,
-            "dell_telnet": dell.factory_telnet,
-            "dell10g": dell10g.factory_ssh,
-            "dell10g_ssh": dell10g.factory_ssh,
-            "dell10g_telnet": dell10g.factory_telnet
-        }))
+        assert_that(switch, is_(instance_of(FlowControlSwitch)))
+        assert_that(switch.wrapped_switch, is_(instance_of(_FakeSwitch)))
+        assert_that(switch.lock, is_(my_semaphore))
+        assert_that(switch.wrapped_switch.switch_descriptor, is_(
+                SwitchDescriptor(hostname='hostname', model='test_model', username='username',
+                                 password='password', port=22)))
 
     def test_two_get_connections_on_the_same_switch_should_give_the_same_semaphore(self):
-        semaphores = []
-
         self.semaphore_mocks['hostname'] = mock.Mock()
 
-        self.factory.factories['juniper'] = lambda switch_descriptor, lock: semaphores.append(lock)
+        switch1 = self.factory.get_anonymous_switch(hostname='hostname', model='test_model')
+        switch2 = self.factory.get_anonymous_switch(hostname='hostname', model='test_model')
 
-        self.factory.get_anonymous_switch(hostname='hostname', model='juniper', username='username', password='password', port=22)
-        self.factory.get_anonymous_switch(hostname='hostname', model='juniper', username='username', password='password', port=22)
-
-        assert_that(semaphores[0], is_(semaphores[1]))
+        assert_that(switch1.lock, is_(switch2.lock))
 
     def test_two_get_connections_on_different_switches_should_give_different_semaphores(self):
-        semaphores = []
-
         self.semaphore_mocks['hostname1'] = mock.Mock()
         self.semaphore_mocks['hostname2'] = mock.Mock()
 
-        self.factory.factories['juniper'] = lambda switch_descriptor, lock: semaphores.append(lock)
+        switch1 = self.factory.get_anonymous_switch(hostname='hostname1', model='test_model')
+        switch2 = self.factory.get_anonymous_switch(hostname='hostname2', model='test_model')
 
-        self.factory.get_anonymous_switch(hostname='hostname1', model='juniper', username='username', password='password', port=22)
-        self.factory.get_anonymous_switch(hostname='hostname2', model='juniper', username='username', password='password', port=22)
-
-        assert_that(semaphores[0], is_not(semaphores[1]))
+        assert_that(switch1.lock, is_not(switch2.lock))
 
     def test_get_connection_to_anonymous_remote_switch(self):
-        switch = self.factory.get_anonymous_switch(hostname='hostname', model='juniper', username='username',
+        switch = self.factory.get_anonymous_switch(hostname='hostname', model='test_model', username='username',
                                                    password='password', port=22,
                                                    netman_server='https://netman.url.example.org:4443')
 
         assert_that(switch, instance_of(RemoteSwitch))
-        assert_that(switch.switch_descriptor.hostname, equal_to("hostname"))
-        assert_that(switch.switch_descriptor.model, equal_to("juniper"))
-        assert_that(switch.switch_descriptor.username, equal_to("username"))
-        assert_that(switch.switch_descriptor.password, equal_to("password"))
-        assert_that(switch.switch_descriptor.port, equal_to(22))
-        assert_that(switch.switch_descriptor.netman_server, equal_to('https://netman.url.example.org:4443'))
+        assert_that(switch.switch_descriptor, is_(
+                SwitchDescriptor(hostname='hostname', model='test_model', username='username',
+                                 password='password', port=22,
+                                 netman_server='https://netman.url.example.org:4443')))
 
     def test_get_switch_by_descriptor(self):
-        class FakeJuniperSwitch(SwitchBase):
-            pass
         my_semaphore = mock.Mock()
-        self.semaphore_mocks['hello'] = my_semaphore
+        self.semaphore_mocks['hostname'] = my_semaphore
 
-        expected_switch = FakeJuniperSwitch(SwitchDescriptor(model='juniper', hostname='hello'))
-        factory_mock = mock.Mock()
-        factory_mock.return_value = expected_switch
-        self.factory.factories['juniper'] = factory_mock
+        switch = self.factory.get_switch_by_descriptor(SwitchDescriptor(model='test_model', hostname='hostname'))
 
-        descriptor = SwitchDescriptor(model='juniper', hostname='hello')
-        switch = self.factory.get_switch_by_descriptor(descriptor)
-
-        factory_mock.assert_called_with(descriptor, lock=my_semaphore)
-        assert_that(switch, is_(expected_switch))
+        assert_that(switch, is_(instance_of(FlowControlSwitch)))
+        assert_that(switch.wrapped_switch, is_(instance_of(_FakeSwitch)))
+        assert_that(switch.lock, is_(my_semaphore))
+        assert_that(switch.wrapped_switch.switch_descriptor,
+                    is_(SwitchDescriptor(model='test_model', hostname='hostname')))
 
 
 class MockLockFactory(object):
@@ -127,3 +100,8 @@ class MockLockFactory(object):
 
     def new_lock(self, name, timeout=0):
         return self.mock_dict.pop(name)
+
+
+class _FakeSwitch(SwitchBase):
+    pass
+
