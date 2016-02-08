@@ -439,10 +439,12 @@ def parse_vlan(vlan_data):
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):
             current_vlan.vlan_interface_name = regex[0]
-        elif regex.match(" tagged (.*)", line):
-            for name in parse_if_ranges(regex[0]):
-                current_vlan.tagged_interfaces.append(name)
-
+        elif regex.match("^\s(tagged|no untagged)\s(.*)$", line):
+            type = regex[0]
+            for name in parse_if_ranges(regex[1]):
+                current_vlan.interfaces.append(name)
+                if type == "tagged":
+                    current_vlan.tagged_interfaces.append(name)
     return current_vlan
 
 

@@ -207,6 +207,16 @@ class BrocadeTest(unittest.TestCase):
         assert_that(str(vlan201.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
         assert_that(str(vlan201.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
 
+        assert_that(vlan1.tagged_interfaces, equal_to([]))
+        assert_that(vlan201.tagged_interfaces, equal_to(["ethe 1/1"]))
+        assert_that(vlan2222.tagged_interfaces, equal_to(["ethe 1/1"]))
+        assert_that(vlan3333.tagged_interfaces, equal_to([]))
+
+        assert_that(vlan1.interfaces, equal_to(["ethe 1/1", "ethe 1/20", "ethe 1/21", "ethe 1/22"]))
+        assert_that(vlan201.interfaces, equal_to(["ethe 1/1"]))
+        assert_that(vlan2222.interfaces, equal_to(["ethe 1/1"]))
+        assert_that(vlan3333.interfaces, equal_to([]))
+
     def test_get_vlan_with_no_interface(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
             vlan_display(1750)
