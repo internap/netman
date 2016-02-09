@@ -40,7 +40,7 @@ class BrocadeTest(unittest.TestCase):
         SubShell.debug = True
         self.shell_mock = flexmock()
         self.switch.shell = self.shell_mock
-        
+
     def tearDown(self):
         flexmock_teardown()
 
@@ -110,7 +110,7 @@ class BrocadeTest(unittest.TestCase):
     def test_get_vlans(self):
         self.shell_mock.should_receive("do").with_args("show running-config vlan | begin vlan").once().ordered().and_return([
             "vlan 1 name DEFAULT-VLAN",
-            " no untagged ethe 1/1 ethe 1/20 to 1/22",
+            " no untagged ethe 1/1 ethe 1/3 to 1/22",
             "!",
             "vlan 201",
             " tagged ethe 1/1",
@@ -167,6 +167,10 @@ class BrocadeTest(unittest.TestCase):
                 '!'
         ])
 
+        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
+            VlanDisplayBuilder(1, 'DEFAULT-VLAN').with_tagged_ports("ethe 1/2 ethe 1/23 to 1/24").to_strings()
+        )
+
         vlan1, vlan201, vlan2222, vlan3333 = self.switch.get_vlans()
 
         assert_that(vlan1.number, equal_to(1))
@@ -207,6 +211,11 @@ class BrocadeTest(unittest.TestCase):
         assert_that(str(vlan201.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
         assert_that(str(vlan201.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
 
+        assert_that(vlan1.interfaces, equal_to(["ethernet 1/2", "ethernet 1/23", "ethernet 1/24"]))
+        assert_that(vlan201.interfaces, equal_to(["ethernet 1/1"]))
+        assert_that(vlan2222.interfaces, equal_to(["ethernet 1/1"]))
+        assert_that(vlan3333.interfaces, equal_to([]))
+
     def test_get_vlan_with_no_interface(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
             vlan_display(1750)
@@ -243,6 +252,17 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vlan.ips, is_(empty()))
         assert_that(vlan.vrrp_groups, is_(empty()))
         assert_that(vlan.dhcp_relay_servers, is_(empty()))
+
+    def test_get_vlan_ports(self):
+        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
+            VlanDisplayBuilder(1, "DEFAULT-VLAN").with_untagged_port('ethe 1/2 ethe 1/23 to 1/24')
+                .with_tagged_ports("ethe 1/4")
+                .to_strings()
+        )
+
+        vlan = self.switch.get_vlan(1)
+
+        assert_that(vlan.interfaces, is_(['ethernet 1/2', 'ethernet 1/23', 'ethernet 1/24', 'ethernet 1/4']))
 
     def test_get_vlan_with_a_full_interface(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
@@ -2146,38 +2166,61 @@ class BrocadeTest(unittest.TestCase):
 
 
 def vlan_display(vlan_id, name="[None]"):
-    return [
-        "PORT-VLAN {}, Name {}, Priority Level -, Priority Force 0, Creation Type STATIC".format(vlan_id, name),
-        "Topo HW idx    : 81    Topo SW idx: 257    Topo next vlan: 0",
-        "L2 protocols   : STP",
-        "Associated Virtual Interface Id: NONE",
-        "----------------------------------------------------------",
-        "No ports associated with VLAN",
-        "Arp Inspection: 0",
-        "DHCP Snooping: 0",
-        "IPv4 Multicast Snooping: Disabled",
-        "IPv6 Multicast Snooping: Disabled",
-        "No Virtual Interfaces configured for this vlan"
-    ]
+    return VlanDisplayBuilder(vlan_id, name).to_strings()
 
 
 def vlan_with_vif_display(vlan_id, vif_id, name="[None]"):
-    return [
-        "PORT-VLAN {}, Name {}, Priority Level -, Priority Force 0, Creation Type STATIC".format(vlan_id, name),
-        "Topo HW idx    : 81    Topo SW idx: 257    Topo next vlan: 0",
-        "L2 protocols   : STP",
-        "Associated Virtual Interface Id: {}".format(vif_id),
-        "----------------------------------------------------------",
-        "No ports associated with VLAN",
-        "Arp Inspection: 0",
-        "DHCP Snooping: 0",
-        "IPv4 Multicast Snooping: Disabled",
-        "IPv6 Multicast Snooping: Disabled",
-        "Ve{} is down, line protocol is down".format(vif_id),
-        "  Type is Vlan (Vlan Id: {})".format(vlan_id),
-        "  Hardware is Virtual Ethernet, address is 748e.f8a7.1b01 (bia 748e.f8a7.1b01)",
-        "  No port name",
-        "  Vlan id: {}".format(vlan_id),
-        "  Internet address is 0.0.0.0/0, IP MTU 1500 bytes, encapsulation ethernet",
-        "  Configured BW 0 kbps",
-    ]
+    return VlanDisplayBuilder(vlan_id, name).with_vif_display(vif_id).to_strings()
+
+class VlanDisplayBuilder:
+    def __init__(self, vlan_id=9, vlan_name=""):
+        self.vlan_id = vlan_id
+        self.vlan_name = vlan_name
+        self.port_info = []
+        self.vif_id = None
+
+    def with_tagged_ports(self, ports=""):
+        return self.with_ports('Statically tagged Ports', ports)
+
+    def with_untagged_port(self, ports=""):
+        return self.with_ports('Untagged Ports', ports)
+
+    def with_ports(self, port_type="", ports=""):
+        self.port_info.append(
+            "{} : {}".format(port_type, ports)
+        )
+        return self
+
+    def with_vif_display(self, vif_id=None):
+        self.vif_id = vif_id
+        return self
+
+    def to_strings(self):
+        ret = [
+            "PORT-VLAN {}, Name {}, Priority Level -, Priority Force 0, Creation Type STATIC".format(self.vlan_id, self.vlan_name),
+            "Topo HW idx    : 81    Topo SW idx: 257    Topo next vlan: 0",
+            "L2 protocols   : STP",
+            ]
+        ret.extend(self.port_info)
+        ret.extend([
+            "Associated Virtual Interface Id: {}".format(self.vif_id or "NONE"),
+            "----------------------------------------------------------",
+            "No ports associated with VLAN",
+            "Arp Inspection: 0",
+            "DHCP Snooping: 0",
+            "IPv4 Multicast Snooping: Disabled",
+            "IPv6 Multicast Snooping: Disabled",
+        ])
+        if self.vif_id:
+            ret.extend([
+                "Ve{} is down, line protocol is down".format(self.vif_id),
+                "  Type is Vlan (Vlan Id: {})".format(self.vlan_id),
+                "  Hardware is Virtual Ethernet, address is 748e.f8a7.1b01 (bia 748e.f8a7.1b01)",
+                "  No port name",
+                "  Vlan id: {}".format(self.vlan_id),
+                "  Internet address is 0.0.0.0/0, IP MTU 1500 bytes, encapsulation ethernet",
+                "  Configured BW 0 kbps",
+            ])
+        else:
+            ret.append("No Virtual Interfaces configured for this vlan")
+        return ret

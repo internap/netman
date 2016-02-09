@@ -86,6 +86,7 @@ class Brocade(SwitchBase):
     def get_vlans(self):
         vlans = self._list_vlans()
         self.add_vif_data_to_vlans(vlans)
+        self.expand_no_untagged_interface_on_vlans(vlans)
         return vlans
 
     def get_vlan(self, number):
@@ -420,11 +421,20 @@ class Brocade(SwitchBase):
                 vlan.vlan_interface_name = regex[0]
                 if include_vif_data:
                     add_interface_vlan_data(vlan, self.shell.do("show running-config interface ve {}".format(regex[0])))
-
+            elif regex.match("(Untagged|Statically tagged) Ports\s+: (.*)$", line):
+                for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                    vlan.interfaces.append(real_name)
         return vlan
 
     def _show_vlan(self, vlan_number):
         return self.shell.do("show vlan {}".format(vlan_number))
+
+    def expand_no_untagged_interface_on_vlans(self, vlans):
+        for vlan in vlans:
+            if vlan.has_no_untagged_interface:
+                temp_vlan = self._get_vlan(vlan.number)
+                vlan.interfaces = temp_vlan.interfaces
+                vlan.has_no_untagged_interface = False
 
 
 def parse_vlan(vlan_data):
@@ -439,9 +449,11 @@ def parse_vlan(vlan_data):
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):
             current_vlan.vlan_interface_name = regex[0]
-        elif regex.match(" tagged (.*)", line):
-            for name in parse_if_ranges(regex[0]):
-                current_vlan.tagged_interfaces.append(name)
+        elif regex.match("^ tagged (.*)$", line):
+            for name in _to_real_names(parse_if_ranges(regex[0])):
+                current_vlan.interfaces.append(name)
+        elif regex.match("^ no untagged (.*)$", line):
+            current_vlan.has_no_untagged_interface = True
 
     return current_vlan
 
@@ -515,8 +527,8 @@ class VlanBrocade(Vlan):
         super(VlanBrocade, self).__init__(*args, **kwargs)
 
         self.vlan_interface_name = kwargs.pop('vlan_interface_name', None)
-        self.tagged_interfaces = []
         self.icmp_redirects = True
+        self.has_no_untagged_interface = False
 
 
 class BrocadeIPNetwork(IPNetwork):
