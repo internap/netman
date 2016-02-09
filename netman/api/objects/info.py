@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
-def to_api(status=None, version=None):
+def to_api(status=None, version=None, lock_provider=None):
     return dict(
         status=status,
         version=version,
+        lock_provider=lock_provider
     )

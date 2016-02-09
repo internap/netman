@@ -1,0 +1,5 @@
+{
+   "status": "running",
+   "version": "1.1.111.dev111111111",
+   "lock_provider": "netman.adapters.threading_lock_factory.ThreadingLockFactory"
+}

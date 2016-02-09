@@ -13,16 +13,14 @@
 # limitations under the License.
 
 import json
-import os
 
+import pkg_resources
 from hamcrest import equal_to
 
 
 def open_fixture(filename):
-    return open(os.path.dirname(__file__) + "/fixtures/%s" % filename, "r")
+    return open(pkg_resources.resource_filename('netman.api', 'doc_config/api_samples/' + filename), "r")
 
 
 def matches_fixture(filename):
     return equal_to(json.load(open_fixture(filename)))
-
-

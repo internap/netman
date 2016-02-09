@@ -85,7 +85,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_vlans.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_vlans.json
             :language: json
 
         """
@@ -105,7 +105,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_vlans_vlan.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_vlans_vlan.json
             :language: json
 
         """
@@ -123,7 +123,7 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans.json
                 :language: json
                 :emphasize-lines: 2
 
@@ -158,13 +158,13 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans_vlanid_ips.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_ips.json
                 :language: json
                 :emphasize-lines: 2-3
 
             or
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans_vlanid_ips.txt
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_ips.txt
         """
 
         switch.add_ip_to_vlan(vlan_number, validated_ip_network)
@@ -197,7 +197,7 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans_vlanid_vrrp_groups.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_vrrp_groups.json
                 :language: json
                 :emphasize-lines: 2-3
 
@@ -238,7 +238,7 @@ class SwitchApi(SwitchApiBase):
         :arg int vlan_number: Vlan number, between 1 and 4096
         :arg int direction: ``in`` or ``out``
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_vlans_vlanid_accessgroups_in.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_vlans_vlanid_accessgroups_in.txt
         """
 
         switch.set_vlan_access_group(vlan_number, direction, access_group_name)
@@ -269,7 +269,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_interfaces.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_interfaces.json
             :language: json
 
         """
@@ -351,7 +351,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_accessvlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_accessvlan.txt
 
         """
 
@@ -381,7 +381,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_accessvlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_accessvlan.txt
 
         """
 
@@ -411,7 +411,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_interfaces_intname_trunkvlans.txt
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_interfaces_intname_trunkvlans.txt
 
         """
         switch.add_trunk_vlan(interface, vlan_number)
@@ -441,7 +441,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_interfaces_intname_trunkvlans.txt
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_interfaces_intname_trunkvlans.txt
 
         """
         switch.add_bond_trunk_vlan(bond_number, vlan_number)
@@ -471,7 +471,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_nativevlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_nativevlan.txt
 
         """
 
@@ -501,7 +501,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_nativevlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_nativevlan.txt
 
         """
 
@@ -532,7 +532,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bond_v2.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_bond_v2.json
             :language: json
 
         """
@@ -552,7 +552,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bonds_v2.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_bonds_v2.json
             :language: json
 
         """
@@ -573,7 +573,7 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_bonds.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_bonds.json
                 :language: json
                 :emphasize-lines: 2
 
@@ -607,7 +607,7 @@ class SwitchApi(SwitchApiBase):
         :arg int bond_number: Bond number
         :arg str bond_link_speed: Bond link speed
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_bonds_link_speed.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_bonds_link_speed.txt
         """
 
         switch.set_bond_link_speed(bond_number, bond_link_speed)
@@ -624,7 +624,7 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_bond_master.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_bond_master.txt
         """
 
         switch.add_interface_to_bond(interface_id, bond_number)
@@ -653,7 +653,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. A long interface description text
+            A long interface description text
         """
 
         switch.set_interface_description(interface_id, description)
@@ -682,7 +682,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. A long interface description text
+            A long interface description text
         """
 
         switch.set_bond_description(bond_number, description)
@@ -711,7 +711,7 @@ class SwitchApi(SwitchApiBase):
 
         :arg bool edge: Activates edge mode
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_spanningtree.json
         """
 
         switch.edit_bond_spanning_tree(bond_number, **params)
@@ -728,7 +728,7 @@ class SwitchApi(SwitchApiBase):
 
         :arg bool edge: Activates edge mode
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_spanningtree.json
         """
 
         switch.edit_interface_spanning_tree(interface_id, **params)
@@ -745,7 +745,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int vlan_number: Vlan number, between 1 and 4096
         :body:
-            .. DEFAULT_LAN
+            DEFAULT_LAN
         """
 
         switch.set_vlan_vrf(vlan_number, vrf_name)
@@ -774,7 +774,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int vlan_number: Vlan number, between 1 and 4096
         :body:
-            .. IP address of the DHCP server or its relay
+            IP address of the DHCP server or its relay
         """
 
         switch.add_dhcp_relay_server(vlan_number=vlan_number, ip_address=validated_ip_network.ip)

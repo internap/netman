@@ -23,7 +23,8 @@ from netman.api.objects import info
 
 
 class NetmanApi(object):
-    def __init__(self, get_distribution_callback=get_distribution):
+    def __init__(self, switch_factory=None, get_distribution_callback=get_distribution):
+        self.switch_factory = switch_factory
         self.app = None
         self.get_distribution = get_distribution_callback
 
@@ -47,7 +48,7 @@ class NetmanApi(object):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_info.json
+        .. literalinclude:: ../doc_config/api_samples/get_info.json
             :language: json
 
         """
@@ -55,7 +56,8 @@ class NetmanApi(object):
 
         return 200, info.to_api(
             status='running',
-            version=self.get_distribution('netman').version
+            version=self.get_distribution('netman').version,
+            lock_provider=_class_fqdn(self.switch_factory.lock_factory)
         )
 
     def api_docs(self, filename=None):
@@ -64,3 +66,7 @@ class NetmanApi(object):
 
         """
         return send_from_directory(os.path.dirname(__file__) + "/doc_generated/html/", filename or "index.html")
+
+
+def _class_fqdn(obj):
+    return "{}.{}".format(obj.__module__, obj.__class__.__name__)
