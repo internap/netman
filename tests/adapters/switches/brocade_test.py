@@ -110,6 +110,7 @@ class BrocadeTest(unittest.TestCase):
     def test_get_vlans(self):
         self.shell_mock.should_receive("do").with_args("show running-config vlan | begin vlan").once().ordered().and_return([
             "vlan 1 name DEFAULT-VLAN",
+            ""
             " no untagged ethe 1/1 ethe 1/3 to 1/22",
             "!",
             "vlan 201",
@@ -118,6 +119,7 @@ class BrocadeTest(unittest.TestCase):
             "!",
             "vlan 2222 name your-name-is-way-too-long-for-t",
             " tagged ethe 1/1",
+            " untagged ethe 1/2",
             "!",
             "vlan 3333 name some-name",
             "!",
@@ -168,7 +170,8 @@ class BrocadeTest(unittest.TestCase):
         ])
 
         self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
-            VlanDisplayBuilder(1, 'DEFAULT-VLAN').with_tagged_ports("ethe 1/2 ethe 1/23 to 1/24").to_strings()
+            VlanDisplayBuilder(1, 'DEFAULT-VLAN').with_tagged_ports("ethe 1/2 ethe 1/23 to 1/24")
+                                                 .to_strings()
         )
 
         vlan1, vlan201, vlan2222, vlan3333 = self.switch.get_vlans()
@@ -213,7 +216,7 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(vlan1.interfaces, equal_to(["ethernet 1/2", "ethernet 1/23", "ethernet 1/24"]))
         assert_that(vlan201.interfaces, equal_to(["ethernet 1/1"]))
-        assert_that(vlan2222.interfaces, equal_to(["ethernet 1/1"]))
+        assert_that(vlan2222.interfaces, equal_to(["ethernet 1/1", "ethernet 1/2"]))
         assert_that(vlan3333.interfaces, equal_to([]))
 
     def test_get_vlan_with_no_interface(self):

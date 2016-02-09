@@ -375,6 +375,13 @@ class Brocade(SwitchBase):
                 if current_vlan:
                     add_interface_vlan_data(current_vlan, int_vlan_data)
 
+    def expand_no_untagged_interface_on_vlans(self, vlans):
+        for vlan in vlans:
+            if vlan.has_no_untagged_interface is True:
+                temp_vlan = self._get_vlan(vlan.number)
+                vlan.interfaces = temp_vlan.interfaces
+                vlan.has_no_untagged_interface = False
+
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
@@ -429,14 +436,6 @@ class Brocade(SwitchBase):
     def _show_vlan(self, vlan_number):
         return self.shell.do("show vlan {}".format(vlan_number))
 
-    def expand_no_untagged_interface_on_vlans(self, vlans):
-        for vlan in vlans:
-            if vlan.has_no_untagged_interface:
-                temp_vlan = self._get_vlan(vlan.number)
-                vlan.interfaces = temp_vlan.interfaces
-                vlan.has_no_untagged_interface = False
-
-
 def parse_vlan(vlan_data):
     regex.match("^vlan (\d+).*", vlan_data[0])
     current_vlan = VlanBrocade(int(regex[0]))
@@ -449,9 +448,9 @@ def parse_vlan(vlan_data):
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):
             current_vlan.vlan_interface_name = regex[0]
-        elif regex.match("^ tagged (.*)$", line):
-            for name in _to_real_names(parse_if_ranges(regex[0])):
-                current_vlan.interfaces.append(name)
+        elif regex.match("^ (untagged|tagged) (.*)$", line):
+            for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                current_vlan.interfaces.append(real_name)
         elif regex.match("^ no untagged (.*)$", line):
             current_vlan.has_no_untagged_interface = True
 
