@@ -16,6 +16,7 @@ import importlib
 import json
 import __builtin__
 import uuid
+import warnings
 
 import requests
 from netman import raw_or_json
@@ -23,6 +24,7 @@ from netman.api import NETMAN_API_VERSION
 
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_base import SwitchBase
 from netman.api.objects import vlan
 from netman.api.objects import interface
@@ -30,6 +32,7 @@ from netman.api.objects import bond
 
 
 def factory(switch_descriptor):
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instanciate a switch", DeprecationWarning)
     return RemoteSwitch(switch_descriptor)
 
 
@@ -123,7 +126,7 @@ class RemoteSwitch(SwitchBase):
             direction={IN: 'in', OUT: 'out'}[direction]
         ), raw_data=name)
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         self.delete('/vlans/{vlan_number}/access-groups/{direction}'.format(
             vlan_number=vlan_number,
             direction={IN: 'in', OUT: 'out'}[direction]
@@ -145,7 +148,7 @@ class RemoteSwitch(SwitchBase):
             vlan_number=vlan_number
         ), raw_data=str(vrf_name))
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         self.delete('/vlans/{vlan_number}/vrf-forwarding'.format(vlan_number=vlan_number))
 
     def set_access_mode(self, interface_id):
@@ -163,19 +166,19 @@ class RemoteSwitch(SwitchBase):
     def set_access_vlan(self, interface_id, vlan):
         self.put("/interfaces/" + interface_id + '/access-vlan', raw_data=str(vlan))
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/access-vlan')
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         self.put("/interfaces/" + interface_id + '/trunk-native-vlan', raw_data=str(vlan))
 
-    def remove_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/trunk-native-vlan')
 
-    def configure_bond_native_vlan(self, bond_number, vlan):
+    def set_bond_native_vlan(self, bond_number, vlan):
         self.put("/bonds/" + str(bond_number) + '/trunk-native-vlan', raw_data=str(vlan))
 
-    def remove_bond_native_vlan(self, bond_number):
+    def unset_bond_native_vlan(self, bond_number):
         self.delete("/bonds/" + str(bond_number) + '/trunk-native-vlan')
 
     def add_trunk_vlan(self, interface_id, vlan):
@@ -193,13 +196,13 @@ class RemoteSwitch(SwitchBase):
     def set_interface_description(self, interface_id, description):
         self.put("/interfaces/" + interface_id + '/description', raw_data=description)
 
-    def remove_interface_description(self, interface_id):
+    def unset_interface_description(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/description')
 
     def set_bond_description(self, bond_number, description):
         self.put("/bonds/" + str(bond_number) + '/description', raw_data=description)
 
-    def remove_bond_description(self, bond_number):
+    def unset_bond_description(self, bond_number):
         self.delete("/bonds/" + str(bond_number) + '/description')
 
     def edit_interface_spanning_tree(self, interface_id, edge=None):
@@ -209,11 +212,8 @@ class RemoteSwitch(SwitchBase):
 
         self.put("/interfaces/" + interface_id + '/spanning-tree', data=data)
 
-    def openup_interface(self, interface_id):
-        self.put("/interfaces/" + interface_id + '/shutdown', raw_data='false')
-
-    def shutdown_interface(self, interface_id):
-        self.put("/interfaces/" + interface_id + '/shutdown', raw_data='true')
+    def set_interface_state(self, interface_id, state):
+        self.put("/interfaces/" + interface_id + '/shutdown', raw_data='true' if state is OFF else 'false')
 
     def add_bond(self, number):
         self.post("/bonds", data={'number': number})
@@ -255,7 +255,7 @@ class RemoteSwitch(SwitchBase):
         self.delete("/vlans/{}/dhcp-relay-server/{}".format(
             vlan_number, ip_address))
 
-    def enable_lldp(self, interface_id, enabled):
+    def set_interface_lldp_state(self, interface_id, enabled):
         self.put("/interfaces/{}/lldp".format(interface_id),
                  raw_data=_get_json_boolean(enabled))
 

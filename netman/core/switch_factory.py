@@ -11,31 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from netman.core.objects.flow_control_switch import FlowControlSwitch
 
-from netman.adapters.switches import cisco, juniper, remote, dell, dell10g, brocade_factory_ssh, brocade_factory_telnet
+from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade
+from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
+factories = {
+    "cisco": cisco.ssh,
+    "brocade": brocade.ssh,
+    "brocade_ssh": brocade.ssh,
+    "brocade_telnet": brocade.telnet,
+    "juniper": juniper.standard.netconf,
+    "juniper_qfx_copper": juniper.qfx_copper.netconf,
+    "dell": dell.ssh,
+    "dell_ssh": dell.ssh,
+    "dell_telnet": dell.telnet,
+    "dell10g": dell10g.ssh,
+    "dell10g_ssh": dell10g.ssh,
+    "dell10g_telnet": dell10g.telnet,
+}
 
 class SwitchFactory(object):
 
     def __init__(self, switch_source, lock_factory):
         self.switch_source = switch_source
         self.lock_factory = lock_factory
-
-        self.factories = {
-            "cisco": cisco.factory,
-            "brocade": brocade_factory_ssh,
-            "brocade_ssh": brocade_factory_ssh,
-            "brocade_telnet": brocade_factory_telnet,
-            "juniper": juniper.standard_factory,
-            "juniper_qfx_copper": juniper.qfx_copper_factory,
-            "dell": dell.factory_ssh,
-            "dell_ssh": dell.factory_ssh,
-            "dell_telnet": dell.factory_telnet,
-            "dell10g": dell10g.factory_ssh,
-            "dell10g_ssh": dell10g.factory_ssh,
-            "dell10g_telnet": dell10g.factory_telnet,
-        }
 
         self.locks = {}
 
@@ -47,10 +48,9 @@ class SwitchFactory(object):
 
     def get_switch_by_descriptor(self, switch_descriptor):
         if switch_descriptor.netman_server:
-            return remote.factory(switch_descriptor)
-        return self.factories[switch_descriptor.model](
-            switch_descriptor,
-            lock=self.get_lock(switch_descriptor))
+            return RemoteSwitch(switch_descriptor)
+        return FlowControlSwitch(factories[switch_descriptor.model](switch_descriptor),
+                                 lock=self.get_lock(switch_descriptor))
 
     def get_lock(self, switch_descriptor):
         key = switch_descriptor.hostname

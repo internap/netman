@@ -12,15 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 
-import pkg_resources
-from hamcrest import equal_to
-
-
-def open_fixture(filename):
-    return open(pkg_resources.resource_filename('netman.api', 'doc_config/api_samples/' + filename), "r")
-
-
-def matches_fixture(filename):
-    return equal_to(json.load(open_fixture(filename)))
+ON = "ON"
+OFF = "OFF"

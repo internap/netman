@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
+
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.interface import Interface
@@ -27,21 +30,22 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
 from netman.core.objects.switch_base import SwitchBase
 
 
-__all__ = ['factory_ssh', 'factory_telnet', 'Dell']
+def ssh(switch_descriptor):
+    return Dell(switch_descriptor, shell_factory=SshClient)
+
+
+def telnet(switch_descriptor):
+    return Dell(switch_descriptor, shell_factory=TelnetClient)
 
 
 def factory_ssh(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Dell(switch_descriptor=switch_descriptor, shell_factory=SshClient),
-        lock=lock,
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
+    return FlowControlSwitch(wrapped_switch=ssh(switch_descriptor), lock=lock)
 
 
 def factory_telnet(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Dell(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
-        lock=lock,
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
+    return FlowControlSwitch(wrapped_switch=telnet(switch_descriptor), lock=lock)
 
 
 class Dell(SwitchBase):
@@ -83,13 +87,9 @@ class Dell(SwitchBase):
         self.shell.do("copy running-config startup-config", wait_for="? (y/n) ")
         self.shell.send_key("y")
 
-    def openup_interface(self, interface_id):
+    def set_interface_state(self, interface_id, state):
         with self.config(), self.interface(interface_id):
-            self.shell.do('no shutdown')
-
-    def shutdown_interface(self, interface_id):
-        with self.config(), self.interface(interface_id):
-            self.shell.do('shutdown')
+            self.shell.do('shutdown' if state is OFF else 'no shutdown')
 
     def get_vlans(self):
         result = self.shell.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
@@ -165,11 +165,11 @@ class Dell(SwitchBase):
                 .on_result_matching(".*VLAN ID not found.*", UnknownVlan, vlan)\
                 .on_result_matching(".*Interface not in Access Mode.*", InterfaceInWrongPortMode, "trunk")
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.shell.do("no switchport access vlan")
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         interface_data = self.get_interface_data(interface_id)
 
         actual_port_mode = resolve_port_mode(interface_data)
@@ -184,7 +184,7 @@ class Dell(SwitchBase):
 
             self.set("switchport general pvid {}", vlan).on_any_result(UnknownVlan, vlan)
 
-    def remove_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         interface_data = self.get_interface_data(interface_id)
         assert_native_vlan_is_set(interface_id, interface_data)
 
@@ -227,7 +227,7 @@ class Dell(SwitchBase):
             with self.config(), self.interface(interface_id):
                 [self.shell.do(cmd) for cmd in commands]
 
-    def enable_lldp(self, interface_id, enabled):
+    def set_interface_lldp_state(self, interface_id, enabled):
         with self.config(), self.interface(interface_id):
             self.set("{}lldp transmit", "" if enabled else "no ")
             self.set("{}lldp receive", "" if enabled else "no ")
@@ -254,13 +254,13 @@ class Dell(SwitchBase):
         with NamedBond(number) as bond:
             return self.remove_trunk_vlan(bond.name, vlan)
 
-    def configure_bond_native_vlan(self, number, vlan):
+    def set_bond_native_vlan(self, number, vlan):
         with NamedBond(number) as bond:
-            return self.configure_native_vlan(bond.name, vlan)
+            return self.set_interface_native_vlan(bond.name, vlan)
 
-    def remove_bond_native_vlan(self, number):
+    def unset_bond_native_vlan(self, number):
         with NamedBond(number) as bond:
-            return self.remove_native_vlan(bond.name)
+            return self.unset_interface_native_vlan(bond.name)
 
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')

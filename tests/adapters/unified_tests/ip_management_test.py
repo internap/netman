@@ -104,8 +104,8 @@ class IpManagementTest(ConfiguredTestCase):
         assert_that(vlan2345.access_groups[IN], equal_to("my-group"))
         assert_that(vlan2345.access_groups[OUT], equal_to("your-group"))
 
-        self.client.remove_vlan_access_group(2345, direction=IN)
-        self.client.remove_vlan_access_group(2345, direction=OUT)
+        self.client.unset_vlan_access_group(2345, direction=IN)
+        self.client.unset_vlan_access_group(2345, direction=OUT)
 
         vlans = self.client.get_vlans()
         vlan2345 = next(vlan for vlan in vlans if vlan.number == 2345)

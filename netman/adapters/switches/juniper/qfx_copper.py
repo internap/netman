@@ -14,8 +14,12 @@
 
 from ncclient.xml_ import to_ele
 
-from netman.adapters.switches.juniper import JuniperCustomStrategies
-from netman.adapters.switches.juniper.base import interface_replace, bond_name
+from netman.adapters.switches.juniper.base import interface_replace, bond_name, Juniper
+from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
+
+
+def netconf(switch_descriptor):
+    return Juniper(switch_descriptor, custom_strategies=JuniperQfxCopperCustomStrategies())
 
 
 class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):

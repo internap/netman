@@ -24,18 +24,22 @@ from hamcrest import assert_that, has_length, equal_to, contains_string, has_key
 from ncclient.devices.junos import JunosDeviceHandler
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import NCElement, to_ele, to_xml
+from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
 
 from netman.adapters.switches import juniper
-from netman.adapters.switches.juniper import Juniper, JuniperCustomStrategies
+from netman.adapters.switches.juniper import Juniper
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
     BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from tests import ignore_deprecation_warnings
 
 
+@ignore_deprecation_warnings
 def test_factory():
     lock = mock.Mock()
     switch = juniper.standard_factory(SwitchDescriptor(hostname='hostname', model='juniper', username='username', password='password', port=22), lock)
@@ -53,10 +57,7 @@ def test_factory():
 class JuniperTest(unittest.TestCase):
 
     def setUp(self):
-        self.switch = Juniper(
-            switch_descriptor=SwitchDescriptor(model='juniper', hostname="toto"),
-            custom_strategies=JuniperCustomStrategies()
-        )
+        self.switch = juniper.standard.netconf(SwitchDescriptor(model='juniper', hostname="toto"))
 
         self.netconf_mock = flexmock()
         self.switch.netconf = self.netconf_mock
@@ -2129,7 +2130,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
-    def test_unset_access_vlan_removes_the_vlan_members(self):
+    def test_unset_interface_access_vlan_removes_the_vlan_members(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2177,9 +2178,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.unset_access_vlan("ge-0/0/6")
+        self.switch.unset_interface_access_vlan("ge-0/0/6")
 
-    def test_unset_access_vlan_with_no_vlan_raises(self):
+    def test_unset_interface_access_vlan_with_no_vlan_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2206,11 +2207,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(AccessVlanNotSet) as expect:
-            self.switch.unset_access_vlan("ge-0/0/6")
+            self.switch.unset_interface_access_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Access Vlan is not set on interface ge-0/0/6"))
 
-    def test_unset_access_vlan_on_trunk_mode_raises(self):
+    def test_unset_interface_access_vlan_on_trunk_mode_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2241,11 +2242,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
-            self.switch.unset_access_vlan("ge-0/0/6")
+            self.switch.unset_interface_access_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a trunk mode interface"))
 
-    def test_unset_access_vlan_on_unknown_interface_raises(self):
+    def test_unset_interface_access_vlan_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2258,11 +2259,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.unset_access_vlan("ge-0/0/6")
+            self.switch.unset_interface_access_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
-    def test_set_native_vlan_on_interface_with_trunk_mode_and_no_native_vlan_succeeds_easily(self):
+    def test_set_interface_native_vlan_on_interface_with_trunk_mode_and_no_native_vlan_succeeds_easily(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2312,9 +2313,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.configure_native_vlan("ge-0/0/6", 1000)
+        self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
-    def test_set_native_vlan_on_interface_that_already_has_it_does_nothing(self):
+    def test_set_interface_native_vlan_on_interface_that_already_has_it_does_nothing(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2347,9 +2348,9 @@ class JuniperTest(unittest.TestCase):
 
         self.netconf_mock.should_receive("edit_config").never()
 
-        self.switch.configure_native_vlan("ge-0/0/6", 1000)
+        self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
-    def test_set_native_vlan_on_interface_that_has_no_port_mode_sets_it(self):
+    def test_set_interface_native_vlan_on_interface_that_has_no_port_mode_sets_it(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2399,9 +2400,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.configure_native_vlan("ge-0/0/6", 1000)
+        self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
-    def test_set_native_vlan_on_interface_replaces_the_actual_ones(self):
+    def test_set_interface_native_vlan_on_interface_replaces_the_actual_ones(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2456,9 +2457,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.configure_native_vlan("ge-0/0/6", 1000)
+        self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
-    def test_set_native_vlan_on_interface_in_access_mode_should_raise(self):
+    def test_set_interface_native_vlan_on_interface_in_access_mode_should_raise(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2491,11 +2492,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
-            self.switch.configure_native_vlan("ge-0/0/6", 1000)
+            self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
 
-    def test_set_native_vlan_on_interface_that_is_already_a_member_of_the_trunk_raises(self):
+    def test_set_interface_native_vlan_on_interface_that_is_already_a_member_of_the_trunk_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2539,11 +2540,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(VlanAlreadyInTrunk) as expect:
-            self.switch.configure_native_vlan("ge-0/0/6", 1000)
+            self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
         assert_that(str(expect.exception), contains_string("Vlan 1000 cannot be set as native vlan because it is already a member of the trunk"))
 
-    def test_set_native_vlan_on_unknown_vlan_raises(self):
+    def test_set_interface_native_vlan_on_unknown_vlan_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2576,11 +2577,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.configure_native_vlan("ge-0/0/6", 1000)
+            self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
         assert_that(str(expect.exception), contains_string("Vlan 1000 not found"))
 
-    def test_set_native_vlan_on_unknown_interface_raises(self):
+    def test_set_interface_native_vlan_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2600,11 +2601,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.configure_native_vlan("ge-0/0/6", 1000)
+            self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
-    def test_remove_native_vlan_succeeds(self):
+    def test_unset_interface_native_vlan_succeeds(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2649,9 +2650,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.remove_native_vlan("ge-0/0/6")
+        self.switch.unset_interface_native_vlan("ge-0/0/6")
 
-    def test_remove_native_vlan_when_none_is_set_raises(self):
+    def test_unset_interface_native_vlan_when_none_is_set_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2678,11 +2679,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(NativeVlanNotSet) as expect:
-            self.switch.remove_native_vlan("ge-0/0/6")
+            self.switch.unset_interface_native_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Trunk native Vlan is not set on interface ge-0/0/6"))
 
-    def test_remove_native_vlan_on_unknown_interface_raises(self):
+    def test_unset_interface_native_vlan_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2695,7 +2696,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("edit_config").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_native_vlan("ge-0/0/6")
+            self.switch.unset_interface_native_vlan("ge-0/0/6")
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
@@ -3352,7 +3353,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
-    def test_remove_interface_description_succeeds(self):
+    def test_unset_interface_description_succeeds(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -3366,9 +3367,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.remove_interface_description("ge-0/0/6")
+        self.switch.unset_interface_description("ge-0/0/6")
 
-    def test_remove_interface_description_on_unkown_interface_raises(self):
+    def test_unset_interface_description_on_unkown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -3389,11 +3390,11 @@ class JuniperTest(unittest.TestCase):
             </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_interface_description("ge-0/0/99")
+            self.switch.unset_interface_description("ge-0/0/99")
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
-    def test_remove_interface_description_on_interface_with_no_description_just_ignores_it(self):
+    def test_unset_interface_description_on_interface_with_no_description_just_ignores_it(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -3412,7 +3413,7 @@ class JuniperTest(unittest.TestCase):
             <error-message>statement not found: description</error-message>
             </rpc-error>"""))))
 
-        self.switch.remove_interface_description("ge-0/0/99")
+        self.switch.unset_interface_description("ge-0/0/99")
 
     def test_edit_interface_spanning_tree_enable_edge_from_nothing(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -3839,7 +3840,7 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.openup_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", ON)
 
     def test_enable_interface_on_unkown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
@@ -3862,7 +3863,7 @@ class JuniperTest(unittest.TestCase):
             </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("ge-0/0/99")
+            self.switch.set_interface_state("ge-0/0/99", ON)
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
@@ -3880,7 +3881,7 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.shutdown_interface("ge-0/0/6")
+        self.switch.set_interface_state("ge-0/0/6", OFF)
 
     def test_disable_interface_on_unkown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
@@ -3903,7 +3904,7 @@ class JuniperTest(unittest.TestCase):
             </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("ge-0/0/99")
+            self.switch.set_interface_state("ge-0/0/99", OFF)
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
@@ -4673,7 +4674,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if3.trunk_vlans, equal_to([999, 1000, 1001]))
         assert_that(if3.members, equal_to(['ge-1/0/1']))
 
-    def test_enable_lldp_from_nothing(self):
+    def test_set_interface_lldp_state_from_nothing(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -4713,9 +4714,9 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.enable_lldp('ge-0/0/6', True)
+        self.switch.set_interface_lldp_state('ge-0/0/6', True)
 
-    def test_enable_lldp_when_disabled(self):
+    def test_set_interface_lldp_state_when_disabled(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -4764,7 +4765,7 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.enable_lldp('ge-0/0/6', True)
+        self.switch.set_interface_lldp_state('ge-0/0/6', True)
 
     def test_disable_lldp_when_disabled(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -4802,7 +4803,7 @@ class JuniperTest(unittest.TestCase):
 
         self.netconf_mock.should_receive("edit_config").never()
 
-        self.switch.enable_lldp('ge-0/0/6', False)
+        self.switch.set_interface_lldp_state('ge-0/0/6', False)
 
     def test_disable_lldp_when_enabled(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -4845,58 +4846,58 @@ class JuniperTest(unittest.TestCase):
             </config>
         """)).and_return(an_ok_response())
 
-        self.switch.enable_lldp('ge-0/0/6', False)
+        self.switch.set_interface_lldp_state('ge-0/0/6', False)
 
     def test_bond_port_mode_access(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_access_mode = mock.Mock()
         switch.set_bond_access_mode(6)
         switch.set_access_mode.assert_called_with('ae6')
 
     def test_bond_port_mode_trunk(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_trunk_mode = mock.Mock()
         switch.set_bond_trunk_mode(6)
         switch.set_trunk_mode.assert_called_with('ae6')
 
     def test_set_bond_description_succeeds(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_interface_description = mock.Mock()
         switch.set_bond_description(6, "Resistance is futile")
         switch.set_interface_description.assert_called_with('ae6', "Resistance is futile")
 
-    def test_remove_bond_description_succeeds(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
-        switch.remove_interface_description = mock.Mock()
-        switch.remove_bond_description(6)
-        switch.remove_interface_description.assert_called_with('ae6')
+    def test_unset_bond_description_succeeds(self):
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
+        switch.unset_interface_description = mock.Mock()
+        switch.unset_bond_description(6)
+        switch.unset_interface_description.assert_called_with('ae6')
 
     def test_add_bond_trunk_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.add_trunk_vlan = mock.Mock()
         switch.add_bond_trunk_vlan(6, 1000)
         switch.add_trunk_vlan.assert_called_with('ae6', 1000)
 
     def test_remove_bond_trunk_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.remove_trunk_vlan = mock.Mock()
         switch.remove_bond_trunk_vlan(6, 1000)
         switch.remove_trunk_vlan.assert_called_with('ae6', 1000)
 
-    def test_configure_bond_native_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
-        switch.configure_native_vlan = mock.Mock()
-        switch.configure_bond_native_vlan(6, 1000)
-        switch.configure_native_vlan.assert_called_with('ae6', 1000)
+    def test_set_bond_native_vlan(self):
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
+        switch.set_interface_native_vlan = mock.Mock()
+        switch.set_bond_native_vlan(6, 1000)
+        switch.set_interface_native_vlan.assert_called_with('ae6', 1000)
 
-    def test_remove_bond_native_vlan(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
-        switch.remove_native_vlan = mock.Mock()
-        switch.remove_bond_native_vlan(6)
-        switch.remove_native_vlan.assert_called_with('ae6')
+    def test_unset_bond_native_vlan(self):
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
+        switch.unset_interface_native_vlan = mock.Mock()
+        switch.unset_bond_native_vlan(6)
+        switch.unset_interface_native_vlan.assert_called_with('ae6')
 
     def test_edit_bond_spanning_tree(self):
-        switch = Juniper(SwitchDescriptor(model='', hostname=''), custom_strategies=JuniperCustomStrategies())
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.edit_interface_spanning_tree = mock.Mock()
         switch.edit_bond_spanning_tree(6, edge=False)
         switch.edit_interface_spanning_tree.assert_called_with('ae6', edge=False)

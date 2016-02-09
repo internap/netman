@@ -18,6 +18,7 @@ from netaddr import IPNetwork, IPAddress
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan, UnknownInterface, \
     UnknownResource
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_switches
 
@@ -76,7 +77,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.set_access_vlan(self.test_port, vlan=2999)
 
-        self.client.unset_access_vlan(self.test_port)
+        self.client.unset_interface_access_vlan(self.test_port)
 
         self.client.remove_vlan(2999)
 
@@ -99,9 +100,9 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.set_trunk_mode(self.test_port)
 
-        self.client.configure_native_vlan(self.test_port, vlan=2999)
+        self.client.set_interface_native_vlan(self.test_port, vlan=2999)
 
-        self.client.remove_native_vlan(self.test_port)
+        self.client.unset_interface_native_vlan(self.test_port)
 
         self.client.set_access_mode(self.test_port)
 
@@ -114,7 +115,7 @@ class VlanManagementTest(ConfiguredTestCase):
         self.client.add_vlan(1400)
 
         self.client.set_trunk_mode(self.test_port)
-        self.client.configure_native_vlan(self.test_port, vlan=1200)
+        self.client.set_interface_native_vlan(self.test_port, vlan=1200)
         self.client.add_trunk_vlan(self.test_port, vlan=1100)
         self.client.add_trunk_vlan(self.test_port, vlan=1300)
         self.client.add_trunk_vlan(self.test_port, vlan=1400)
@@ -155,7 +156,7 @@ class VlanManagementTest(ConfiguredTestCase):
             self.client.add_trunk_vlan(self.test_port, vlan=2999)
 
         with self.assertRaises(UnknownVlan):
-            self.client.configure_native_vlan(self.test_port, vlan=2999)
+            self.client.set_interface_native_vlan(self.test_port, vlan=2999)
 
         with self.assertRaises(UnknownVlan):
             self.client.add_trunk_vlan(self.test_port, vlan=2999)
@@ -169,10 +170,10 @@ class VlanManagementTest(ConfiguredTestCase):
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_invalid_interface_parameter_fails(self):
         with self.assertRaises(UnknownInterface):
-            self.client.openup_interface('42/9999')
+            self.client.set_interface_state('42/9999', ON)
 
         with self.assertRaises(UnknownInterface):
-            self.client.shutdown_interface('42/9999')
+            self.client.set_interface_state('42/9999', OFF)
 
         with self.assertRaises(UnknownInterface):
             self.client.set_access_mode('42/9999')
@@ -185,7 +186,7 @@ class VlanManagementTest(ConfiguredTestCase):
             self.client.set_access_vlan('42/9999', 1234)
 
         with self.assertRaises(UnknownInterface):
-            self.client.unset_access_vlan('42/9999')
+            self.client.unset_interface_access_vlan('42/9999')
 
         # TODO(jprovost) Unify switch adapters to raise the same exception
         # Dell 10G raises UnknownInterface
@@ -198,7 +199,7 @@ class VlanManagementTest(ConfiguredTestCase):
         # Dell 10G raises NativeVlanNotSet
         # Cisco does not raise
         try:
-            self.client.remove_native_vlan(self.test_port)
+            self.client.unset_interface_native_vlan(self.test_port)
         except UnknownResource:
             pass
 
@@ -214,7 +215,7 @@ class VlanManagementTest(ConfiguredTestCase):
             self.client.remove_trunk_vlan('42/9999', 2999)
 
         with self.assertRaises(UnknownInterface):
-            self.client.configure_native_vlan('42/9999', 2999)
+            self.client.set_interface_native_vlan('42/9999', 2999)
 
     @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
     def test_vrf_management(self):
@@ -226,7 +227,7 @@ class VlanManagementTest(ConfiguredTestCase):
         vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_('DEFAULT-LAN'))
 
-        self.client.remove_vlan_vrf(2999)
+        self.client.unset_vlan_vrf(2999)
 
         vlan = self.get_vlan_from_list(2999)
         assert_that(vlan.vrf_forwarding, is_(none()))

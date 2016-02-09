@@ -23,6 +23,7 @@ from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVl
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
     BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
@@ -264,7 +265,7 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         interface = self.get_interface(interface_id)
 
         if interface.port_mode == TRUNK:
@@ -278,7 +279,7 @@ class Juniper(SwitchBase):
         else:
             raise AccessVlanNotSet(interface_id)
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         update_attributes = []
 
         config = self.query(all_interfaces, all_vlans)
@@ -312,7 +313,7 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
-    def remove_native_vlan(self, interface_id):
+    def unset_interface_native_vlan(self, interface_id):
         interface = self.get_interface(interface_id)
 
         if interface.trunk_native_vlan is None:
@@ -379,7 +380,7 @@ class Juniper(SwitchBase):
             self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
-    def remove_interface_description(self, interface_id):
+    def unset_interface_description(self, interface_id):
         update = Update()
         update.add_interface(interface_main_update(interface_id, [
             to_ele("<description operation=\"delete\" />")
@@ -409,10 +410,10 @@ class Juniper(SwitchBase):
 
                 self._push(update)
 
-    def shutdown_interface(self, interface_id):
+    def set_interface_state(self, interface_id, state):
         update = Update()
         update.add_interface(interface_main_update(interface_id, [
-            to_ele("<disable />")
+            to_ele("<disable />") if state is OFF else to_ele("<enable />")
         ]))
 
         try:
@@ -421,19 +422,9 @@ class Juniper(SwitchBase):
             self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
-    def openup_interface(self, interface_id):
-        update = Update()
-        update.add_interface(interface_main_update(interface_id, [
-            to_ele("<enable />")
-        ]))
 
-        try:
-            self._push(update)
-        except RPCError as e:
-            self.logger.info("actual setting error was {}".format(e))
-            raise UnknownInterface(interface_id)
 
-    def enable_lldp(self, interface_id, enabled):
+    def set_interface_lldp_state(self, interface_id, enabled):
         config = self.query(one_interface(interface_id), one_protocol_interface("lldp", interface_id))
         self.get_interface_config(interface_id, config)
 
@@ -543,8 +534,8 @@ class Juniper(SwitchBase):
     def set_bond_description(self, number, description):
         return self.set_interface_description(bond_name(number), description)
 
-    def remove_bond_description(self, number):
-        return self.remove_interface_description(bond_name(number))
+    def unset_bond_description(self, number):
+        return self.unset_interface_description(bond_name(number))
 
     def set_bond_trunk_mode(self, number):
         return self.set_trunk_mode(bond_name(number))
@@ -558,11 +549,11 @@ class Juniper(SwitchBase):
     def remove_bond_trunk_vlan(self, number, vlan):
         return self.remove_trunk_vlan(bond_name(number), vlan)
 
-    def configure_bond_native_vlan(self, number, vlan):
-        return self.configure_native_vlan(bond_name(number), vlan)
+    def set_bond_native_vlan(self, number, vlan):
+        return self.set_interface_native_vlan(bond_name(number), vlan)
 
-    def remove_bond_native_vlan(self, number):
-        return self.remove_native_vlan(bond_name(number))
+    def unset_bond_native_vlan(self, number):
+        return self.unset_interface_native_vlan(bond_name(number))
 
     def edit_bond_spanning_tree(self, number, edge=None):
         return self.edit_interface_spanning_tree(bond_name(number), edge=edge)

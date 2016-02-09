@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import logging
 import re
+import warnings
 
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
 from netman import regex
+from netman.adapters.shell.ssh import SshClient
+from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.switches.util import SubShell, split_on_bang, split_on_dedent, no_output, \
     ResultChecker
 from netman.core.objects.access_groups import IN, OUT
@@ -26,10 +29,19 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVla
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
     BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
+
+
+def ssh(switch_descriptor):
+    return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=SshClient)
+
+
+def telnet(switch_descriptor):
+    return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient)
 
 
 class Brocade(SwitchBase):
@@ -148,18 +160,14 @@ class Brocade(SwitchBase):
             if result:
                 raise UnknownInterface(interface_id)
 
-    def configure_native_vlan(self, interface_id, vlan):
+    def set_interface_native_vlan(self, interface_id, vlan):
         return self.set_access_vlan(interface_id, vlan)
 
-    def openup_interface(self, interface_id):
+    def set_interface_state(self, interface_id, state):
         with self.config(), self.interface(interface_id):
-            self.shell.do("enable")
+            self.shell.do("disable" if state is OFF else "enable")
 
-    def shutdown_interface(self, interface_id):
-        with self.config(), self.interface(interface_id):
-            self.shell.do("disable")
-
-    def unset_access_vlan(self, interface_id):
+    def unset_interface_access_vlan(self, interface_id):
         content = self.shell.do("show vlan brief | include {}"
                               .format(_to_short_name(interface_id)))
         if len(content) == 0:
@@ -171,8 +179,8 @@ class Brocade(SwitchBase):
         with self.config(), self.vlan(int(matches.groups()[0])):
             self.shell.do("no untagged {}".format(interface_id))
 
-    def remove_native_vlan(self, interface_id):
-        return self.unset_access_vlan(interface_id)
+    def unset_interface_native_vlan(self, interface_id):
+        return self.unset_interface_access_vlan(interface_id)
 
     def remove_trunk_vlan(self, interface_id, vlan):
         self._get_vlan(vlan)
@@ -267,7 +275,7 @@ class Brocade(SwitchBase):
             if len(result) > 0 and not result[0].startswith("Warning:"):
                 raise ValueError("Access group name \"{}\" is invalid".format(name))
 
-    def remove_vlan_access_group(self, vlan_number, direction):
+    def unset_vlan_access_group(self, vlan_number, direction):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
         if vlan.access_groups[direction] is None:
@@ -283,7 +291,7 @@ class Brocade(SwitchBase):
             if regex.match("^Error.*", result[0]):
                 raise UnknownVrf(vrf_name)
 
-    def remove_vlan_vrf(self, vlan_number):
+    def unset_vlan_vrf(self, vlan_number):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
         if vlan.vlan_interface_name is None or vlan.vrf_forwarding is None:
             raise VlanVrfNotSet(vlan_number)
@@ -517,3 +525,55 @@ class BrocadeIPNetwork(IPNetwork):
         self.is_secondary = kwargs.pop('is_secondary', False)
 
         super(BrocadeIPNetwork, self).__init__(*args, **kwargs)
+
+
+class BackwardCompatibleBrocade(Brocade):
+    def __init__(self, switch_descriptor, shell_factory):
+        super(BackwardCompatibleBrocade, self).__init__(switch_descriptor, shell_factory)
+
+        self.logger = logging.getLogger(
+                "{module}.{hostname}".format(module=Brocade.__module__,
+                                             hostname=self.switch_descriptor.hostname))
+
+    def add_trunk_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).add_trunk_vlan(_add_ethernet(interface_id), vlan)
+
+    def set_interface_state(self, interface_id, state):
+        return super(BackwardCompatibleBrocade, self).set_interface_state(_add_ethernet(interface_id), state)
+
+    def set_trunk_mode(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).set_trunk_mode(_add_ethernet(interface_id))
+
+    def set_access_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).set_access_vlan(_add_ethernet(interface_id), vlan)
+
+    def set_access_mode(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).set_access_mode(_add_ethernet(interface_id))
+
+    def remove_trunk_vlan(self, interface_id, vlan):
+        super(BackwardCompatibleBrocade, self).remove_trunk_vlan(_add_ethernet(interface_id), vlan)
+
+    def unset_interface_native_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_native_vlan(_add_ethernet(interface_id))
+
+    def unset_interface_access_vlan(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).unset_interface_access_vlan(_add_ethernet(interface_id))
+
+    def interface(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).interface(_add_ethernet(interface_id))
+
+    def set_interface_native_vlan(self, interface_id, vlan):
+        return super(BackwardCompatibleBrocade, self).set_interface_native_vlan(_add_ethernet(interface_id), vlan)
+
+    def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
+                       track_id=None, track_decrement=None):
+        return super(BackwardCompatibleBrocade, self).add_vrrp_group(vlan_number, group_id, ips, priority,
+                                                                     hello_interval, dead_interval,
+                                                                     _add_ethernet(track_id), track_decrement)
+
+
+def _add_ethernet(interface_id):
+    if interface_id is not None and re.match("^\d.*", interface_id):
+        warnings.warn("The brocade interface naming without the \"ethernet\" prefix has been deprecated", DeprecationWarning)
+        return "ethernet {}".format(interface_id)
+    return interface_id

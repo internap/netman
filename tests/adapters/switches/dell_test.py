@@ -21,6 +21,7 @@ from flexmock import flexmock, flexmock_teardown
 from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.switches.util import SubShell
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.adapters.switches import dell
 from netman.adapters.switches.dell import Dell
@@ -29,8 +30,10 @@ from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
     VlanAlreadyExist, UnknownBond
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from tests import ignore_deprecation_warnings
 
 
+@ignore_deprecation_warnings
 def test_factory_ssh():
     lock = mock.Mock()
     descriptor = SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22)
@@ -43,6 +46,7 @@ def test_factory_ssh():
     assert_that(switch.switch_descriptor, is_(descriptor))
 
 
+@ignore_deprecation_warnings
 def test_factory_telnet():
     lock = mock.Mock()
     descriptor = SwitchDescriptor(hostname='hostname', model='dell', username='username', password='password', port=22)
@@ -122,15 +126,15 @@ class DellTest(unittest.TestCase):
         self.switch.shell.full_log = "FULL TRANSACTION LOG"
         self.switch.disconnect()
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_off(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g4").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("shutdown").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.shutdown_interface("ethernet 1/g4")
+        self.switch.set_interface_state("ethernet 1/g4", OFF)
 
-    def test_shutdown_interface_invalid_interface_raises(self):
+    def test_set_interface_state_off_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 99/g99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -138,19 +142,19 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.shutdown_interface("ethernet 99/g99")
+            self.switch.set_interface_state("ethernet 99/g99", OFF)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 99/g99"))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_on(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g4").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().and_return([])
 
-        self.switch.openup_interface("ethernet 1/g4")
+        self.switch.set_interface_state("ethernet 1/g4", ON)
 
-    def test_openup_interface_invalid_interface_raises(self):
+    def test_set_interface_state_on_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 99/g99").once().ordered().and_return([
             "An invalid interface has been used for this function."
@@ -158,7 +162,7 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.openup_interface("ethernet 99/g99")
+            self.switch.set_interface_state("ethernet 99/g99", ON)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 99/g99"))
 
@@ -734,7 +738,7 @@ class DellTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a trunk mode interface"))
 
-    def test_unset_access_vlan(self):
+    def test_unset_interface_access_vlan(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").once().ordered().and_return([
@@ -743,20 +747,20 @@ class DellTest(unittest.TestCase):
             ])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.unset_access_vlan("ethernet 1/g10")
+        self.switch.unset_interface_access_vlan("ethernet 1/g10")
 
-    def test_unset_access_vlan_invalid_interface(self):
+    def test_unset_interface_access_vlan_invalid_interface(self):
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g99").once().ordered().and_return([
                 "An invalid interface has been used for this function."
             ])
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.unset_access_vlan("ethernet 1/g99")
+            self.switch.unset_interface_access_vlan("ethernet 1/g99")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
-    def test_configure_native_vlan_on_a_general_interface(self):
+    def test_set_interface_native_vlan_on_a_general_interface(self):
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode general"
@@ -767,9 +771,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_native_vlan("ethernet 1/g10", 1000)
+        self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
-    def test_configure_native_vlan_unknown_interface(self):
+    def test_set_interface_native_vlan_unknown_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
@@ -777,11 +781,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.configure_native_vlan("ethernet 1/g99", 1000)
+            self.switch.set_interface_native_vlan("ethernet 1/g99", 1000)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
-    def test_configure_native_vlan_unknown_vlan(self):
+    def test_set_interface_native_vlan_unknown_vlan(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
         ])
@@ -794,11 +798,11 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.configure_native_vlan("ethernet 1/g10", 1000)
+            self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
-    def test_configure_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
+    def test_set_interface_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
         ])
 
@@ -808,9 +812,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_native_vlan("ethernet 1/g10", 1000)
+        self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
-    def test_configure_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
+    def test_set_interface_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport access vlan 2000",
         ])
@@ -818,11 +822,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
-            self.switch.configure_native_vlan("ethernet 1/g10", 1000)
+            self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
-    def test_configure_native_vlan_on_a_trunk_mode_swithes_to_general(self):
+    def test_set_interface_native_vlan_on_a_trunk_mode_swithes_to_general(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
         ])
@@ -833,9 +837,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_native_vlan("ethernet 1/g10", 1000)
+        self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
-    def test_configure_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
+    def test_set_interface_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 1201-1203,1205",
@@ -848,9 +852,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_native_vlan("ethernet 1/g10", 1000)
+        self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
-    def test_remove_native_vlan_reverts_to_trunk_mode(self):
+    def test_unset_interface_native_vlan_reverts_to_trunk_mode(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
             "switchport general pvid 1000"
@@ -861,9 +865,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.remove_native_vlan("ethernet 1/g10")
+        self.switch.unset_interface_native_vlan("ethernet 1/g10")
 
-    def test_remove_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
+    def test_unset_interface_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
             "switchport general pvid 1000",
@@ -876,9 +880,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1201-1203,1205").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.remove_native_vlan("ethernet 1/g10")
+        self.switch.unset_interface_native_vlan("ethernet 1/g10")
 
-    def test_remove_native_vlan_inknown_interface(self):
+    def test_unset_interface_native_vlan_inknown_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
@@ -886,11 +890,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.remove_native_vlan("ethernet 1/g99")
+            self.switch.unset_interface_native_vlan("ethernet 1/g99")
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
-    def test_remove_native_vlan_not_set(self):
+    def test_unset_interface_native_vlan_not_set(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
             "switchport mode general"
         ])
@@ -898,11 +902,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(NativeVlanNotSet) as expect:
-            self.switch.remove_native_vlan("ethernet 1/g10")
+            self.switch.unset_interface_native_vlan("ethernet 1/g10")
 
         assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface ethernet 1/g10"))
 
-    def test_remove_bond_native_vlan_reverts_to_trunk_mode(self):
+    def test_unset_bond_native_vlan_reverts_to_trunk_mode(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode general",
             "switchport general pvid 1000"
@@ -913,9 +917,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport mode trunk").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.remove_bond_native_vlan(10)
+        self.switch.unset_bond_native_vlan(10)
 
-    def test_remove_bond_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
+    def test_unset_bond_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode general",
             "switchport general pvid 1000",
@@ -928,9 +932,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport trunk allowed vlan add 1201-1203,1205").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.remove_bond_native_vlan(10)
+        self.switch.unset_bond_native_vlan(10)
 
-    def test_remove_bond_native_vlan_inknown_interface(self):
+    def test_unset_bond_native_vlan_inknown_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
             "ERROR: Invalid input!",
             ])
@@ -938,11 +942,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(UnknownBond) as expect:
-            self.switch.remove_bond_native_vlan(99999)
+            self.switch.unset_bond_native_vlan(99999)
 
         assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
 
-    def test_remove_bond_native_vlan_not_set(self):
+    def test_unset_bond_native_vlan_not_set(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode general"
         ])
@@ -950,11 +954,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(NativeVlanNotSet) as expect:
-            self.switch.remove_bond_native_vlan(10)
+            self.switch.unset_bond_native_vlan(10)
 
         assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface port-channel 10"))
 
-    def test_configure_bond_native_vlan_on_a_general_interface(self):
+    def test_set_bond_native_vlan_on_a_general_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode general"
         ])
@@ -964,9 +968,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_bond_native_vlan(10, 1000)
+        self.switch.set_bond_native_vlan(10, 1000)
 
-    def test_configure_bond_native_vlan_unknown_interface(self):
+    def test_set_bond_native_vlan_unknown_interface(self):
 
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
             "ERROR: Invalid input!",
@@ -975,11 +979,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(UnknownBond) as expect:
-            self.switch.configure_bond_native_vlan(99999, 1000)
+            self.switch.set_bond_native_vlan(99999, 1000)
 
         assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
 
-    def test_configure_bond_native_vlan_unknown_vlan(self):
+    def test_set_bond_native_vlan_unknown_vlan(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode general",
         ])
@@ -992,11 +996,11 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
         with self.assertRaises(UnknownVlan) as expect:
-            self.switch.configure_bond_native_vlan(10, 1000)
+            self.switch.set_bond_native_vlan(10, 1000)
 
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
-    def test_configure_bond_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
+    def test_set_bond_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
         ])
 
@@ -1006,9 +1010,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_bond_native_vlan(10, 1000)
+        self.switch.set_bond_native_vlan(10, 1000)
 
-    def test_configure_bond_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
+    def test_set_bond_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport access vlan 2000",
         ])
@@ -1016,11 +1020,11 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
         with self.assertRaises(InterfaceInWrongPortMode) as expect:
-            self.switch.configure_bond_native_vlan(10, 1000)
+            self.switch.set_bond_native_vlan(10, 1000)
 
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
-    def test_configure_bond_native_vlan_on_a_trunk_mode_swithes_to_general(self):
+    def test_set_bond_native_vlan_on_a_trunk_mode_swithes_to_general(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
         ])
@@ -1031,9 +1035,9 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_bond_native_vlan(10, 1000)
+        self.switch.set_bond_native_vlan(10, 1000)
 
-    def test_configure_bond_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
+    def test_set_bond_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 1201-1203,1205",
@@ -1046,7 +1050,7 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("switchport general pvid 1000").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.configure_bond_native_vlan(10, 1000)
+        self.switch.set_bond_native_vlan(10, 1000)
 
     def test_add_trunk_vlan(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
@@ -1387,7 +1391,7 @@ class DellTest(unittest.TestCase):
 
         self.switch.edit_interface_spanning_tree("ethernet 1/g10")
 
-    def test_enable_lldp(self):
+    def test_set_interface_lldp_state(self):
         with self.configuring_and_committing():
             self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("lldp transmit").once().ordered().and_return([])
@@ -1396,7 +1400,7 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("lldp med transmit-tlv network-policy").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.enable_lldp("ethernet 1/g10", True)
+        self.switch.set_interface_lldp_state("ethernet 1/g10", True)
 
     def test_disable_lldp(self):
         with self.configuring_and_committing():
@@ -1407,7 +1411,7 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("no lldp med transmit-tlv network-policy").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.switch.enable_lldp("ethernet 1/g10", False)
+        self.switch.set_interface_lldp_state("ethernet 1/g10", False)
 
     def test_set_interface_description(self):
         with self.configuring_and_committing():

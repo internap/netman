@@ -17,6 +17,7 @@ import copy
 
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
@@ -164,8 +165,8 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_vlan_access_group(vlan_number, direction, name)
         self.vlans_cache[vlan_number].access_groups[direction] = name
 
-    def remove_vlan_access_group(self, vlan_number, direction):
-        self.real_switch.remove_vlan_access_group(vlan_number, direction)
+    def unset_vlan_access_group(self, vlan_number, direction):
+        self.real_switch.unset_vlan_access_group(vlan_number, direction)
         self.vlans_cache[vlan_number].access_groups[direction] = None
 
     def add_ip_to_vlan(self, vlan_number, ip_network):
@@ -182,8 +183,8 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_vlan_vrf(vlan_number, vrf_name)
         self.vlans_cache[vlan_number].vrf_forwarding = vrf_name
 
-    def remove_vlan_vrf(self, vlan_number):
-        self.real_switch.remove_vlan_vrf(vlan_number)
+    def unset_vlan_vrf(self, vlan_number):
+        self.real_switch.unset_vlan_vrf(vlan_number)
         self.vlans_cache[vlan_number].vrf_forwarding = None
 
     def set_access_mode(self, interface_id):
@@ -208,24 +209,24 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_access_vlan(interface_id, vlan)
         self.interfaces_cache[interface_id].access_vlan = vlan
 
-    def unset_access_vlan(self, interface_id):
-        self.real_switch.unset_access_vlan(interface_id)
+    def unset_interface_access_vlan(self, interface_id):
+        self.real_switch.unset_interface_access_vlan(interface_id)
         self.interfaces_cache[interface_id].access_vlan = None
 
-    def configure_native_vlan(self, interface_id, vlan):
-        self.real_switch.configure_native_vlan(interface_id, vlan)
+    def set_interface_native_vlan(self, interface_id, vlan):
+        self.real_switch.set_interface_native_vlan(interface_id, vlan)
         self.interfaces_cache[interface_id].trunk_native_vlan = vlan
 
-    def remove_native_vlan(self, interface_id):
-        self.real_switch.remove_native_vlan(interface_id)
+    def unset_interface_native_vlan(self, interface_id):
+        self.real_switch.unset_interface_native_vlan(interface_id)
         self.interfaces_cache[interface_id].trunk_native_vlan = None
 
-    def configure_bond_native_vlan(self, bond_number, vlan):
-        self.real_switch.configure_bond_native_vlan(bond_number, vlan)
+    def set_bond_native_vlan(self, bond_number, vlan):
+        self.real_switch.set_bond_native_vlan(bond_number, vlan)
         self.bonds_cache[bond_number].trunk_native_vlan = vlan
 
-    def remove_bond_native_vlan(self, bond_number):
-        self.real_switch.remove_bond_native_vlan(bond_number)
+    def unset_bond_native_vlan(self, bond_number):
+        self.real_switch.unset_bond_native_vlan(bond_number)
         self.bonds_cache[bond_number].trunk_native_vlan = None
 
     def add_trunk_vlan(self, interface_id, vlan):
@@ -254,29 +255,25 @@ class CachedSwitch(SwitchBase):
         # No cache to update
         self.real_switch.set_interface_description(interface_id, description)
 
-    def remove_interface_description(self, interface_id):
+    def unset_interface_description(self, interface_id):
         # No cache to update
-        self.real_switch.remove_interface_description(interface_id)
+        self.real_switch.unset_interface_description(interface_id)
 
     def set_bond_description(self, bond_number, description):
         # No cache to update
         self.real_switch.set_bond_description(bond_number, description)
 
-    def remove_bond_description(self, bond_number):
+    def unset_bond_description(self, bond_number):
         # No cache to update
-        self.real_switch.remove_bond_description(bond_number)
+        self.real_switch.unset_bond_description(bond_number)
 
     def edit_interface_spanning_tree(self, interface_id, edge=None):
         # No cache to update
         self.real_switch.edit_interface_spanning_tree(interface_id, edge=edge)
 
-    def openup_interface(self, interface_id):
-        self.real_switch.openup_interface(interface_id)
-        self.interfaces_cache[interface_id].shutdown = False
-
-    def shutdown_interface(self, interface_id):
-        self.real_switch.shutdown_interface(interface_id)
-        self.interfaces_cache[interface_id].shutdown = True
+    def set_interface_state(self, interface_id, state):
+        self.real_switch.set_interface_state(interface_id, state)
+        self.interfaces_cache[interface_id].shutdown = (state == OFF)
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
@@ -339,8 +336,8 @@ class CachedSwitch(SwitchBase):
         except ValueError:
             pass
 
-    def enable_lldp(self, interface_id, enabled):
-        self.real_switch.enable_lldp(interface_id, enabled)
+    def set_interface_lldp_state(self, interface_id, enabled):
+        self.real_switch.set_interface_lldp_state(interface_id, enabled)
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         self.real_switch.set_vlan_icmp_redirects_state(vlan_number, state)

@@ -17,6 +17,7 @@ from hamcrest import assert_that, equal_to, is_
 from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.vrrp_group import VrrpGroup
 from tests import ExactIpNetwork
 from tests.api import matches_fixture
@@ -373,30 +374,30 @@ class SwitchApiTest(BaseApiTest):
         })
         assert_that(code, equal_to(200))
 
-    def test_shutdown_interface(self):
+    def test_set_interface_state_off(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='true')
 
         assert_that(code, equal_to(204))
 
-    def test_openup_interface(self):
+    def test_set_interface_state_on(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('openup_interface').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', ON).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='false')
 
         assert_that(code, equal_to(204))
 
-    def test_shutdown_interface_invalid_argument(self):
+    def test_set_interface_state_off_invalid_argument(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
         self.switch_mock.should_receive('connect').never()
-        self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').never()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).never()
         self.switch_mock.should_receive('disconnect').never()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown", raw_data='Patate')
@@ -404,10 +405,10 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unreadable content "patate". Should be either "true" or "false"'}))
 
-    def test_shutdown_interface_no_argument(self):
+    def test_set_interface_state_off_no_argument(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
         self.switch_mock.should_receive('connect').never()
-        self.switch_mock.should_receive('shutdown_interface').with_args('FastEthernet0/4').never()
+        self.switch_mock.should_receive('set_interface_state').with_args('FastEthernet0/4', OFF).never()
         self.switch_mock.should_receive('disconnect').never()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/shutdown")
@@ -456,10 +457,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_unset_access_vlan(self):
+    def test_unset_interface_access_vlan(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('unset_access_vlan').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('unset_interface_access_vlan').with_args('FastEthernet0/4').once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/access-vlan")
@@ -563,10 +564,10 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Vlan number is invalid'}))
 
-    def test_configure_native_vlan_on_trunk(self):
+    def test_set_interface_native_vlan_on_trunk(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('configure_native_vlan').with_args('FastEthernet0/4', 2999).once().ordered()
+        self.switch_mock.should_receive('set_interface_native_vlan').with_args('FastEthernet0/4', 2999).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/trunk-native-vlan",
@@ -574,10 +575,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_configure_bond_native_vlan_on_trunk(self):
+    def test_set_bond_native_vlan_on_trunk(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('configure_bond_native_vlan').with_args(123, 2999).once().ordered()
+        self.switch_mock.should_receive('set_bond_native_vlan').with_args(123, 2999).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/bonds/123/trunk-native-vlan",
@@ -585,10 +586,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_remove_bond_native_vlan_on_trunk(self):
+    def test_unset_bond_native_vlan_on_trunk(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_bond_native_vlan').with_args(123).once().ordered()
+        self.switch_mock.should_receive('unset_bond_native_vlan').with_args(123).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/bonds/123/trunk-native-vlan")
@@ -831,10 +832,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(400))
 
-    def test_enable_lldp(self):
+    def test_set_interface_lldp_state(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_lldp').with_args("FastEthernet0/4", True).once().ordered()
+        self.switch_mock.should_receive('set_interface_lldp_state').with_args("FastEthernet0/4", True).once().ordered()
 
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -845,7 +846,7 @@ class SwitchApiTest(BaseApiTest):
     def test_disable_lldp(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('enable_lldp').with_args("FastEthernet0/4", False).once().ordered()
+        self.switch_mock.should_receive('set_interface_lldp_state').with_args("FastEthernet0/4", False).once().ordered()
 
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -914,7 +915,7 @@ class SwitchApiTest(BaseApiTest):
     def delete_put_access_groups_in(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_vlan_access_group').with_args(2500, IN).once().ordered()
+        self.switch_mock.should_receive('unset_vlan_access_group').with_args(2500, IN).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/vlans/2500/access-groups/in")
@@ -924,7 +925,7 @@ class SwitchApiTest(BaseApiTest):
     def delete_put_access_groups_out(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_vlan_access_group').with_args(2500, OUT).once().ordered()
+        self.switch_mock.should_receive('unset_vlan_access_group').with_args(2500, OUT).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/vlans/2500/access-groups/out")
@@ -935,7 +936,7 @@ class SwitchApiTest(BaseApiTest):
     def test_delete_access_groups_vlan_not_found(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_vlan_access_group').with_args(2500, OUT).once().ordered()\
+        self.switch_mock.should_receive('unset_vlan_access_group').with_args(2500, OUT).once().ordered()\
             .and_raise(UnknownVlan('2500'))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -948,7 +949,7 @@ class SwitchApiTest(BaseApiTest):
     def test_delete_access_groups_not_found(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_vlan_access_group').with_args(2500, OUT).once().ordered()\
+        self.switch_mock.should_receive('unset_vlan_access_group').with_args(2500, OUT).once().ordered()\
             .and_raise(UnknownAccessGroup(IN))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -973,10 +974,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_remove_vlan_vrf(self):
+    def test_unset_vlan_vrf(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_vlan_vrf').with_args(2500).once().ordered()
+        self.switch_mock.should_receive('unset_vlan_vrf').with_args(2500).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/vlans/2500/vrf-forwarding")
@@ -1161,10 +1162,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_remove_interface_description(self):
+    def test_unset_interface_description(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_interface_description').with_args("FastEthernet0/4").once().ordered()
+        self.switch_mock.should_receive('unset_interface_description').with_args("FastEthernet0/4").once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/description")
@@ -1181,10 +1182,10 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_remove_bond_description(self):
+    def test_unset_bond_description(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_bond_description').with_args(123).once().ordered()
+        self.switch_mock.should_receive('unset_bond_description').with_args(123).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/bonds/123/description")
@@ -1212,7 +1213,7 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-    def test_edit_interface_spanning_tree_with_wrong_params(self):
+    def test_editedit_interface_spanning_tree_with_wrong_params(self):
         result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/spanning-tree",
                                 raw_data="whizzle")
 
@@ -1424,7 +1425,7 @@ class SwitchApiTest(BaseApiTest):
     def test_an_error_without_a_message_is_given_one_containing_the_error_name_and_module(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('remove_vlan_access_group').with_args(2500, OUT).once().ordered()\
+        self.switch_mock.should_receive('unset_vlan_access_group').with_args(2500, OUT).once().ordered()\
             .and_raise(EmptyException())
         self.switch_mock.should_receive('disconnect').once().ordered()
 

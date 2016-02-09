@@ -42,7 +42,7 @@ def log_request():
 switch_factory = SwitchFactory(MemoryStorage(), ThreadingLockFactory())
 switch_session_manager = SwitchSessionManager()
 
-NetmanApi().hook_to(app)
+NetmanApi(switch_factory).hook_to(app)
 SwitchApi(switch_factory, switch_session_manager).hook_to(app)
 SwitchSessionApi(switch_factory, switch_session_manager).hook_to(app)
 

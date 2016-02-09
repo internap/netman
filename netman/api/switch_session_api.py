@@ -43,14 +43,14 @@ class SwitchSessionApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :body:
 
-        .. literalinclude:: ../../../tests/api/fixtures/post_switch_session.json
+        .. literalinclude:: ../doc_config/api_samples/post_switch_session.json
             :language: json
 
         :code 201 CREATED:
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/post_switch_session_result.json
+        .. literalinclude:: ../doc_config/api_samples/post_switch_session_result.json
             :language: json
 
         """

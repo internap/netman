@@ -21,6 +21,8 @@ from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface,
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
     is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type
+from netman.core.objects.interface_states import OFF, ON
+
 
 class SwitchApi(SwitchApiBase):
 
@@ -34,9 +36,9 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrrp-groups', view_func=self.add_vrrp_group, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrrp-groups/<vrrp_group_id>', view_func=self.remove_vrrp_group, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/access-groups/<direction>', view_func=self.set_vlan_access_group, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/access-groups/<direction>', view_func=self.remove_vlan_access_group, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/access-groups/<direction>', view_func=self.unset_vlan_access_group, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrf-forwarding', view_func=self.set_vlan_vrf, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrf-forwarding', view_func=self.remove_vlan_vrf, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrf-forwarding', view_func=self.unset_vlan_vrf, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/dhcp-relay-server', view_func=self.add_dhcp_relay_server, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/dhcp-relay-server/<ip_network>', view_func=self.remove_dhcp_relay_server, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/icmp-redirects', view_func=self.set_vlan_icmp_redirects_state, methods=['PUT'])
@@ -44,17 +46,17 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/shutdown', view_func=self.set_shutdown_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/port-mode', view_func=self.set_port_mode, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.set_access_vlan, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.unset_access_vlan, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.unset_interface_access_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-vlans', view_func=self.add_trunk_vlan, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-vlans/<vlan_number>', view_func=self.remove_trunk_vlan, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.configure_native_vlan, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.remove_native_vlan, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.set_interface_native_vlan, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/trunk-native-vlan', view_func=self.unset_interface_native_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/bond-master', view_func=self.add_interface_to_bond, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/bond-master', view_func=self.remove_interface_from_bond, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.set_interface_description, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.remove_interface_description, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.unset_interface_description, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.edit_interface_spanning_tree, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.enable_lldp, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.set_interface_lldp_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>', view_func=self.get_bond, methods=['GET'])
@@ -65,10 +67,10 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/access-vlan', view_func=self.remove_bond_access_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-vlans', view_func=self.add_bond_trunk_vlan, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-vlans/<vlan_number>', view_func=self.remove_bond_trunk_vlan, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-native-vlan', view_func=self.configure_bond_native_vlan, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-native-vlan', view_func=self.remove_bond_native_vlan, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-native-vlan', view_func=self.set_bond_native_vlan, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/trunk-native-vlan', view_func=self.unset_bond_native_vlan, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.set_bond_description, methods=['PUT'])
-        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.remove_bond_description, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.unset_bond_description, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.edit_bond_spanning_tree, methods=['PUT'])
         return self
 
@@ -83,7 +85,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_vlans.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_vlans.json
             :language: json
 
         """
@@ -103,7 +105,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_vlans_vlan.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_vlans_vlan.json
             :language: json
 
         """
@@ -121,7 +123,7 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans.json
                 :language: json
                 :emphasize-lines: 2
 
@@ -156,13 +158,13 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans_vlanid_ips.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_ips.json
                 :language: json
                 :emphasize-lines: 2-3
 
             or
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans_vlanid_ips.txt
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_ips.txt
         """
 
         switch.add_ip_to_vlan(vlan_number, validated_ip_network)
@@ -195,7 +197,7 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_vlans_vlanid_vrrp_groups.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_vrrp_groups.json
                 :language: json
                 :emphasize-lines: 2-3
 
@@ -236,7 +238,7 @@ class SwitchApi(SwitchApiBase):
         :arg int vlan_number: Vlan number, between 1 and 4096
         :arg int direction: ``in`` or ``out``
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_vlans_vlanid_accessgroups_in.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_vlans_vlanid_accessgroups_in.txt
         """
 
         switch.set_vlan_access_group(vlan_number, direction, access_group_name)
@@ -244,7 +246,7 @@ class SwitchApi(SwitchApiBase):
 
     @to_response
     @resource(Switch, Vlan, Direction)
-    def remove_vlan_access_group(self, switch, vlan_number, direction):
+    def unset_vlan_access_group(self, switch, vlan_number, direction):
         """
         Removes the inbound or outgoing ip access-group of a Vlan
 
@@ -253,7 +255,7 @@ class SwitchApi(SwitchApiBase):
         :arg int direction: ``in`` or ``out``
         """
 
-        switch.remove_vlan_access_group(vlan_number, direction)
+        switch.unset_vlan_access_group(vlan_number, direction)
         return 204, None
 
     @to_response
@@ -267,7 +269,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_interfaces.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_interfaces.json
             :language: json
 
         """
@@ -289,9 +291,9 @@ class SwitchApi(SwitchApiBase):
         """
 
         if state:
-            switch.shutdown_interface(interface_id)
+            switch.set_interface_state(interface_id, OFF)
         else:
-            switch.openup_interface(interface_id)
+            switch.set_interface_state(interface_id, ON)
 
         return 204, None
 
@@ -349,7 +351,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_accessvlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_accessvlan.txt
 
         """
 
@@ -358,7 +360,7 @@ class SwitchApi(SwitchApiBase):
 
     @to_response
     @resource(Switch, Interface)
-    def unset_access_vlan(self, switch, interface_id):
+    def unset_interface_access_vlan(self, switch, interface_id):
         """
         Removes the access vlan of an interface
 
@@ -366,7 +368,7 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
 
         """
-        switch.unset_access_vlan(interface_id)
+        switch.unset_interface_access_vlan(interface_id)
         return 204, None
 
     @to_response
@@ -379,7 +381,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_accessvlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_accessvlan.txt
 
         """
 
@@ -409,7 +411,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_interfaces_intname_trunkvlans.txt
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_interfaces_intname_trunkvlans.txt
 
         """
         switch.add_trunk_vlan(interface, vlan_number)
@@ -439,7 +441,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_interfaces_intname_trunkvlans.txt
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_interfaces_intname_trunkvlans.txt
 
         """
         switch.add_bond_trunk_vlan(bond_number, vlan_number)
@@ -462,23 +464,23 @@ class SwitchApi(SwitchApiBase):
     @to_response
     @content(is_vlan_number)
     @resource(Switch, Interface)
-    def configure_native_vlan(self, switch, interface_id, vlan_number):
+    def set_interface_native_vlan(self, switch, interface_id, vlan_number):
         """
         Sets the native vlan of an interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_nativevlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_nativevlan.txt
 
         """
 
-        switch.configure_native_vlan(interface_id, vlan_number)
+        switch.set_interface_native_vlan(interface_id, vlan_number)
         return 204, None
 
     @to_response
     @resource(Switch, Interface)
-    def remove_native_vlan(self, switch, interface_id):
+    def unset_interface_native_vlan(self, switch, interface_id):
         """
         Removes the native vlan of an interface
 
@@ -486,29 +488,29 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
 
         """
-        switch.remove_native_vlan(interface_id)
+        switch.unset_interface_native_vlan(interface_id)
         return 204, None
 
     @to_response
     @content(is_vlan_number)
     @resource(Switch, Bond)
-    def configure_bond_native_vlan(self, switch, bond_number, vlan_number):
+    def set_bond_native_vlan(self, switch, bond_number, vlan_number):
         """
         Sets the native vlan of an interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_nativevlan.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_nativevlan.txt
 
         """
 
-        switch.configure_bond_native_vlan(bond_number, vlan_number)
+        switch.set_bond_native_vlan(bond_number, vlan_number)
         return 204, None
 
     @to_response
     @resource(Switch, Bond)
-    def remove_bond_native_vlan(self, switch, bond_number):
+    def unset_bond_native_vlan(self, switch, bond_number):
         """
         Removes the native vlan of an interface
 
@@ -516,7 +518,7 @@ class SwitchApi(SwitchApiBase):
         :arg int bond_number: Bond number
 
         """
-        switch.remove_bond_native_vlan(bond_number)
+        switch.unset_bond_native_vlan(bond_number)
         return 204, None
 
     @to_response
@@ -530,7 +532,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bond_v2.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_bond_v2.json
             :language: json
 
         """
@@ -550,7 +552,7 @@ class SwitchApi(SwitchApiBase):
 
         Example output:
 
-        .. literalinclude:: ../../../tests/api/fixtures/get_switch_hostname_bonds_v2.json
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_bonds_v2.json
             :language: json
 
         """
@@ -571,7 +573,7 @@ class SwitchApi(SwitchApiBase):
         :body:
             Highlighted fields are mandatory
 
-            .. literalinclude:: ../../../tests/api/fixtures/post_switch_hostname_bonds.json
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_bonds.json
                 :language: json
                 :emphasize-lines: 2
 
@@ -605,7 +607,7 @@ class SwitchApi(SwitchApiBase):
         :arg int bond_number: Bond number
         :arg str bond_link_speed: Bond link speed
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_bonds_link_speed.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_bonds_link_speed.txt
         """
 
         switch.set_bond_link_speed(bond_number, bond_link_speed)
@@ -622,7 +624,7 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :arg int bond_number: Bond number
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_bond_master.txt
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_bond_master.txt
         """
 
         switch.add_interface_to_bond(interface_id, bond_number)
@@ -651,7 +653,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         :body:
-            .. A long interface description text
+            A long interface description text
         """
 
         switch.set_interface_description(interface_id, description)
@@ -659,7 +661,7 @@ class SwitchApi(SwitchApiBase):
 
     @to_response
     @resource(Switch, Interface)
-    def remove_interface_description(self, switch, interface_id):
+    def unset_interface_description(self, switch, interface_id):
         """
         Remove interface description
 
@@ -667,7 +669,7 @@ class SwitchApi(SwitchApiBase):
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         """
 
-        switch.remove_interface_description(interface_id)
+        switch.unset_interface_description(interface_id)
         return 204, None
 
     @to_response
@@ -680,7 +682,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int bond_number: Bond number
         :body:
-            .. A long interface description text
+            A long interface description text
         """
 
         switch.set_bond_description(bond_number, description)
@@ -688,7 +690,7 @@ class SwitchApi(SwitchApiBase):
 
     @to_response
     @resource(Switch, Bond)
-    def remove_bond_description(self, switch, bond_number):
+    def unset_bond_description(self, switch, bond_number):
         """
         Remove bonded interface description
 
@@ -696,7 +698,7 @@ class SwitchApi(SwitchApiBase):
         :arg int bond_number: Bond number
         """
 
-        switch.remove_bond_description(bond_number)
+        switch.unset_bond_description(bond_number)
         return 204, None
 
     @to_response
@@ -709,7 +711,7 @@ class SwitchApi(SwitchApiBase):
 
         :arg bool edge: Activates edge mode
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_spanningtree.json
         """
 
         switch.edit_bond_spanning_tree(bond_number, **params)
@@ -726,7 +728,7 @@ class SwitchApi(SwitchApiBase):
 
         :arg bool edge: Activates edge mode
         :body:
-            .. literalinclude:: ../../../tests/api/fixtures/put_switch_hostname_interfaces_intname_spanningtree.json
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_spanningtree.json
         """
 
         switch.edit_interface_spanning_tree(interface_id, **params)
@@ -743,7 +745,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int vlan_number: Vlan number, between 1 and 4096
         :body:
-            .. DEFAULT_LAN
+            DEFAULT_LAN
         """
 
         switch.set_vlan_vrf(vlan_number, vrf_name)
@@ -751,7 +753,7 @@ class SwitchApi(SwitchApiBase):
 
     @to_response
     @resource(Switch, Vlan)
-    def remove_vlan_vrf(self, switch, vlan_number):
+    def unset_vlan_vrf(self, switch, vlan_number):
         """
         Remove VLAN VRF name
 
@@ -759,7 +761,7 @@ class SwitchApi(SwitchApiBase):
         :arg int vlan_number: Vlan number, between 1 and 4096
         """
 
-        switch.remove_vlan_vrf(vlan_number)
+        switch.unset_vlan_vrf(vlan_number)
         return 204, None
 
     @to_response
@@ -772,7 +774,7 @@ class SwitchApi(SwitchApiBase):
         :arg str hostname: Hostname or IP of the switch
         :arg int vlan_number: Vlan number, between 1 and 4096
         :body:
-            .. IP address of the DHCP server or its relay
+            IP address of the DHCP server or its relay
         """
 
         switch.add_dhcp_relay_server(vlan_number=vlan_number, ip_address=validated_ip_network.ip)
@@ -794,7 +796,7 @@ class SwitchApi(SwitchApiBase):
     @to_response
     @content(is_boolean)
     @resource(Switch, Interface)
-    def enable_lldp(self, switch, interface_id, state):
+    def set_interface_lldp_state(self, switch, interface_id, state):
         """
         Enable or disable the LLDP protocol on the interface
 
@@ -804,7 +806,7 @@ class SwitchApi(SwitchApiBase):
             ``true`` or ``false``
         """
 
-        switch.enable_lldp(interface_id, state)
+        switch.set_interface_lldp_state(interface_id, state)
 
         return 204, None
 

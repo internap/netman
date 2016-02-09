@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
+
 from netman import regex
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
@@ -24,18 +26,22 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.core.objects.vlan import Vlan
 
 
+def ssh(switch_descriptor):
+    return Dell10G(switch_descriptor, shell_factory=SshClient)
+
+
+def telnet(switch_descriptor):
+    return Dell10G(switch_descriptor, shell_factory=TelnetClient)
+
+
 def factory_ssh(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Dell10G(switch_descriptor=switch_descriptor, shell_factory=SshClient),
-        lock=lock,
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
+    return FlowControlSwitch(wrapped_switch=ssh(switch_descriptor), lock=lock)
 
 
 def factory_telnet(switch_descriptor, lock):
-    return FlowControlSwitch(
-        wrapped_switch=Dell10G(switch_descriptor=switch_descriptor, shell_factory=TelnetClient),
-        lock=lock,
-    )
+    warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
+    return FlowControlSwitch(wrapped_switch=telnet(switch_descriptor), lock=lock)
 
 
 class Dell10G(Dell):

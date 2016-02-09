@@ -18,7 +18,7 @@ from netman.core.objects.flow_control_switch import FlowControlSwitch
 
 
 def transactional(fn):
-    warnings.warn("Deprecated, make your own annotation this one will disappear")
+    warnings.warn("Deprecated, make your own annotation this one will disappear", DeprecationWarning)
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
         if self.in_transaction:
@@ -32,7 +32,7 @@ def transactional(fn):
 
 class SwitchTransactional(FlowControlSwitch):
     def __init__(self, impl, lock):
-        warnings.warn("Deprecated, use FlowControlSwitch instead")
+        warnings.warn("Deprecated, use FlowControlSwitch instead", DeprecationWarning)
         super(SwitchTransactional, self).__init__(impl, lock)
 
     @property

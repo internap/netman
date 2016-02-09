@@ -14,6 +14,9 @@
 
 from hamcrest import assert_that
 from mock import Mock
+
+from netman.adapters.threading_lock_factory import ThreadingLockFactory
+from netman.core.switch_factory import SwitchFactory
 from pkg_resources import Distribution
 
 from netman.api.netman_api import NetmanApi
@@ -26,7 +29,8 @@ class NetmanApiTest(BaseApiTest):
         get_distribution_mock = Mock()
         get_distribution_mock.return_value = Distribution(version="1.1.111.dev111111111")
 
-        NetmanApi(get_distribution_callback=get_distribution_mock).hook_to(self.app)
+        NetmanApi(SwitchFactory(None, ThreadingLockFactory()),
+                  get_distribution_callback=get_distribution_mock).hook_to(self.app)
 
         data, code = self.get("/netman/info")
 
