@@ -319,15 +319,50 @@ class Dell(SwitchBase):
 
 def parse_vlan_list(result):
     vlans = []
+    vlan = None
     for line in result:
-        if regex.match('^(\d+)\s{1,6}(\S+).*', line):
-            number, name = regex
-            vlans.append(Vlan(number=int(number),
-                              name=name if int(number) > 1 else "default"))
-        elif regex.match('^(\d+)\s+.*', line):
-            number = regex[0]
-            vlans.append(Vlan(number=int(number)))
+        if regex.match('^(\d+)(.*)', line):
+            number, leftovers = regex
+            name = None
+            ports = None
+            if regex.match('^\s{1,6}(\S+)\s+([a-z0-9-,/]+)', leftovers):
+                name, ports = regex
+            elif regex.match('^\s{1,6}(\S+).*', leftovers):
+                name = regex[0]
+            elif regex.match('^\s*([a-z0-9-,/]+)', leftovers):
+                ports = regex[0]
+
+            vlan = Vlan(number=int(number),
+                        name=name if int(number) > 1 else "default")
+            vlans.append(vlan)
+            if ports:
+                vlan.interfaces.extend(parse_interface_list(ports))
+
+        elif regex.match('^\s+([a-z0-9-,/]+)', line):
+            vlan.interfaces.extend(parse_interface_list(regex[0]))
+
     return vlans
+
+
+def parse_interface_list(ports):
+    port_list = filter(None, ports.split(','))
+    interface_list = []
+    for port in port_list:
+        if regex.match('^ch([0-9]{1,2})-([0-9]{1,2})', port):
+            start, end = regex
+            for i in range(int(start), int(end)+1):
+                interface_list.append("port-channel {}".format(i))
+        elif regex.match('^ch([0-9]{1,2})', port):
+            start = regex[0]
+            interface_list.append("port-channel {}".format(start))
+        elif regex.match('^([0-9]/[a-z]{1,2})([0-9]{1,2})-[0-9]/[a-z]{1,2}([0-9]{1,2})', port):
+            debut, start, end = regex
+            for i in range(int(start), int(end)+1):
+                interface_list.append("ethernet {0}{1}".format(debut, i))
+        elif regex.match('^([0-9]/[a-z]{1,2})([0-9]{1,2})', port):
+            debut, start = regex
+            interface_list.append("ethernet {0}{1}".format(debut, start))
+    return interface_list
 
 
 def resolve_port_mode(interface_data):

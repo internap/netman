@@ -167,7 +167,7 @@ class DellTest(unittest.TestCase):
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1      Default                          ch2-3,ch5-6,   Default   Required",
-            "                                        ch8-48,",
+            "                                        ch8-18,",
             "                                        1/g2-1/g3,",
             "20     your-name-is-way-too-long-for-th 1/g23          Static    Required",
             "300                                     1/g23          Static    Required",
@@ -180,29 +180,36 @@ class DellTest(unittest.TestCase):
         assert_that(vlan1.number, equal_to(1))
         assert_that(vlan1.name, equal_to("default"))
         assert_that(vlan1.ips, has_length(0))
+        assert_that(vlan1.interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 8', 'port-channel 9',
+                                                'port-channel 10', 'port-channel 11', 'port-channel 12', 'port-channel 13', 'port-channel 14', 'port-channel 15',
+                                                'port-channel 16', 'port-channel 17', 'port-channel 18', 'ethernet 1/g2', 'ethernet 1/g3']))
 
         assert_that(vlan20.number, equal_to(20))
         assert_that(vlan20.name, equal_to("your-name-is-way-too-long-for-th"))
         assert_that(len(vlan20.ips), equal_to(0))
+        assert_that(vlan20.interfaces, equal_to(['ethernet 1/g23']))
 
         assert_that(vlan300.number, equal_to(300))
         assert_that(vlan300.name, equal_to(None))
         assert_that(len(vlan300.ips), equal_to(0))
+        assert_that(vlan300.interfaces, equal_to(['ethernet 1/g23']))
 
         assert_that(vlan2000.number, equal_to(2000))
         assert_that(vlan2000.name, equal_to("meh"))
         assert_that(len(vlan2000.ips), equal_to(0))
+        assert_that(vlan2000.interfaces, equal_to([]))
 
         assert_that(vlan4000.number, equal_to(4000))
         assert_that(vlan4000.name, equal_to(None))
         assert_that(len(vlan4000.ips), equal_to(0))
+        assert_that(vlan4000.interfaces, equal_to([]))
 
     def test_get_vlans_multipage(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1      Default                          ch2-3,ch5-6,   Default   Required",
-            "                                        ch8-48,",
+            "                                        ch8-18,",
             "                                        1/g2-1/g3,",
             "2                                       ch1            Static    Required",
             "3                                       ch1            Static    Required",
@@ -224,12 +231,20 @@ class DellTest(unittest.TestCase):
             "-----  ---------------                  -------------  -----     -------------",
             "8                                       ch1            Static    Required",
             "9                                       ch1            Static    Required",
+            "                                                                         ",
             "10                                      ch1            Static    Required",
         ])
 
         vlans = self.switch.get_vlans()
 
         assert_that(vlans, has_length(10))
+
+        assert_that(vlans[0].interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 8', 'port-channel 9',
+                                                'port-channel 10', 'port-channel 11', 'port-channel 12', 'port-channel 13', 'port-channel 14', 'port-channel 15',
+                                                'port-channel 16', 'port-channel 17', 'port-channel 18', 'ethernet 1/g2', 'ethernet 1/g3']))
+        assert_that(vlans[4].interfaces, equal_to(['port-channel 1']))
+        assert_that(vlans[6].interfaces, equal_to(['port-channel 1']))
+        assert_that(vlans[9].interfaces, equal_to(['port-channel 1']))
 
     def test_get_vlan_standard_no_name(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
