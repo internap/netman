@@ -52,12 +52,6 @@ class RemoteSwitch(SwitchBase):
             self._next_proxies = []
 
     def _connect(self):
-        pass
-
-    def _disconnect(self):
-        pass
-
-    def _start_transaction(self):
         self.session_id = str(uuid.uuid4())
         url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
         details = self.request()
@@ -67,6 +61,24 @@ class RemoteSwitch(SwitchBase):
             data=json.dumps({'hostname': self.switch_descriptor.hostname}),
             headers=details['headers'])
         )
+
+    def _disconnect(self):
+        self.logger.info("Ending session {}".format(self.session_id))
+        url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
+        session_id = self.session_id
+        self.session_id = None
+        self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
+                                                              'Netman-Max-Version': self.max_version,
+                                                              'Netman-Session-Id': session_id}))
+        self.logger.info("Ended session {}".format(self.session_id))
+
+    def _start_transaction(self):
+        self.logger.info("Starting Transaction for session_id: {}".format(self.session_id))
+        url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
+        self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
+                                                            'Netman-Max-Version': self.max_version,
+                                                            'Netman-Session-Id': self.session_id}, data='start_transaction'))
+        self.logger.info("Started Transaction for session_id: {}".format(self.session_id))
 
     def commit_transaction(self):
         self.logger.info("Commiting {}".format(self.session_id))
@@ -85,14 +97,12 @@ class RemoteSwitch(SwitchBase):
         self.logger.info("Rollbacked {}".format(self.session_id))
 
     def _end_transaction(self):
-        self.logger.info("Ending session {}".format(self.session_id))
-        url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
-        session_id = self.session_id
-        self.session_id = None
-        self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
-                                                              'Netman-Max-Version': self.max_version,
-                                                              'Netman-Session-Id': session_id}))
-        self.logger.info("Ended session {}".format(self.session_id))
+        self.logger.info("Ending Transaction for session_id: {}".format(self.session_id))
+        url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
+        self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
+                                                            'Netman-Max-Version': self.max_version,
+                                                            'Netman-Session-Id': self.session_id}, data='end_transaction'))
+        self.logger.info("Transaction ended for session_id: {}".format(self.session_id))
 
     def get_vlan(self, number):
         return vlan.to_core(self.get("/vlans/{}".format(number)).json())

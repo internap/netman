@@ -1340,6 +1340,22 @@ class SwitchApiTest(BaseApiTest):
         result, code = self.post("/switches-sessions/{}/actions".format(session_uuid), raw_data="rollback")
         assert_that(code, equal_to(204), str(result))
 
+    def test_session_start_transaction(self):
+        session_uuid = 'poisson'
+
+        self.session_manager.should_receive("get_switch_for_session").with_args(session_uuid).and_return(self.switch_mock)
+        self.session_manager.should_receive('start_transaction').with_args(session_uuid).once().ordered()
+        result, code = self.post("/switches-sessions/{}/actions".format(session_uuid), raw_data="start_transaction")
+        assert_that(code, equal_to(204), str(result))
+
+    def test_session_end_transaction(self):
+        session_uuid = 'poisson'
+
+        self.session_manager.should_receive("get_switch_for_session").with_args(session_uuid).and_return(self.switch_mock)
+        self.session_manager.should_receive('end_transaction').with_args(session_uuid).once().ordered()
+        result, code = self.post("/switches-sessions/{}/actions".format(session_uuid), raw_data="end_transaction")
+        assert_that(code, equal_to(204), str(result))
+
     def test_unknown_session(self):
         session_uuid = 'patate'
         result, code = self.post("/switches-sessions/{}/vlans".format(session_uuid), data={"number": 2000})
