@@ -121,12 +121,16 @@ class Juniper(SwitchBase):
 
             l3_if_type, l3_if_name = get_l3_interface(vlan_node)
             if l3_if_name is not None:
-                interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
+                interface_vlan_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
                                                     "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
-                if interface_node is not None:
-                    vlan.ips = parse_ips(interface_node)
-                    vlan.access_groups[IN] = parse_inet_filter(interface_node, "input")
-                    vlan.access_groups[OUT] = parse_inet_filter(interface_node, "output")
+                if interface_vlan_node is not None:
+                    vlan.ips = parse_ips(interface_vlan_node)
+                    vlan.access_groups[IN] = parse_inet_filter(interface_vlan_node, "input")
+                    vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
+
+            interface_nodes = config.xpath("data/configuration/interfaces/interface[unit/family/ethernet-switching/vlan/members/. = \"{}\"]/name".format(int(number_node.text)))
+            for interface in interface_nodes:
+                vlan.interfaces.append(interface.text)
 
         return vlan
 

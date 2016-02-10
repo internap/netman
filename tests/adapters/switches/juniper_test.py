@@ -270,6 +270,149 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(vlan30.ips[0].ip), equal_to("3.1.1.1"))
         assert_that(vlan40.ips, has_length(0))
 
+    def test_get_vlan_returns_vlan_with_interfaces(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <vlans>
+                      <vlan>
+                        <vlan-id>705</vlan-id>
+                      </vlan>
+                    </vlans>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>VLAN705</name>
+                    <vlan-id>705</vlan-id>
+                  </vlan>
+                </vlans>
+                <interfaces>
+                    <interface>
+                      <name>xe-0/0/6</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>687</members>
+                              <members>705</members>
+                              <members>708</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                    <interface>
+                      <name>xe-0/0/7</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>705</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                    <interface>
+                      <name>xe-0/0/8</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>456</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                </interfaces>
+            """))
+
+        vlan705 = self.switch.get_vlan(705)
+
+        assert_that(vlan705.interfaces, equal_to(["xe-0/0/6", "xe-0/0/7"]))
+
+    def test_get_vlan_returns_vlan_with_empty_interfaces(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <vlans>
+                      <vlan>
+                        <vlan-id>1000</vlan-id>
+                      </vlan>
+                    </vlans>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>VLAN1000</name>
+                    <vlan-id>1000</vlan-id>
+                  </vlan>
+                </vlans>
+                <interfaces>
+                    <interface>
+                      <name>xe-0/0/6</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>687</members>
+                              <members>705</members>
+                              <members>708</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                    <interface>
+                      <name>xe-0/0/7</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>705</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                    <interface>
+                      <name>xe-0/0/8</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>456</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                    <interface>
+                      <name>xe-0/0/9</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                </interfaces>
+            """))
+
+        vlan1000 = self.switch.get_vlan(1000)
+
+        assert_that(vlan1000.interfaces, equal_to([]))
+
     def test_get_vlan_with_no_interface(self):
         self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
