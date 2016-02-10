@@ -37,17 +37,31 @@ class SwitchSessionManager(object):
         except KeyError:
             raise UnknownSession(session_id)
 
-    def open_session(self, switch, session_id):
-        self.logger.info("Creating session {}".format(session_id))
-
-        if session_id in self.sessions:
-            raise SessionAlreadyExists(session_id)
-
+    def start_transaction(self, session_id):
+        self.logger.info("Starting Transaction for session {}".format(session_id))
+        self.keep_alive(session_id)
+        switch = self.get_switch_for_session(session_id)
         try:
             switch.start_transaction()
         except:
             self.logger.exception("Session {} caught an exception while trying to start transaction".format(session_id))
             raise
+
+    def end_transaction(self, session_id):
+        self.logger.info("Ending Transaction for session {}".format(session_id))
+        self.keep_alive(session_id)
+        switch = self.get_switch_for_session(session_id)
+        try:
+            switch.end_transaction()
+        except:
+            self.logger.exception("Session {} caught an exception while trying to end transaction".format(session_id))
+            raise
+
+    def open_session(self, switch, session_id):
+        self.logger.info("Creating session {}".format(session_id))
+
+        if session_id in self.sessions:
+            raise SessionAlreadyExists(session_id)
 
         self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
         self._add_session(session_id, switch)
@@ -90,19 +104,12 @@ class SwitchSessionManager(object):
 
     def close_session(self, session_id):
         self.logger.info("Closing session {}".format(session_id))
-        switch = self.get_switch_for_session(session_id)
-        try:
-            switch.end_transaction()
-        finally:
-            self._remove_session(session_id)
-            self._stop_timer(session_id)
+        self._remove_session(session_id)
+        self._stop_timer(session_id)
 
     def _cancel_session(self, session_id):
         self.logger.info("Inactivity timeout reached for session {}".format(session_id))
-        try:
-            self.rollback_session(session_id)
-        finally:
-            self.close_session(session_id)
+        self.close_session(session_id)
 
     def _start_timer(self, session_id):
         self.logger.info("Starting inactivity timer for session {}".format(session_id))

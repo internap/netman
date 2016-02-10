@@ -32,6 +32,7 @@ factories = {
     "dell10g_telnet": dell10g.telnet,
 }
 
+
 class SwitchFactory(object):
 
     def __init__(self, switch_source, lock_factory):
@@ -48,7 +49,7 @@ class SwitchFactory(object):
 
     def get_switch_by_descriptor(self, switch_descriptor):
         if switch_descriptor.netman_server:
-            return RemoteSwitch(switch_descriptor)
+            return FlowControlSwitch(RemoteSwitch(switch_descriptor), lock=self.get_lock(switch_descriptor))
         return FlowControlSwitch(factories[switch_descriptor.model](switch_descriptor),
                                  lock=self.get_lock(switch_descriptor))
 
