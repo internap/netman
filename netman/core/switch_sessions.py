@@ -63,8 +63,9 @@ class SwitchSessionManager(object):
         if session_id in self.sessions:
             raise SessionAlreadyExists(session_id)
 
-        self.logger.info("Switch for session {} connected and in transaction mode, storing session".format(session_id))
         self._add_session(session_id, switch)
+        switch.connect()
+        self.logger.info("Switch for session {} connected and session stored: ".format(session_id))
         self._start_timer(session_id)
 
         return session_id
@@ -86,24 +87,26 @@ class SwitchSessionManager(object):
                               'SessionStorage: {}'.format(session_id, e))
 
     def keep_alive(self, session_id):
-        self.logger.info("Keep-aliving session {}".format(session_id))
+        self.logger.info("Keeping-alive session {}".format(session_id))
         self._stop_timer(session_id)
         self._start_timer(session_id)
 
     def commit_session(self, session_id):
-        self.logger.info("Commiting session {}".format(session_id))
+        self.logger.info("Committing session {}".format(session_id))
         self.keep_alive(session_id)
         switch = self.get_switch_for_session(session_id)
         switch.commit_transaction()
 
     def rollback_session(self, session_id):
-        self.logger.info("Rollbacking session {}".format(session_id))
+        self.logger.info("Rolling back session {}".format(session_id))
         self.keep_alive(session_id)
         switch = self.get_switch_for_session(session_id)
         switch.rollback_transaction()
 
     def close_session(self, session_id):
         self.logger.info("Closing session {}".format(session_id))
+        switch = self.get_switch_for_session(session_id)
+        switch.disconnect()
         self._remove_session(session_id)
         self._stop_timer(session_id)
 

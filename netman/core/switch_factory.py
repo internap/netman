@@ -33,13 +33,7 @@ factories = {
 }
 
 
-class SwitchFactory(object):
-
-    def __init__(self, switch_source, lock_factory):
-        self.switch_source = switch_source
-        self.lock_factory = lock_factory
-
-        self.locks = {}
+class RealSwitchFactory(object):
 
     def get_switch(self, hostname):
         raise NotImplemented()
@@ -49,12 +43,26 @@ class SwitchFactory(object):
 
     def get_switch_by_descriptor(self, switch_descriptor):
         if switch_descriptor.netman_server:
-            return FlowControlSwitch(RemoteSwitch(switch_descriptor), lock=self.get_lock(switch_descriptor))
-        return FlowControlSwitch(factories[switch_descriptor.model](switch_descriptor),
-                                 lock=self.get_lock(switch_descriptor))
+            return RemoteSwitch(switch_descriptor)
+        return factories[switch_descriptor.model](switch_descriptor)
 
-    def get_lock(self, switch_descriptor):
+
+class FlowControlSwitchFactory(RealSwitchFactory):
+
+    def __init__(self, switch_source, lock_factory):
+        self.switch_source = switch_source
+        self.lock_factory = lock_factory
+        self.locks = {}
+
+    def get_switch_by_descriptor(self, switch_descriptor):
+        real_switch = super(FlowControlSwitchFactory, self).get_switch_by_descriptor(switch_descriptor)
+        return FlowControlSwitch(real_switch, lock=self._get_lock(switch_descriptor))
+
+    def _get_lock(self, switch_descriptor):
         key = switch_descriptor.hostname
         if key not in self.locks:
             self.locks[key] = self.lock_factory.new_lock(key)
         return self.locks[key]
+
+
+SwitchFactory = FlowControlSwitchFactory

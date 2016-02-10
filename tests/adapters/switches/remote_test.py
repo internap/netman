@@ -154,7 +154,7 @@ class RemoteSwitchTest(unittest.TestCase):
             self.switch.connect()
 
     @mock.patch('uuid.uuid4')
-    def test_disconnect_fails_to_return_to_normal_behavior(self, m_uuid):
+    def test_disconnect_fails_and_return_to_normal_behavior(self, m_uuid):
         m_uuid.return_value = '0123456789'
         self.headers['Netman-Session-Id'] = '0123456789'
         self.requests_mock.should_receive("post").once().with_args(
