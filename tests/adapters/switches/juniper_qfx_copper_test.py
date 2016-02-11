@@ -20,6 +20,7 @@ from hamcrest import assert_that, equal_to, is_, instance_of
 
 from netman.adapters.switches import juniper
 from netman.adapters.switches.juniper import Juniper
+from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
@@ -53,6 +54,83 @@ class JuniperTest(unittest.TestCase):
 
     def tearDown(self):
         flexmock_teardown()
+
+    def test_get_interface(self):
+        self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                     <interfaces>
+                       <interface>
+                          <name>ge-0/0/1</name>
+                        </interface>
+                      </interfaces>
+                    <vlans />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/1</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                  <interface>
+                    <name>ge-0/0/2</name>
+                    <disable />
+                    <description>Howdy</description>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <vlan>
+                            <members>1000</members>
+                          </vlan>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+                <vlans/>
+            """))
+
+        if1 = self.switch.get_interface('ge-0/0/1')
+
+        assert_that(if1.name, equal_to("ge-0/0/1"))
+        assert_that(if1.shutdown, equal_to(False))
+        assert_that(if1.port_mode, equal_to(ACCESS))
+        assert_that(if1.access_vlan, equal_to(None))
+        assert_that(if1.trunk_native_vlan, equal_to(None))
+        assert_that(if1.trunk_vlans, equal_to([]))
+
+    def test_get_nonexistent_interface(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                    <filter>
+                      <configuration>
+                          <interfaces>
+                            <interface>
+                              <name>ge-0/0/INEXISTENT</name>
+                            </interface>
+                          </interfaces>
+                        <vlans />
+                      </configuration>
+                    </filter>
+                """)).and_return(a_configuration("""
+                    <interfaces/>
+                    <vlans/>
+                """))
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('ge-0/0/INEXISTENT')
+
+        assert_that(str(expect.exception), equal_to("Unknown interface ge-0/0/INEXISTENT"))
 
     def test_get_interfaces(self):
         self.switch.in_transaction = False

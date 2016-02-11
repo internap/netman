@@ -105,6 +105,32 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(200))
         assert_that(result, equal_to([]))
 
+    def test_single_interfaces_serialization(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_interface').with_args('ethernet 1/4').and_return(
+            Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002]),
+        ).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/interfaces/ethernet 1/4")
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_switch_hostname_interface.json"))
+
+    def test_single_interfaces_is_inexistent(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_interface').with_args('ethernet 1/INEXISTENT').and_raise(
+                UnknownInterface("ethernet 1/INEXISTENT")
+        ).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/interfaces/ethernet 1/INEXISTENT")
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Unknown interface ethernet 1/INEXISTENT'}))
+
     def test_interfaces_serialization(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()

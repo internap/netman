@@ -130,6 +130,12 @@ class CachedSwitch(SwitchBase):
 
         return copy.deepcopy(self.vlans_cache.values())
 
+    def get_interface(self, instance_id):
+        if (self.interfaces_cache.refresh_items and instance_id not in self.interfaces_cache) \
+                or instance_id in self.interfaces_cache.refresh_items:
+            self.interfaces_cache[instance_id] = self.real_switch.get_interface(instance_id)
+        return copy.deepcopy(self.interfaces_cache[instance_id])
+
     def get_interfaces(self):
         if self.interfaces_cache.refresh_items:
             self.interfaces_cache = InterfaceCache(

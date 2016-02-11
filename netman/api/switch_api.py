@@ -21,6 +21,7 @@ from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface,
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
     is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type
+from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.interface_states import OFF, ON
 
 
@@ -43,6 +44,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/dhcp-relay-server/<ip_network>', view_func=self.remove_dhcp_relay_server, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/icmp-redirects', view_func=self.set_vlan_icmp_redirects_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces', view_func=self.get_interfaces, methods=['GET'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.get_interface, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/shutdown', view_func=self.set_shutdown_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/port-mode', view_func=self.set_port_mode, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.set_access_vlan, methods=['PUT'])
@@ -257,6 +259,29 @@ class SwitchApi(SwitchApiBase):
 
         switch.unset_vlan_access_group(vlan_number, direction)
         return 204, None
+
+    @to_response
+    @resource(Switch)
+    def get_interface(self, switch, interface_id):
+        """
+        Displays informations about a physical interfaces
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: name of the interface
+        :code 200 OK:
+
+        Example output:
+
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_interface.json
+            :language: json
+
+        """
+        try:
+            interface_obj = switch.get_interface(interface_id)
+        except UnknownInterface:
+            raise BadRequest('Unknown interface {}'.format(interface_id))
+
+        return 200, interface.to_api(interface_obj)
 
     @to_response
     @resource(Switch)

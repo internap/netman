@@ -291,6 +291,28 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan None not found"))
 
+    def test_get_interface(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 0/0/12").and_return([
+            "switchport access vlan 1234"
+        ])
+        interface = self.switch.get_interface('tengigabitethernet 0/0/12')
+        assert_that(interface.name, is_("tengigabitethernet 0/0/12"))
+        assert_that(interface.shutdown, is_(False))
+        assert_that(interface.port_mode, is_(ACCESS))
+        assert_that(interface.access_vlan, is_(1234))
+        assert_that(interface.trunk_native_vlan, is_(none()))
+        assert_that(interface.trunk_vlans, is_([]))
+
+    def test_get_nonexistent_interface(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 0/0/9999").once().ordered().and_return([
+            "An invalid interface has been used for this function."
+        ])
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('tengigabitethernet 0/0/9999')
+
+        assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 0/0/9999"))
+
     def test_get_interfaces(self):
         self.mocked_ssh_client.should_receive("do").with_args("show interfaces status").and_return([
             "Port      Description               Vlan  Duplex Speed   Neg  Link   Flow Ctrl",

@@ -108,41 +108,40 @@ class Brocade(SwitchBase):
 
     def get_interfaces(self):
         interfaces = []
-        interface_vlans = {}
+        vlans = []
+        interfaces_vlans = []
+
         for if_data in split_on_dedent(self.shell.do("show interfaces")):
-            if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
-                i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
-                for line in if_data:
-                    if regex.match("Port name is (.*)", line): i.description = regex[0]
+            i = parse_interface(if_data)
+            if i:
                 interfaces.append(i)
-                interface_vlans[i.name] = {
-                    "object": i,
-                    "untagged": None,
-                    "tagged": []
-                }
 
         for vlan_data in split_on_bang(self.shell.do("show running-config vlan")):
-            if regex.match("^vlan (\d*)", vlan_data[0]):
-                vlan_id = int(regex[0])
-                for line in vlan_data:
-                    if regex.match(" untagged (.*)", line):
-                        for name in _to_real_names(parse_if_ranges(regex[0])):
-                            interface_vlans[name]["untagged"] = vlan_id
-                    if regex.match(" tagged (.*)", line):
-                        for name in _to_real_names(parse_if_ranges(regex[0])):
-                            interface_vlans[name]["tagged"].append(vlan_id)
+            vlans.append(parse_vlan_runningconfig(vlan_data))
 
-        for data in interface_vlans.values():
-            if data["untagged"] is not None and len(data["tagged"]) == 0:
-                data["object"].access_vlan = data["untagged"]
-            elif data["untagged"] is not None and len(data["tagged"]) > 0:
-                data["object"].trunk_native_vlan = data["untagged"]
+        for interface in interfaces:
+            interfaces_vlans.append(get_interface_vlans_association(interface, vlans))
 
-            if len(data["tagged"]) > 0:
-                data["object"].port_mode = TRUNK
-                data["object"].trunk_vlans = data["tagged"]
-
+        for interface_vlans in interfaces_vlans:
+            set_vlans_properties(interface_vlans)
         return interfaces
+
+    def get_interface(self, interface_id):
+        vlans = []
+
+        if_data = self.shell.do("show interfaces {}".format(interface_id))
+        interface = parse_interface(if_data)
+
+        if not interface:
+            raise UnknownInterface(interface=interface_id)
+
+        for vlan_data in split_on_bang(self.shell.do("show running-config vlan")):
+            vlans.append(parse_vlan_runningconfig(vlan_data))
+
+        interface_vlans = get_interface_vlans_association(interface, vlans)
+        set_vlans_properties(interface_vlans)
+
+        return interface
 
     def add_trunk_vlan(self, interface_id, vlan):
         self._get_vlan(vlan)
@@ -508,6 +507,49 @@ def _to_real_names(if_list):
 
 def _to_short_name(interface_id):
     return interface_id.replace("ethernet", "ethe")
+
+
+def set_vlans_properties(interface_vlans):
+    if interface_vlans["untagged"] is not None and len(interface_vlans["tagged"]) == 0:
+        interface_vlans["object"].access_vlan = interface_vlans["untagged"]
+    elif interface_vlans["untagged"] is not None and len(interface_vlans["tagged"]) > 0:
+        interface_vlans["object"].trunk_native_vlan = interface_vlans["untagged"]
+    if len(interface_vlans["tagged"]) > 0:
+        interface_vlans["object"].port_mode = TRUNK
+        interface_vlans["object"].trunk_vlans = interface_vlans["tagged"]
+
+
+def get_interface_vlans_association(interface, vlans):
+    interface_dic = {"tagged": [], "untagged": None, "object": interface}
+    for vlan in vlans:
+        if interface.name in vlan["tagged_interface"]:
+            interface_dic["tagged"].append(vlan['id'])
+        if interface.name in vlan["untagged_interface"]:
+            interface_dic["untagged"] = vlan['id']
+    return interface_dic
+
+
+def parse_vlan_runningconfig(data):
+    vlan = {"tagged_interface": [], "untagged_interface": []}
+    if regex.match("^vlan (\d*)", data[0]):
+        vlan['id'] = int(regex[0])
+        for line in data:
+            if regex.match(" untagged (.*)", line):
+                for name in _to_real_names(parse_if_ranges(regex[0])):
+                    vlan["untagged_interface"].append(name)
+            if regex.match(" tagged (.*)", line):
+                for name in _to_real_names(parse_if_ranges(regex[0])):
+                    vlan["tagged_interface"].append(name)
+    return vlan
+
+
+def parse_interface(if_data):
+    if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
+        i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
+        for line in if_data:
+            if regex.match("Port name is (.*)", line): i.description = regex[0]
+        return i
+
 
 
 class VlanBrocade(Vlan):

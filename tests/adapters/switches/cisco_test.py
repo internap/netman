@@ -410,6 +410,36 @@ class CiscoTest(unittest.TestCase):
 
         self.switch.remove_vlan(2999)
 
+    def test_get_interface(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface FastEthernet0/2 | begin interface").once().ordered().and_return([
+            "interface FastEthernet0/2",
+            " switchport access vlan 100",
+            " switchport trunk native vlan 200",
+            " switchport trunk allowed vlan 300,302-304",
+            " switchport mode access",
+            "!",
+            "end",
+        ])
+
+        interface = self.switch.get_interface('FastEthernet0/2')
+
+        assert_that(interface.name, equal_to("FastEthernet0/2"))
+        assert_that(interface.shutdown, equal_to(False))
+        assert_that(interface.port_mode, equal_to(ACCESS))
+        assert_that(interface.access_vlan, equal_to(100))
+        assert_that(interface.trunk_native_vlan, equal_to(None))
+        assert_that(interface.trunk_vlans, equal_to([]))
+
+    def test_get_nonexistent_interface(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface SlowEthernet42/9999 | begin interface").and_return([
+            "        ^",
+            "% Invalid input detected at '^' marker."
+        ])
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface("SlowEthernet42/9999")
+
+        assert_that(str(expect.exception), equal_to("Unknown interface SlowEthernet42/9999"))
+
     def test_get_interfaces(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").once().ordered().and_return([
             "interface FastEthernet0/1",

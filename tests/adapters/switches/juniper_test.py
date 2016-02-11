@@ -636,6 +636,67 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(vlan.ips, has_length(0))
 
+    def test_get_interface(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                    <interface>
+                        <name>ge-0/0/1</name>
+                    </interface>
+                </interfaces>
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ge-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <ethernet-switching>
+                    </ethernet-switching>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <vlans/>
+        """))
+
+        interface = self.switch.get_interface('ge-0/0/1')
+
+        assert_that(interface.name, equal_to("ge-0/0/1"))
+        assert_that(interface.shutdown, equal_to(False))
+        assert_that(interface.port_mode, equal_to(ACCESS))
+        assert_that(interface.access_vlan, equal_to(None))
+        assert_that(interface.trunk_native_vlan, equal_to(None))
+        assert_that(interface.trunk_vlans, equal_to([]))
+
+    def test_get_nonexistent_interface(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                    <filter>
+                      <configuration>
+                          <interfaces>
+                            <interface>
+                              <name>ge-0/0/INEXISTENT</name>
+                            </interface>
+                          </interfaces>
+                        <vlans />
+                      </configuration>
+                    </filter>
+                """)).and_return(a_configuration("""
+                    <interfaces/>
+                    <vlans/>
+                """))
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('ge-0/0/INEXISTENT')
+
+        assert_that(str(expect.exception), equal_to("Unknown interface ge-0/0/INEXISTENT"))
+
     def test_get_interfaces(self):
         self.switch.in_transaction = False
 

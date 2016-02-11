@@ -1490,6 +1490,60 @@ class BrocadeTest(unittest.TestCase):
 
         assert_that(if6.trunk_vlans, equal_to([100]))
 
+    def test_get_interface(self):
+        self.shell_mock.should_receive("do").with_args("show interfaces ethernet 1/2").once().ordered().and_return([
+            "GigabitEthernet1/2 is disabled, line protocol is down",
+            "  Hardware is GigabitEthernet, address is 0000.0000.0000 (bia 0000.0000.0000,",
+            "  Member of VLAN 2999 (untagged), 3 L2 VLANS (tagged), port is in dual mode, port state is Disabled",
+            "  Port name is hello"
+        ])
+
+        self.shell_mock.should_receive("do").with_args("show running-config vlan").once().ordered().and_return([
+            "spanning-tree",
+            "!",
+            "vlan 1 name DEFAULT-VLAN",
+            " no untagged ethe 1/3",
+            "!",
+            "vlan 100",
+            " tagged ethe 1/2 ethe 1/4 to 1/6",
+            "!",
+            "vlan 200",
+            " tagged ethe 1/2",
+            "!",
+            "vlan 300",
+            " tagged ethe 1/2",
+            "!",
+            "vlan 1999",
+            " untagged ethe 1/1",
+            "!",
+            "vlan 2999",
+            " untagged ethe 1/2",
+            "!",
+            "!"
+        ])
+
+        interface = self.switch.get_interface("ethernet 1/2")
+
+        assert_that(interface.name, equal_to("ethernet 1/2"))
+        assert_that(interface.shutdown, equal_to(True))
+        assert_that(interface.port_mode, equal_to(TRUNK))
+        assert_that(interface.access_vlan, equal_to(None))
+        assert_that(interface.trunk_native_vlan, equal_to(2999))
+        assert_that(interface.trunk_vlans, equal_to([100, 200, 300]))
+
+    def test_get_nonexistent_interface(self):
+        self.shell_mock.should_receive("do").with_args("show interfaces ethernet 1/1999").once().ordered().and_return([
+            "Invalid input -> 1/1999",
+            "Type ? for a list"
+        ])
+
+        self.shell_mock.should_receive("do").with_args("show running-config vlan").never()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface("ethernet 1/1999")
+
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/1999"))
+
     def test_add_vrrp_success_single_ip(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
             vlan_with_vif_display(1234, 1234)
