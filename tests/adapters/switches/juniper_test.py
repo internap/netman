@@ -1691,7 +1691,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -1737,7 +1741,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -1787,7 +1795,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -1838,7 +1850,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -1871,7 +1887,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2195,7 +2215,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2245,7 +2269,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2276,7 +2304,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2311,7 +2343,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2670,7 +2706,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2717,7 +2757,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
@@ -2748,7 +2792,11 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
                 <vlans/>
               </configuration>
             </filter>
