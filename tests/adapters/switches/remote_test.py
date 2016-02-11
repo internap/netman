@@ -26,8 +26,8 @@ from tests import ExactIpNetwork, ignore_deprecation_warnings
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist, BadBondLinkSpeed, LockedSwitch, \
-    NetmanException
+from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist,\
+    BadBondLinkSpeed, LockedSwitch, NetmanException, UnknownSession
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -275,6 +275,119 @@ class RemoteSwitchTest(unittest.TestCase):
         self.switch.connect()
         with self.assertRaises(AnException):
             self.switch.rollback_transaction()
+
+    @mock.patch('uuid.uuid4')
+    def test_receiving_unknown_session_during_transaction_will_connect_again(self, m_uuid):
+        m_uuid.return_value = '0123456789'
+        first_connect_headers = self.headers.copy()
+        first_connect_headers['Netman-Session-Id'] = '0123456789'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers=first_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': '0123456789'}),
+                status_code=201))
+
+        self.switch.connect()
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/bonds',
+            headers=first_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "",
+                    "error-module": UnknownSession.__module__,
+                    "error-class": UnknownSession.__name__
+                }),
+                status_code=500))
+
+        m_uuid.return_value = 'new-session-id'
+        second_connect_headers = self.headers.copy()
+        second_connect_headers['Netman-Session-Id'] = 'new-session-id'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id',
+            headers=second_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': 'new-session-id'}),
+                status_code=201))
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id/bonds',
+            headers=second_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content='',
+                status_code=201))
+
+        self.switch.add_bond(6)
+
+    @mock.patch('uuid.uuid4')
+    def test_receiving_unknown_session_twice_during_transaction_will_raise_an_exception(self, m_uuid):
+        m_uuid.return_value = '0123456789'
+        first_connect_headers = self.headers.copy()
+        first_connect_headers['Netman-Session-Id'] = '0123456789'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers=first_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': '0123456789'}),
+                status_code=201))
+
+        self.switch.connect()
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/bonds',
+            headers=first_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "",
+                    "error-module": UnknownSession.__module__,
+                    "error-class": UnknownSession.__name__
+                }),
+                status_code=500))
+
+        m_uuid.return_value = 'new-session-id'
+        second_connect_headers = self.headers.copy()
+        second_connect_headers['Netman-Session-Id'] = 'new-session-id'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id',
+            headers=second_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': 'new-session-id'}),
+                status_code=201))
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id/bonds',
+            headers=second_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "",
+                    "error-module": UnknownSession.__module__,
+                    "error-class": UnknownSession.__name__
+                }),
+                status_code=500))
+
+        with self.assertRaises(UnknownSession):
+            self.switch.add_bond(6)
 
     @mock.patch('uuid.uuid4')
     def test_multi_proxy_1(self, m_uuid):

@@ -22,7 +22,7 @@ import requests
 from netman import raw_or_json
 from netman.api import NETMAN_API_VERSION
 
-from netman.core.objects.exceptions import NetmanException
+from netman.core.objects.exceptions import NetmanException, UnknownSession
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_base import SwitchBase
@@ -53,6 +53,7 @@ class RemoteSwitch(SwitchBase):
 
     def _connect(self):
         self.session_id = str(uuid.uuid4())
+        self.logger.info("Requesting session {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}".format(netman=self._proxy, session_id=self.session_id)
         details = self.request()
         details['headers']['Netman-Session-Id'] = self.session_id
@@ -61,6 +62,7 @@ class RemoteSwitch(SwitchBase):
             data=json.dumps({'hostname': self.switch_descriptor.hostname}),
             headers=details['headers'])
         )
+        self.logger.info("Obtained session {}".format(self.session_id))
 
     def _disconnect(self):
         self.logger.info("Ending session {}".format(self.session_id))
@@ -274,16 +276,28 @@ class RemoteSwitch(SwitchBase):
                  raw_data=_get_json_boolean(state))
 
     def get(self, relative_url):
-        return self.validated(self.requests.get(**self.request(relative_url)))
+        return self._retry_on_unknown_session(
+            lambda: self.validated(
+                self.requests.get(**self.request(relative_url))))
 
     def post(self, relative_url, data=None, raw_data=None):
-        return self.validated(self.requests.post(data=raw_or_json(raw_data, data), **self.request(relative_url)))
+        return self._retry_on_unknown_session(
+            lambda: self.validated(
+                self.requests.post(
+                    data=raw_or_json(raw_data, data),
+                    **self.request(relative_url))))
 
     def put(self, relative_url, data=None, raw_data=None):
-        return self.validated(self.requests.put(data=raw_or_json(raw_data, data), **self.request(relative_url)))
+        return self._retry_on_unknown_session(
+            lambda: self.validated(
+                self.requests.put(
+                    data=raw_or_json(raw_data, data),
+                    **self.request(relative_url))))
 
     def delete(self, relative_url):
-        return self.validated(self.requests.delete(**self.request(relative_url)))
+        return self._retry_on_unknown_session(
+            lambda: self.validated(
+                self.requests.delete(**self.request(relative_url))))
 
     def request(self, relative_url=''):
         headers = {
@@ -340,6 +354,15 @@ class RemoteSwitch(SwitchBase):
 
             raise exception
         return req
+
+    def _retry_on_unknown_session(self, operation):
+        try:
+            return operation()
+        except UnknownSession as e:
+            self.logger.warning("Could not perform operation, {}...  "
+                                "Requesting a new session".format(e))
+            self._connect()
+            return operation()
 
 
 def _get_json_boolean(state):
