@@ -126,6 +126,10 @@ class BrocadeTest(unittest.TestCase):
             "!"
         ])
 
+        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
+                vlan_display(1, 'DEFAULT-VLAN', tagged_port_str="ethe 1/2 ethe 1/23 to 1/24")
+        )
+
         self.shell_mock.should_receive("do").with_args("show running-config interface").once()\
             .ordered().and_return([
                 'interface ve 428',
@@ -169,9 +173,6 @@ class BrocadeTest(unittest.TestCase):
                 '!'
         ])
 
-        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
-            vlan_display(1, 'DEFAULT-VLAN', tagged_port_str="ethe 1/2 ethe 1/23 to 1/24")
-        )
 
         vlan1, vlan201, vlan2222, vlan3333 = self.switch.get_vlans()
 
