@@ -98,7 +98,11 @@ class SwitchSessionApi(SwitchApiBase):
         """
 
         action = request.data.lower()
-        if action == 'commit':
+        if action == 'start_transaction':
+            self.sessions_manager.start_transaction(session_id)
+        elif action == 'end_transaction':
+            self.sessions_manager.end_transaction(session_id)
+        elif action == 'commit':
             self.sessions_manager.commit_session(session_id)
         elif action == 'rollback':
             self.sessions_manager.rollback_session(session_id)

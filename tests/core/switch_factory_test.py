@@ -14,13 +14,12 @@
 
 import unittest
 
-from hamcrest import assert_that, equal_to, instance_of, is_, is_not
+from hamcrest import assert_that, instance_of, is_, is_not
 import mock
 from netman.core.objects.flow_control_switch import FlowControlSwitch
 
 from netman.core import switch_factory
 
-from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade_factory_ssh, brocade_factory_telnet
 from netman.core.objects.switch_base import SwitchBase
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -70,12 +69,16 @@ class SwitchFactoryTest(unittest.TestCase):
         assert_that(switch1.lock, is_not(switch2.lock))
 
     def test_get_connection_to_anonymous_remote_switch(self):
+        my_semaphore = mock.Mock()
+        self.semaphore_mocks['hostname'] = my_semaphore
         switch = self.factory.get_anonymous_switch(hostname='hostname', model='test_model', username='username',
                                                    password='password', port=22,
                                                    netman_server='https://netman.url.example.org:4443')
 
-        assert_that(switch, instance_of(RemoteSwitch))
-        assert_that(switch.switch_descriptor, is_(
+        assert_that(switch, is_(instance_of(FlowControlSwitch)))
+        assert_that(switch.wrapped_switch, is_(instance_of(RemoteSwitch)))
+        assert_that(switch.lock, is_(my_semaphore))
+        assert_that(switch.wrapped_switch.switch_descriptor, is_(
                 SwitchDescriptor(hostname='hostname', model='test_model', username='username',
                                  password='password', port=22,
                                  netman_server='https://netman.url.example.org:4443')))
