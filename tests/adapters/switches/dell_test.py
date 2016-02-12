@@ -213,7 +213,7 @@ class DellTest(unittest.TestCase):
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1      Default                          ch2-3,ch5-6,   Default   Required",
-            "                                        ch8-18,",
+            "                                        ch8-10,",
             "                                        1/g2-1/g3,",
             "2                                       ch1            Static    Required",
             "3                                       ch1            Static    Required",
@@ -224,6 +224,7 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
+            "                                        ch8-10,",
             "5                                       ch1            Static    Required",
             "6                                       ch1            Static    Required",
             "7                                       ch1            Static    Required",
@@ -244,8 +245,7 @@ class DellTest(unittest.TestCase):
         assert_that(vlans, has_length(10))
 
         assert_that(vlans[0].interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 8', 'port-channel 9',
-                                                'port-channel 10', 'port-channel 11', 'port-channel 12', 'port-channel 13', 'port-channel 14', 'port-channel 15',
-                                                'port-channel 16', 'port-channel 17', 'port-channel 18', 'ethernet 1/g2', 'ethernet 1/g3']))
+                                                'port-channel 10', 'ethernet 1/g2', 'ethernet 1/g3']))
         assert_that(vlans[4].interfaces, equal_to(['port-channel 1']))
         assert_that(vlans[6].interfaces, equal_to(['port-channel 1']))
         assert_that(vlans[9].interfaces, equal_to(['port-channel 1']))
@@ -287,7 +287,6 @@ class DellTest(unittest.TestCase):
             "1000   shizzle                          ch2-3,ch5-6,   Static    Required",
             "                                        ch8-18,",
             "                                        1/g2-1/g3",
-            "                                                        ",
             "                                        1/g5"
         ])
 

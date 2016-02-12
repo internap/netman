@@ -93,11 +93,10 @@ class Dell(SwitchBase):
 
     def get_vlans(self):
         result = self.shell.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-        vlans = parse_vlan_list(result)
         while len(result) > 0 and "--More--" in result[-1]:
-            result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-            vlans += parse_vlan_list(result)
+            result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
 
+        vlans = parse_vlan_list(result)
         return vlans
 
     def get_vlan(self, number):
@@ -107,9 +106,10 @@ class Dell(SwitchBase):
         elif regex.match("^ERROR", result[0]):
             raise UnknownVlan
         else:
-            vlan = parse_vlan_list(result)
             while len(result) > 0 and "--More--" in result[-1]:
-                result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+                result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+
+            vlan = parse_vlan_list(result)
             return vlan[0]
 
 
