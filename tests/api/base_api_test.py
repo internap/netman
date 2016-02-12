@@ -32,14 +32,14 @@ class BaseApiTest(unittest.TestCase):
 
         return to_json(request_result.data), request_result.status_code
 
-    def post(self, url, data=None, raw_data=None, fixture=None):
+    def post(self, url, data=None, raw_data=None, fixture=None, **kwargs):
         if fixture is not None:
             posting_data = open_fixture(fixture).read()
         else:
             posting_data = raw_or_json(raw_data, data)
 
         with self.app.test_client() as http_client:
-            request_result = http_client.post(url, data=posting_data)
+            request_result = http_client.post(url, data=posting_data, **kwargs)
         return to_json(request_result.data), request_result.status_code
 
     def delete(self, url, **kwargs):

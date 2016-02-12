@@ -26,8 +26,8 @@ from tests import ExactIpNetwork, ignore_deprecation_warnings
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist, BadBondLinkSpeed, LockedSwitch, \
-    NetmanException
+from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist,\
+    BadBondLinkSpeed, LockedSwitch, NetmanException, UnknownSession
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -85,7 +85,36 @@ class RemoteSwitchTest(unittest.TestCase):
             Reply(
                 content=json.dumps({'session_id': '0123456789'}),
                 status_code=201))
-
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/actions',
+            data='start_transaction',
+            headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
+                     'Netman-Session-Id': '0123456789'}
+        ).and_return(
+            Reply(
+                content="",
+                status_code=204))
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/actions',
+            data='commit',
+            headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
+                     'Netman-Session-Id': '0123456789'}
+        ).and_return(
+            Reply(
+                content="",
+                status_code=204))
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/actions',
+            data='end_transaction',
+            headers={'Netman-Verbose-Errors': "yes",
+                     'Netman-Max-Version': 2,
+                     'Netman-Session-Id': '0123456789'}
+        ).and_return(
+            Reply(
+                content="",
+                status_code=204))
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
@@ -96,13 +125,16 @@ class RemoteSwitchTest(unittest.TestCase):
                 content="",
                 status_code=204))
 
+        self.switch.connect()
         self.switch.start_transaction()
+        self.switch.commit_transaction()
         self.switch.end_transaction()
+        self.switch.disconnect()
         self.setUp()
         self.test_add_bond()
 
     @mock.patch('uuid.uuid4')
-    def test_start_transaction_fails_to_obtain_a_session(self, m_uuid):
+    def test_connect_fails_to_obtain_a_session(self, m_uuid):
         m_uuid.return_value = '0123456789'
         self.headers['Netman-Session-Id'] = '0123456789'
         self.requests_mock.should_receive("post").once().with_args(
@@ -119,10 +151,10 @@ class RemoteSwitchTest(unittest.TestCase):
                 status_code=500))
 
         with self.assertRaises(AnException):
-            self.switch.start_transaction()
+            self.switch.connect()
 
     @mock.patch('uuid.uuid4')
-    def test_end_session_fails_returns_to_normal_behavior(self, m_uuid):
+    def test_disconnect_fails_and_return_to_normal_behavior(self, m_uuid):
         m_uuid.return_value = '0123456789'
         self.headers['Netman-Session-Id'] = '0123456789'
         self.requests_mock.should_receive("post").once().with_args(
@@ -148,14 +180,14 @@ class RemoteSwitchTest(unittest.TestCase):
                 }),
                 status_code=500))
 
-        self.switch.start_transaction()
+        self.switch.connect()
         with self.assertRaises(AnException):
-            self.switch.end_transaction()
+            self.switch.disconnect()
         self.setUp()
         self.test_add_bond()
 
     @mock.patch('uuid.uuid4')
-    def test_session_is_used_when_we_are_in_a_transaction(self, m_uuid):
+    def test_session_is_used_when_we_are_in_a_session(self, m_uuid):
         m_uuid.return_value = '0123456789'
         self.headers['Netman-Session-Id'] = '0123456789'
         self.requests_mock.should_receive("post").once().with_args(
@@ -176,11 +208,11 @@ class RemoteSwitchTest(unittest.TestCase):
                 content='',
                 status_code=201))
 
-        self.switch.start_transaction()
+        self.switch.connect()
         self.switch.add_bond(6)
 
     @mock.patch('uuid.uuid4')
-    def test_commit_transaction(self, m_uuid):
+    def test_commit_transaction_fails_to_commit(self, m_uuid):
         m_uuid.return_value = '0123456789'
 
         self.headers['Netman-Session-Id'] = '0123456789'
@@ -208,12 +240,12 @@ class RemoteSwitchTest(unittest.TestCase):
                 }),
                 status_code=500))
 
-        self.switch.start_transaction()
+        self.switch.connect()
         with self.assertRaises(AnException):
             self.switch.commit_transaction()
 
     @mock.patch('uuid.uuid4')
-    def test_rollback_transaction(self, m_uuid):
+    def test_rollback_transaction_fails_to_rollback(self, m_uuid):
         m_uuid.return_value = '0123456789'
         self.headers['Netman-Session-Id'] = '0123456789'
         self.requests_mock.should_receive("post").once().ordered().with_args(
@@ -240,9 +272,122 @@ class RemoteSwitchTest(unittest.TestCase):
                 }),
                 status_code=500))
 
-        self.switch.start_transaction()
+        self.switch.connect()
         with self.assertRaises(AnException):
             self.switch.rollback_transaction()
+
+    @mock.patch('uuid.uuid4')
+    def test_receiving_unknown_session_during_transaction_will_connect_again(self, m_uuid):
+        m_uuid.return_value = '0123456789'
+        first_connect_headers = self.headers.copy()
+        first_connect_headers['Netman-Session-Id'] = '0123456789'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers=first_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': '0123456789'}),
+                status_code=201))
+
+        self.switch.connect()
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/bonds',
+            headers=first_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "",
+                    "error-module": UnknownSession.__module__,
+                    "error-class": UnknownSession.__name__
+                }),
+                status_code=500))
+
+        m_uuid.return_value = 'new-session-id'
+        second_connect_headers = self.headers.copy()
+        second_connect_headers['Netman-Session-Id'] = 'new-session-id'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id',
+            headers=second_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': 'new-session-id'}),
+                status_code=201))
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id/bonds',
+            headers=second_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content='',
+                status_code=201))
+
+        self.switch.add_bond(6)
+
+    @mock.patch('uuid.uuid4')
+    def test_receiving_unknown_session_twice_during_transaction_will_raise_an_exception(self, m_uuid):
+        m_uuid.return_value = '0123456789'
+        first_connect_headers = self.headers.copy()
+        first_connect_headers['Netman-Session-Id'] = '0123456789'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789',
+            headers=first_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': '0123456789'}),
+                status_code=201))
+
+        self.switch.connect()
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/0123456789/bonds',
+            headers=first_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "",
+                    "error-module": UnknownSession.__module__,
+                    "error-class": UnknownSession.__name__
+                }),
+                status_code=500))
+
+        m_uuid.return_value = 'new-session-id'
+        second_connect_headers = self.headers.copy()
+        second_connect_headers['Netman-Session-Id'] = 'new-session-id'
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id',
+            headers=second_connect_headers,
+            data=JsonData(hostname="toto")
+        ).and_return(
+            Reply(
+                content=json.dumps({'session_id': 'new-session-id'}),
+                status_code=201))
+
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches-sessions/new-session-id/bonds',
+            headers=second_connect_headers,
+            data=JsonData(number=6)
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "",
+                    "error-module": UnknownSession.__module__,
+                    "error-class": UnknownSession.__name__
+                }),
+                status_code=500))
+
+        with self.assertRaises(UnknownSession):
+            self.switch.add_bond(6)
 
     @mock.patch('uuid.uuid4')
     def test_multi_proxy_1(self, m_uuid):
@@ -282,8 +427,8 @@ class RemoteSwitchTest(unittest.TestCase):
                 content="",
                 status_code=204))
 
-        self.switch.start_transaction()
-        self.switch.end_transaction()
+        self.switch.connect()
+        self.switch.disconnect()
         self.setUp()
         self.test_add_bond()
 
@@ -325,8 +470,8 @@ class RemoteSwitchTest(unittest.TestCase):
                 content="",
                 status_code=204))
 
-        self.switch.start_transaction()
-        self.switch.end_transaction()
+        self.switch.connect()
+        self.switch.disconnect()
         self.setUp()
         self.test_add_bond()
 

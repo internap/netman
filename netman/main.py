@@ -25,7 +25,7 @@ from netman.api.api_utils import RegexConverter
 from netman.api.netman_api import NetmanApi
 from netman.api.switch_api import SwitchApi
 from netman.api.switch_session_api import SwitchSessionApi
-from netman.core.switch_factory import SwitchFactory
+from netman.core.switch_factory import FlowControlSwitchFactory, RealSwitchFactory
 from netman.core.switch_sessions import SwitchSessionManager
 
 app = Flask('netman')
@@ -39,12 +39,14 @@ def log_request():
         logger.debug("body : {}".format(repr(request.data) if request.data else "<<empty>>"))
         logger.debug("Headers : " + ", ".join(["{0}={1}".format(h[0], h[1]) for h in request.headers]))
 
-switch_factory = SwitchFactory(MemoryStorage(), ThreadingLockFactory())
+lock_factory = ThreadingLockFactory()
+switch_factory = FlowControlSwitchFactory(MemoryStorage(), lock_factory)
+real_switch_factory = RealSwitchFactory()
 switch_session_manager = SwitchSessionManager()
 
 NetmanApi(switch_factory).hook_to(app)
 SwitchApi(switch_factory, switch_session_manager).hook_to(app)
-SwitchSessionApi(switch_factory, switch_session_manager).hook_to(app)
+SwitchSessionApi(real_switch_factory, switch_session_manager).hook_to(app)
 
 
 def load_app(session_inactivity_timeout=None):
