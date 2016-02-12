@@ -128,7 +128,7 @@ class SwitchApiTest(BaseApiTest):
 
         result, code = self.get("/switches/my.switch/interfaces/ethernet 1/INEXISTENT")
 
-        assert_that(code, equal_to(400))
+        assert_that(code, equal_to(404))
         assert_that(result, equal_to({'error': 'Unknown interface ethernet 1/INEXISTENT'}))
 
     def test_interfaces_serialization(self):

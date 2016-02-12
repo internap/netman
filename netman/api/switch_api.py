@@ -276,12 +276,7 @@ class SwitchApi(SwitchApiBase):
             :language: json
 
         """
-        try:
-            interface_obj = switch.get_interface(interface_id)
-        except UnknownInterface:
-            raise BadRequest('Unknown interface {}'.format(interface_id))
-
-        return 200, interface.to_api(interface_obj)
+        return 200, interface.to_api(switch.get_interface(interface_id))
 
     @to_response
     @resource(Switch)
