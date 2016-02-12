@@ -566,7 +566,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, equal_to(2999))
         assert_that(interface.trunk_vlans, equal_to([3000, 3001, 3002]))
 
-    def test_get_nonexistent_interface(self):
+    def test_get_nonexistent_interface_raises(self):
         self.requests_mock.should_receive("get").once().with_args(
                 url=self.netman_url+'/switches/toto/interfaces/ethernet 1/INEXISTENT',
                 headers=self.headers

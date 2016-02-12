@@ -1531,7 +1531,7 @@ class BrocadeTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, equal_to(2999))
         assert_that(interface.trunk_vlans, equal_to([100, 200, 300]))
 
-    def test_get_nonexistent_interface(self):
+    def test_get_nonexistent_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("show interfaces ethernet 1/1999").once().ordered().and_return([
             "Invalid input -> 1/1999",
             "Type ? for a list"

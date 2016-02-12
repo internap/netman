@@ -49,7 +49,7 @@ class GetInterfaceTest(ConfiguredTestCase):
         assert_that(interface_from_single.trunk_native_vlan, is_(interface_from_multiple.trunk_native_vlan))
         assert_that(interface_from_single.trunk_vlans, is_(interface_from_multiple.trunk_vlans))
 
-    def test_fails_when_nonexistent_interface(self):
+    def test_getinterface_nonexistent_raises(self):
         with self.assertRaises(UnknownInterface):
             self.client.get_interface('ethernet 1/nonexistent2000')
 

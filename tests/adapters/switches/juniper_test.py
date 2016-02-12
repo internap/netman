@@ -674,7 +674,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, equal_to(None))
         assert_that(interface.trunk_vlans, equal_to([]))
 
-    def test_get_nonexistent_interface(self):
+    def test_get_nonexistent_interface_raises(self):
         self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                     <filter>

@@ -347,7 +347,7 @@ class DellTest(unittest.TestCase):
         assert_that(interface.port_mode, is_(ACCESS))
         assert_that(interface.access_vlan, is_(1234))
 
-    def test_get_nonexistent_interface(self):
+    def test_get_nonexistent_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g9999").once().ordered().and_return([
             "ERROR: Invalid input!"
         ])

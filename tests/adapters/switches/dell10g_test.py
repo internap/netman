@@ -303,7 +303,7 @@ class Dell10GTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, is_(none()))
         assert_that(interface.trunk_vlans, is_([]))
 
-    def test_get_nonexistent_interface(self):
+    def test_get_nonexistent_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 0/0/9999").once().ordered().and_return([
             "An invalid interface has been used for this function."
         ])

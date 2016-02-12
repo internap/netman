@@ -430,7 +430,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, equal_to(None))
         assert_that(interface.trunk_vlans, equal_to([]))
 
-    def test_get_nonexistent_interface(self):
+    def test_get_nonexistent_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface SlowEthernet42/9999 | begin interface").and_return([
             "        ^",
             "% Invalid input detected at '^' marker."
