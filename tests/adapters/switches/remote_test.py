@@ -26,8 +26,8 @@ from tests import ExactIpNetwork, ignore_deprecation_warnings
 from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist,\
-    BadBondLinkSpeed, LockedSwitch, NetmanException, UnknownSession
+from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist, BadBondLinkSpeed, LockedSwitch, \
+    NetmanException, UnknownInterface, UnknownSession
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -547,6 +547,42 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(vrrp_group2.id, is_(2))
         assert_that(vrrp_group2.ips, is_([IPAddress("3.3.3.1")]))
         assert_that(vrrp_group2.priority, is_(100))
+
+    def test_get_interface(self):
+        self.requests_mock.should_receive("get").once().with_args(
+                url=self.netman_url+'/switches/toto/interfaces/ethernet 1/4',
+                headers=self.headers
+        ).and_return(
+                Reply(
+                        content=open_fixture('get_switch_hostname_interface.json').read(),
+                        status_code=200))
+
+        interface = self.switch.get_interface('ethernet 1/4')
+
+        assert_that(interface.name, equal_to("ethernet 1/4"))
+        assert_that(interface.shutdown, equal_to(False))
+        assert_that(interface.port_mode, equal_to(TRUNK))
+        assert_that(interface.access_vlan, equal_to(None))
+        assert_that(interface.trunk_native_vlan, equal_to(2999))
+        assert_that(interface.trunk_vlans, equal_to([3000, 3001, 3002]))
+
+    def test_get_nonexistent_interface_raises(self):
+        self.requests_mock.should_receive("get").once().with_args(
+                url=self.netman_url+'/switches/toto/interfaces/ethernet 1/INEXISTENT',
+                headers=self.headers
+        ).and_return(
+                Reply(
+                        content=json.dumps({
+                            "error": "Interface ethernet 1/INEXISTENT not found",
+                            "error-module": UnknownInterface.__module__,
+                            "error-class": UnknownInterface.__name__
+                        }),
+                        status_code=404))
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('ethernet 1/INEXISTENT')
+
+        assert_that(str(expect.exception), equal_to("Interface ethernet 1/INEXISTENT not found"))
 
     def test_get_interfaces(self):
         self.requests_mock.should_receive("get").once().with_args(
@@ -1425,5 +1461,3 @@ class JsonData:
             return json.loads(other) == self.data
         except ValueError:
             return False
-
-

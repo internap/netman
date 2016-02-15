@@ -112,6 +112,9 @@ class RemoteSwitch(SwitchBase):
     def get_vlans(self):
         return [vlan.to_core(row) for row in self.get("/vlans").json()]
 
+    def get_interface(self, interface_id):
+        return interface.to_core(self.get("/interfaces/{}".format(interface_id)).json())
+
     def get_interfaces(self):
         return [interface.to_core(row) for row in self.get("/interfaces").json()]
 

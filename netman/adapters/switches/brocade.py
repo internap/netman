@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
-    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
+    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, NetmanException
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -42,6 +42,12 @@ def ssh(switch_descriptor):
 
 def telnet(switch_descriptor):
     return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient)
+
+
+class BadVlanInterfaceList(ValueError):
+    def __init__(self, vlan_number, msg):
+        self.vlan_number = vlan_number
+        super(ValueError, self).__init__(msg)
 
 
 class Brocade(SwitchBase):
@@ -108,41 +114,40 @@ class Brocade(SwitchBase):
 
     def get_interfaces(self):
         interfaces = []
-        interface_vlans = {}
+        vlans = []
+        interfaces_vlans = []
+
         for if_data in split_on_dedent(self.shell.do("show interfaces")):
-            if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
-                i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
-                for line in if_data:
-                    if regex.match("Port name is (.*)", line): i.description = regex[0]
+            i = parse_interface(if_data)
+            if i:
                 interfaces.append(i)
-                interface_vlans[i.name] = {
-                    "object": i,
-                    "untagged": None,
-                    "tagged": []
-                }
 
         for vlan_data in split_on_bang(self.shell.do("show running-config vlan")):
-            if regex.match("^vlan (\d*)", vlan_data[0]):
-                vlan_id = int(regex[0])
-                for line in vlan_data:
-                    if regex.match(" untagged (.*)", line):
-                        for name in _to_real_names(parse_if_ranges(regex[0])):
-                            interface_vlans[name]["untagged"] = vlan_id
-                    if regex.match(" tagged (.*)", line):
-                        for name in _to_real_names(parse_if_ranges(regex[0])):
-                            interface_vlans[name]["tagged"].append(vlan_id)
+            vlans.append(parse_vlan_runningconfig(vlan_data))
 
-        for data in interface_vlans.values():
-            if data["untagged"] is not None and len(data["tagged"]) == 0:
-                data["object"].access_vlan = data["untagged"]
-            elif data["untagged"] is not None and len(data["tagged"]) > 0:
-                data["object"].trunk_native_vlan = data["untagged"]
+        for interface in interfaces:
+            interfaces_vlans.append(get_interface_vlans_association(interface, vlans))
 
-            if len(data["tagged"]) > 0:
-                data["object"].port_mode = TRUNK
-                data["object"].trunk_vlans = data["tagged"]
-
+        for interface_vlans in interfaces_vlans:
+            set_vlans_properties(interface_vlans)
         return interfaces
+
+    def get_interface(self, interface_id):
+        vlans = []
+
+        if_data = self.shell.do("show interfaces {}".format(interface_id))
+        interface = parse_interface(if_data)
+
+        if not interface:
+            raise UnknownInterface(interface=interface_id)
+
+        for vlan_data in split_on_bang(self.shell.do("show running-config vlan")):
+            vlans.append(parse_vlan_runningconfig(vlan_data))
+
+        interface_vlans = get_interface_vlans_association(interface, vlans)
+        set_vlans_properties(interface_vlans)
+
+        return interface
 
     def add_trunk_vlan(self, interface_id, vlan):
         self._get_vlan(vlan)
@@ -374,6 +379,7 @@ class Brocade(SwitchBase):
                 if current_vlan:
                     add_interface_vlan_data(current_vlan, int_vlan_data)
 
+
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
@@ -401,10 +407,11 @@ class Brocade(SwitchBase):
 
     def _list_vlans(self):
         vlans = []
-
         for vlan_data in split_on_bang(self.shell.do("show running-config vlan | begin vlan")):
-            vlans.append(parse_vlan(vlan_data))
-
+            try:
+                vlans.append(parse_vlan(vlan_data))
+            except BadVlanInterfaceList as e:
+                vlans.append(self._get_vlan(e.vlan_number))
         return vlans
 
     def _get_vlan(self, vlan_number, include_vif_data=False):
@@ -416,11 +423,14 @@ class Brocade(SwitchBase):
         for line in result:
             if regex.match(".*PORT-VLAN \d*, Name ([^,]+),.*", line):
                 vlan.name = regex[0] if regex[0] != "[None]" else None
+                vlan.name = vlan.name if vlan.name != "DEFAULT-VLAN" else "default"
             elif regex.match(".*Associated Virtual Interface Id: (\d+).*", line):
                 vlan.vlan_interface_name = regex[0]
                 if include_vif_data:
                     add_interface_vlan_data(vlan, self.shell.do("show running-config interface ve {}".format(regex[0])))
-
+            elif regex.match("(Untagged|Statically tagged) Ports\s+: (.*)$", line):
+                for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                    vlan.interfaces.append(real_name)
         return vlan
 
     def _show_vlan(self, vlan_number):
@@ -439,9 +449,11 @@ def parse_vlan(vlan_data):
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):
             current_vlan.vlan_interface_name = regex[0]
-        elif regex.match(" tagged (.*)", line):
-            for name in parse_if_ranges(regex[0]):
-                current_vlan.tagged_interfaces.append(name)
+        elif regex.match("^ (untagged|tagged) (.*)$", line):
+            for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                current_vlan.interfaces.append(real_name)
+        elif regex.match("^ no untagged (.*)$", line):
+            raise BadVlanInterfaceList(current_vlan.number, msg="vlan has no untagged interface")
 
     return current_vlan
 
@@ -510,12 +522,54 @@ def _to_short_name(interface_id):
     return interface_id.replace("ethernet", "ethe")
 
 
+def set_vlans_properties(interface_vlans):
+    if interface_vlans["untagged"] is not None and len(interface_vlans["tagged"]) == 0:
+        interface_vlans["object"].access_vlan = interface_vlans["untagged"]
+    elif interface_vlans["untagged"] is not None and len(interface_vlans["tagged"]) > 0:
+        interface_vlans["object"].trunk_native_vlan = interface_vlans["untagged"]
+    if len(interface_vlans["tagged"]) > 0:
+        interface_vlans["object"].port_mode = TRUNK
+        interface_vlans["object"].trunk_vlans = interface_vlans["tagged"]
+
+
+def get_interface_vlans_association(interface, vlans):
+    interface_dic = {"tagged": [], "untagged": None, "object": interface}
+    for vlan in vlans:
+        if interface.name in vlan["tagged_interface"]:
+            interface_dic["tagged"].append(vlan['id'])
+        if interface.name in vlan["untagged_interface"]:
+            interface_dic["untagged"] = vlan['id']
+    return interface_dic
+
+
+def parse_vlan_runningconfig(data):
+    vlan = {"tagged_interface": [], "untagged_interface": []}
+    if regex.match("^vlan (\d*)", data[0]):
+        vlan['id'] = int(regex[0])
+        for line in data:
+            if regex.match(" untagged (.*)", line):
+                for name in _to_real_names(parse_if_ranges(regex[0])):
+                    vlan["untagged_interface"].append(name)
+            if regex.match(" tagged (.*)", line):
+                for name in _to_real_names(parse_if_ranges(regex[0])):
+                    vlan["tagged_interface"].append(name)
+    return vlan
+
+
+def parse_interface(if_data):
+    if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
+        i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
+        for line in if_data:
+            if regex.match("Port name is (.*)", line): i.description = regex[0]
+        return i
+
+
+
 class VlanBrocade(Vlan):
     def __init__(self, *args, **kwargs):
         super(VlanBrocade, self).__init__(*args, **kwargs)
 
         self.vlan_interface_name = kwargs.pop('vlan_interface_name', None)
-        self.tagged_interfaces = []
         self.icmp_redirects = True
 
 

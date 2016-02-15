@@ -28,3 +28,4 @@ class Vlan(Model):
         self.vrrp_groups = vrrp_groups or []
         self.dhcp_relay_servers = dhcp_relay_servers or []
         self.icmp_redirects = icmp_redirects
+        self.interfaces = interfaces or []

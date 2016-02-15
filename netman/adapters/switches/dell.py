@@ -112,6 +112,8 @@ class Dell(SwitchBase):
             vlan = parse_vlan_list(result)
             return vlan[0]
 
+    def get_interface(self, interface_id):
+        return self.read_interface(interface_id)
 
     def get_interfaces(self):
         result = self.shell.do('show interfaces status', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)

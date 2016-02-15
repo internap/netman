@@ -370,6 +370,27 @@ class DellTest(unittest.TestCase):
         assert_that(vlan.name, equal_to("MyVlanName"))
         assert_that(len(vlan.ips), equal_to(0))
 
+    def test_get_interface(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g1").and_return([
+            "switchport access vlan 1234"
+        ])
+
+        interface = self.switch.get_interface("ethernet 1/g1")
+
+        assert_that(interface.name, is_("ethernet 1/g1"))
+        assert_that(interface.port_mode, is_(ACCESS))
+        assert_that(interface.access_vlan, is_(1234))
+
+    def test_get_nonexistent_interface_raises(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g9999").once().ordered().and_return([
+            "ERROR: Invalid input!"
+        ])
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('ethernet 1/g9999')
+
+        assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g9999"))
+
     def test_get_interfaces(self):
         self.mocked_ssh_client.should_receive("do").with_args("show interfaces status", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).and_return([
             "Port   Type                            Duplex  Speed    Neg  Link  Flow Control",
