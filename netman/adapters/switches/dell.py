@@ -109,8 +109,7 @@ class Dell(SwitchBase):
             while len(result) > 0 and "--More--" in result[-1]:
                 result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
 
-            vlan = parse_vlan_list(result)
-            return vlan[0]
+            return parse_vlan_list(result)[0]
 
     def get_interface(self, interface_id):
         return self.read_interface(interface_id)
