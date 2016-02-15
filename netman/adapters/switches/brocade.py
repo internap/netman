@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
-    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist
+    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, NetmanException
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -42,6 +42,12 @@ def ssh(switch_descriptor):
 
 def telnet(switch_descriptor):
     return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient)
+
+
+class BadVlanInterfaceList(ValueError):
+    def __init__(self, vlan_number, msg):
+        self.vlan_number = vlan_number
+        super(ValueError, self).__init__(msg)
 
 
 class Brocade(SwitchBase):
@@ -373,6 +379,7 @@ class Brocade(SwitchBase):
                 if current_vlan:
                     add_interface_vlan_data(current_vlan, int_vlan_data)
 
+
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
@@ -400,10 +407,11 @@ class Brocade(SwitchBase):
 
     def _list_vlans(self):
         vlans = []
-
         for vlan_data in split_on_bang(self.shell.do("show running-config vlan | begin vlan")):
-            vlans.append(parse_vlan(vlan_data))
-
+            try:
+                vlans.append(parse_vlan(vlan_data))
+            except BadVlanInterfaceList as e:
+                vlans.append(self._get_vlan(e.vlan_number))
         return vlans
 
     def _get_vlan(self, vlan_number, include_vif_data=False):
@@ -415,11 +423,14 @@ class Brocade(SwitchBase):
         for line in result:
             if regex.match(".*PORT-VLAN \d*, Name ([^,]+),.*", line):
                 vlan.name = regex[0] if regex[0] != "[None]" else None
+                vlan.name = vlan.name if vlan.name != "DEFAULT-VLAN" else "default"
             elif regex.match(".*Associated Virtual Interface Id: (\d+).*", line):
                 vlan.vlan_interface_name = regex[0]
                 if include_vif_data:
                     add_interface_vlan_data(vlan, self.shell.do("show running-config interface ve {}".format(regex[0])))
-
+            elif regex.match("(Untagged|Statically tagged) Ports\s+: (.*)$", line):
+                for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                    vlan.interfaces.append(real_name)
         return vlan
 
     def _show_vlan(self, vlan_number):
@@ -438,9 +449,11 @@ def parse_vlan(vlan_data):
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):
             current_vlan.vlan_interface_name = regex[0]
-        elif regex.match(" tagged (.*)", line):
-            for name in parse_if_ranges(regex[0]):
-                current_vlan.tagged_interfaces.append(name)
+        elif regex.match("^ (untagged|tagged) (.*)$", line):
+            for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                current_vlan.interfaces.append(real_name)
+        elif regex.match("^ no untagged (.*)$", line):
+            raise BadVlanInterfaceList(current_vlan.number, msg="vlan has no untagged interface")
 
     return current_vlan
 
@@ -557,7 +570,6 @@ class VlanBrocade(Vlan):
         super(VlanBrocade, self).__init__(*args, **kwargs)
 
         self.vlan_interface_name = kwargs.pop('vlan_interface_name', None)
-        self.tagged_interfaces = []
         self.icmp_redirects = True
 
 
