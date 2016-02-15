@@ -221,7 +221,7 @@ def parse_interface_list(ports):
         elif regex.match("Po(\d+)-(\d+)", line):
             start, end = regex
             for i in range(int(start), int(end)+1):
-                interfaces.append("port-channel {}".format(regex[0]))
+                interfaces.append("port-channel {}".format(i))
         elif regex.match("Po(\d+).*", line):
             interfaces.append("port-channel {}".format(regex[0]))
 

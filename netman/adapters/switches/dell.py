@@ -357,11 +357,11 @@ def parse_interface_list(ports):
         elif regex.match('^ch(\d+)', port):
             start = regex[0]
             interface_list.append("port-channel {}".format(start))
-        elif regex.match('^(\d/\w+)(\d+)-\d/\w+(\d+)', port):
+        elif regex.match('^(\d/[a-z]+)(\d+)-\d/[a-z]+(\d+)', port):
             debut, start, end = regex
             for i in range(int(start), int(end)+1):
                 interface_list.append("ethernet {0}{1}".format(debut, i))
-        elif regex.match('^(\d/\w+)(\d+)', port):
+        elif regex.match('^(\d/[a-z]+)(\d+)', port):
             debut, start = regex
             interface_list.append("ethernet {0}{1}".format(debut, start))
     return interface_list
