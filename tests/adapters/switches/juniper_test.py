@@ -329,12 +329,64 @@ class JuniperTest(unittest.TestCase):
                         </family>
                       </unit>
                     </interface>
+                    <interface>
+                      <name>xe-0/0/9</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>700-800</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
                 </interfaces>
             """))
 
         vlan705 = self.switch.get_vlan(705)
 
-        assert_that(vlan705.interfaces, equal_to(["xe-0/0/6", "xe-0/0/7"]))
+        assert_that(vlan705.interfaces, equal_to(["xe-0/0/6", "xe-0/0/7", "xe-0/0/9"]))
+
+    def test_get_vlan_returns_vlan_with_interfaces_with_name_as_member(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <vlans>
+                      <vlan>
+                        <vlan-id>705</vlan-id>
+                      </vlan>
+                    </vlans>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>bleu</name>
+                    <vlan-id>705</vlan-id>
+                  </vlan>
+                </vlans>
+                <interfaces>
+                    <interface>
+                      <name>xe-0/0/9</name>
+                      <unit>
+                        <family>
+                          <ethernet-switching>
+                            <vlan>
+                              <members>bleu</members>
+                            </vlan>
+                          </ethernet-switching>
+                        </family>
+                      </unit>
+                    </interface>
+                </interfaces>
+            """))
+
+        vlan705 = self.switch.get_vlan(705)
+
+        assert_that(vlan705.interfaces, equal_to(["xe-0/0/9"]))
 
     def test_get_vlan_returns_vlan_with_empty_interfaces(self):
         self.switch.in_transaction = False

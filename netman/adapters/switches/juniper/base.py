@@ -110,10 +110,11 @@ class Juniper(SwitchBase):
             raise UnknownVlan(number)
 
     def get_vlan_from_node(self, vlan_node, config):
-        number_node = first(vlan_node.xpath("vlan-id"))
+        vlan_id_node = first(vlan_node.xpath("vlan-id"))
+        vlan_name_node = first(vlan_node.xpath("name"))
         vlan = None
-        if number_node is not None:
-            vlan = Vlan(number=int(number_node.text))
+        if vlan_id_node is not None:
+            vlan = Vlan(number=int(vlan_id_node.text))
 
             description_node = first(vlan_node.xpath("description"))
             if description_node is not None:
@@ -128,9 +129,11 @@ class Juniper(SwitchBase):
                     vlan.access_groups[IN] = parse_inet_filter(interface_vlan_node, "input")
                     vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
 
-            interface_nodes = config.xpath("data/configuration/interfaces/interface[unit/family/ethernet-switching/vlan/members/. = \"{}\"]/name".format(int(number_node.text)))
+            interface_nodes = config.xpath("data/configuration/interfaces/interface")
             for interface in interface_nodes:
-                vlan.interfaces.append(interface.text)
+                members_node = interface.xpath("unit/family/ethernet-switching/vlan/members")
+                if is_vlan_in_interface_members(vlan.number, vlan_name_node.text, members_node):
+                    vlan.interfaces.append(first(interface.xpath("name")).text)
 
         return vlan
 
@@ -1064,3 +1067,17 @@ def _compute_edge_state_modifications(interface_id, edge, config):
             if no_root_port_node is not None:
                 modifications.append("<no-root-port operation=\"delete\" />")
     return modifications
+
+
+def is_vlan_in_interface_members(vlan_id, vlan_name, members_node):
+    for member in members_node:
+        if regex.match("(\d+)-(\d+)", member.text):
+            start, end = regex
+            if int(start) <= vlan_id <= int(end):
+                return True
+        elif member.text == vlan_name:
+            return True
+        elif int(member.text) == vlan_id:
+            return True
+
+    return False
