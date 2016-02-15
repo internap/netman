@@ -577,7 +577,7 @@ class Juniper(SwitchBase):
         return self.netconf.get_config(source="candidate" if self.in_transaction else "running", filter=filter_node)
 
     def get_interface(self, interface_id):
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(one_interface(interface_id), all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
 
         return self.node_to_interface(interface_node, config)

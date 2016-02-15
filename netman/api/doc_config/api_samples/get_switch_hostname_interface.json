@@ -1,0 +1,9 @@
+{
+   "name": "ethernet 1/4",
+   "shutdown": false,
+   "bond_master": null,
+   "port_mode": "trunk",
+   "access_vlan": null,
+   "trunk_native_vlan": 2999,
+   "trunk_vlans": [3000, 3001, 3002]
+}

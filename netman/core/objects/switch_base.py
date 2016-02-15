@@ -53,6 +53,9 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def remove_vlan(self, number):
         raise NotImplementedError()
 
+    def get_interface(self, interface_id):
+        raise NotImplementedError()
+
     def get_interfaces(self):
         raise NotImplementedError()
 

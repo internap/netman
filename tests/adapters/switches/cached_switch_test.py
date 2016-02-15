@@ -180,6 +180,14 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(self.switch.get_interfaces(), is_(all_interfaces))
         assert_that(self.switch.get_interfaces(), is_(all_interfaces))
 
+    def test_get_interface(self):
+        interface = Interface('xe-1/0/1')
+
+        self.real_switch_mock.should_receive("get_interface").with_args("xe-1/0/1").once() \
+            .and_return(interface)
+        assert_that(self.switch.get_interface('xe-1/0/1'), is_(interface))
+        assert_that(self.switch.get_interface('xe-1/0/1'), is_(interface))
+
     def test_set_access_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once().and_return(
             [Interface('eth0')])

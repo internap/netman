@@ -45,6 +45,11 @@ class ValidatingCachedSwitch(CachedSwitch):
         assert_that(interfaces, is_(self.real_switch.get_interfaces()))
         return interfaces
 
+    def get_interface(self, interface_id):
+        interface = super(ValidatingCachedSwitch, self).get_interface(interface_id)
+        assert_that(interface, is_(self.real_switch.get_interface(interface_id)))
+        return interface
+
     def get_vlan(self, number):
         vlan = super(ValidatingCachedSwitch, self).get_vlan(number)
         assert_that(vlan, is_(self.real_switch.get_vlan(number)))
