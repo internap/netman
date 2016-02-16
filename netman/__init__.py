@@ -14,11 +14,20 @@
 import json
 
 import re
+import threading
 
 
 class RegexFacilitator(object):
     def __init__(self):
-        self.m = None
+        self._m = {}
+
+    @property
+    def m(self):
+        return self._m[threading.current_thread().ident]
+
+    @m.setter
+    def m(self, match):
+        self._m[threading.current_thread().ident] = match
 
     def match(self, pattern, string, flags=0):
         self.m = re.match(pattern, string, flags)
