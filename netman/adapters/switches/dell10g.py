@@ -200,18 +200,60 @@ def parse_interface_names(status_list):
     return interfaces
 
 
+def parse_interface_list(ports):
+    port_list = filter(None, ports.split(','))
+    interfaces = []
+    for line in port_list:
+        if regex.match("Te(\d+/\d+/)(\d+)-(\d+).*", line):
+            debut, start, end = regex
+            for i in range(int(start), int(end)+1):
+                interfaces.append("tengigabitethernet {0}{1}".format(debut, i))
+        elif regex.match("Te(\d+/\d+/\S+).*", line):
+            interfaces.append("tengigabitethernet {}".format(regex[0]))
+
+        elif regex.match("Fo(\d+/\d+/)(\d+)-(\d+).*", line):
+            debut, start, end = regex
+            for i in range(int(start), int(end)+1):
+                interfaces.append("fortygigabitethernet {0}{1}".format(debut, i))
+        elif regex.match("Fo(\d+/\d+/\S+).*", line):
+            interfaces.append("fortygigabitethernet {}".format(regex[0]))
+
+        elif regex.match("Po(\d+)-(\d+)", line):
+            start, end = regex
+            for i in range(int(start), int(end)+1):
+                interfaces.append("port-channel {}".format(i))
+        elif regex.match("Po(\d+).*", line):
+            interfaces.append("port-channel {}".format(regex[0]))
+
+    return interfaces
+
+
 def parse_vlan_list(result):
     vlans = []
+    vlan = None
     for line in result:
-        if regex.match('^(\d+)\s{1,6}(\S+).*', line):
-            number, name = regex
+        if regex.match('^(\d+)(.*)', line):
+            number, leftovers = regex
+            name = None
+            ports = None
+            if regex.match('^\s{1,6}(\S+)\s+([A-Za-z0-9-,/]+)', leftovers):
+                name, ports = regex
+            elif regex.match('^\s{1,6}(\S+).*', leftovers):
+                name = regex[0]
+            elif regex.match('^\s*([A-Za-z0-9-,/]+)', leftovers):
+                ports = regex[0]
+
             if name == "VLAN{:0>4}".format(number):
                 name = None
-            vlans.append(Vlan(number=int(number),
-                              name=name if int(number) > 1 else "default"))
-        elif regex.match('^(\d+)\s+.*', line):
-            number = regex[0]
-            vlans.append(Vlan(number=int(number)))
+            vlan = Vlan(number=int(number),
+                        name=name if int(number) > 1 else "default")
+            vlans.append(vlan)
+            if ports:
+                vlan.interfaces.extend(parse_interface_list(ports))
+
+        elif regex.match('^\s+([A-Za-z0-9-,/]+)', line):
+            vlan.interfaces.extend(parse_interface_list(regex[0]))
+
     return vlans
 
 

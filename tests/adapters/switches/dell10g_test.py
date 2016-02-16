@@ -173,40 +173,59 @@ class Dell10GTest(unittest.TestCase):
 
             "VLAN   Name                             Ports          Type",
             "-----  ---------------                  -------------  --------------",
-            "1      default                          Po1-15,Po18,   Default",
+            "1      default                          Po1-5,Po18,   Default",
             "                                        Po23-26,",
-            "                                        Po28-128,",
             "                                        Te1/0/51-56",
             "20     your-name-is-way-too-long-for-th Po27           Static",
             "300    VLAN0300                         Po27,          Static",
             "                                        Te1/0/2-4,",
             "                                        Te1/0/6-8,",
-            "                                        Te1/0/41-46",
-            "2000   meh                              Po27           Static",
+            "                                        Te1/0/41",
+            "2000   meh                                             Static",
             "4000   VLAN4000                         Po27           Static",
+            "4100   VLAN4100                         Po1-5,Po12,    Static",
+            "                                        Te1/0/2-4,",
+            "                                        Fo1/0/1-2,",
+            "                                        Fo1/0/5",
+
+
         ])
 
-        vlan1, vlan20, vlan300, vlan2000, vlan4000 = self.switch.get_vlans()
+        vlan1, vlan20, vlan300, vlan2000, vlan4000, vlan4100 = self.switch.get_vlans()
 
         assert_that(vlan1.number, equal_to(1))
         assert_that(vlan1.name, equal_to("default"))
         assert_that(vlan1.ips, has_length(0))
+        assert_that(vlan1.interfaces, equal_to(['port-channel 1', 'port-channel 2', 'port-channel 3', 'port-channel 4', 'port-channel 5', 'port-channel 18', 'port-channel 23',
+                                                'port-channel 24', 'port-channel 25', 'port-channel 26', 'tengigabitethernet 1/0/51', 'tengigabitethernet 1/0/52',
+                                                'tengigabitethernet 1/0/53', 'tengigabitethernet 1/0/54', 'tengigabitethernet 1/0/55', 'tengigabitethernet 1/0/56']))
 
         assert_that(vlan20.number, equal_to(20))
         assert_that(vlan20.name, equal_to("your-name-is-way-too-long-for-th"))
         assert_that(len(vlan20.ips), equal_to(0))
+        assert_that(vlan20.interfaces, equal_to(['port-channel 27']))
 
         assert_that(vlan300.number, equal_to(300))
         assert_that(vlan300.name, equal_to(None))
         assert_that(len(vlan300.ips), equal_to(0))
+        assert_that(vlan300.interfaces, equal_to(['port-channel 27', 'tengigabitethernet 1/0/2', 'tengigabitethernet 1/0/3', 'tengigabitethernet 1/0/4', 'tengigabitethernet 1/0/6',
+                                                  'tengigabitethernet 1/0/7', 'tengigabitethernet 1/0/8', 'tengigabitethernet 1/0/41']))
 
         assert_that(vlan2000.number, equal_to(2000))
         assert_that(vlan2000.name, equal_to("meh"))
         assert_that(len(vlan2000.ips), equal_to(0))
+        assert_that(vlan2000.interfaces, equal_to([]))
 
         assert_that(vlan4000.number, equal_to(4000))
         assert_that(vlan4000.name, equal_to(None))
         assert_that(len(vlan4000.ips), equal_to(0))
+        assert_that(vlan4000.interfaces, equal_to(['port-channel 27']))
+
+        assert_that(vlan4100.number, equal_to(4100))
+        assert_that(vlan4100.name, equal_to(None))
+        assert_that(len(vlan4100.ips), equal_to(0))
+        assert_that(vlan4100.interfaces, equal_to(['port-channel 1', 'port-channel 2', 'port-channel 3', 'port-channel 4', 'port-channel 5', 'port-channel 12', 'tengigabitethernet 1/0/2',
+                                                   'tengigabitethernet 1/0/3', 'tengigabitethernet 1/0/4', 'fortygigabitethernet 1/0/1', 'fortygigabitethernet 1/0/2', 'fortygigabitethernet 1/0/5']))
 
     def test_get_vlan_with_no_name(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
@@ -223,23 +242,6 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(vlan.number, equal_to(1000))
         assert_that(vlan.name, equal_to(None))
-        assert_that(len(vlan.ips), equal_to(0))
-
-    def test_get_vlan_standard_with_name(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").once().ordered().and_return([
-
-            "VLAN   Name                             Ports          Type",
-            "-----  ---------------                  -------------  --------------",
-            "1000   MyVlan                           Po27,          Static",
-            "                                        Te1/0/2-4,",
-            "                                        Te1/0/6-8,",
-            "                                        Te1/0/41-46",
-        ])
-
-        vlan = self.switch.get_vlan(1000)
-
-        assert_that(vlan.number, equal_to(1000))
-        assert_that(vlan.name, equal_to("MyVlan"))
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_default(self):
