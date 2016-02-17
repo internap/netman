@@ -297,7 +297,10 @@ class Cisco(SwitchBase):
             self.ssh.do("no ip helper-address {}".format(ip_address))
             
     def get_vlan_interfaces(self, vlan_number):
-        return get_vlan_interfaces_from_data(vlan_number, self.get_interfaces())
+        vlan_interfaces = get_vlan_interfaces_from_data(vlan_number, self.get_interfaces())
+        if not vlan_interfaces:
+            self.get_vlan(vlan_number)
+        return vlan_interfaces
 
     def set_bond_trunk_mode(self, number):
         with NamedBond(number) as bond:
