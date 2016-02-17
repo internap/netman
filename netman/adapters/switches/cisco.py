@@ -89,6 +89,7 @@ class Cisco(SwitchBase):
             vlan,
             self.ssh.do("show running-config interface vlan {} | begin interface".format(number))
         )
+        apply_interfaces_data(vlan, self.get_interfaces())
         return vlan
 
     def get_vlans(self):
@@ -112,6 +113,9 @@ class Cisco(SwitchBase):
                         current_vlan,
                         self.ssh.do("show running-config interface vlan {}".format(current_vlan.number))
                     )
+        interfaces = self.get_interfaces()
+        for vlan in vlans.values():
+            apply_interfaces_data(vlan, interfaces)
 
         return vlans.values()
 
@@ -499,6 +503,21 @@ def parse_vlan_ranges(all_ranges):
         for vlan_list in [parse(r) for r in all_ranges.split(",")]:
             full_list += vlan_list
         return full_list
+
+
+def apply_interfaces_data(vlan, interfaces_data):
+    for interface in interfaces_data:
+        if interface.port_mode is TRUNK:
+            if interface.trunk_vlans and vlan.number in interface.trunk_vlans:
+                vlan.interfaces.append(interface.name)
+            elif vlan.number == interface.trunk_native_vlan:
+                vlan.interfaces.append(interface.name)
+        elif interface.port_mode is ACCESS and interface.access_vlan == vlan.number:
+            vlan.interfaces.append(interface.name)
+        elif interface.port_mode is DYNAMIC:
+            if interface.access_vlan == vlan.number or interface.trunk_native_vlan == vlan.number or \
+                    (interface.trunk_vlans and vlan.number in interface.trunk_vlans):
+                vlan.interfaces.append(interface.name)
 
 
 def parse(single_range):

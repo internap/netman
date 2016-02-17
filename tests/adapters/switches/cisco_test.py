@@ -65,7 +65,7 @@ class CiscoTest(unittest.TestCase):
     def test_switch_has_a_logger_configured_with_the_switch_name(self):
         assert_that(self.switch.logger.name, is_(Cisco.__module__ + ".my.hostname"))
 
-    def test_get_vlan(self):
+    def test_get_vlans(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan brief").once().ordered().and_return([
             "VLAN Name                             Status    Ports",
             "---- -------------------------------- --------- -------------------------------",
@@ -132,6 +132,35 @@ class CiscoTest(unittest.TestCase):
             "end"
         ])
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").and_return([
+            "interface FastEthernet0/16",
+            " switchport access vlan 2222",
+            " switchport mode access",
+            "!",
+            "interface FastEthernet0/17",
+            " switchport trunk allowed vlan 2222,2998",
+            " switchport access vlan 2222",
+            "!",
+            "interface FastEthernet0/18",
+            " switchport trunk allowed vlan 2222,2998",
+            " switchport mode trunk",
+            "!",
+            "interface FastEthernet0/19",
+            " switchport access vlan 1100",
+            " switchport trunk native vlan 2",
+            " switchport trunk allowed vlan 2222,2998",
+            " switchport mode access",
+            "!",
+            "interface FastEthernet0/20",
+            " switchport access vlan 1100",
+            " switchport trunk native vlan 2222",
+            " switchport trunk allowed vlan 800,500",
+            " switchport mode trunk",
+            "!",
+            "line con 0",
+            "transport input ssh"
+        ])
+
         vlan_list = self.switch.get_vlans()
         vlan_list = sorted(vlan_list, key=lambda x: x.number)
 
@@ -139,6 +168,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan_list[0].number, equal_to(1))
         assert_that(vlan_list[0].name, equal_to("default"))
         assert_that(len(vlan_list[0].ips), equal_to(0))
+        assert_that(vlan_list[0].interfaces, is_([]))
 
         assert_that(vlan_list[1].number, equal_to(2222))
         assert_that(vlan_list[1].name, equal_to("your-name-is-way-too-long-for-th"))
@@ -146,10 +176,12 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan_list[1].access_groups[IN], equal_to(None))
         assert_that(vlan_list[1].access_groups[OUT], equal_to(None))
         assert_that(len(vlan_list[1].ips), equal_to(0))
+        assert_that(vlan_list[1].interfaces, is_(['FastEthernet0/16', 'FastEthernet0/17', 'FastEthernet0/18', 'FastEthernet0/20']))
 
         assert_that(vlan_list[2].vrf_forwarding, equal_to("BLAH"))
         assert_that(vlan_list[2].access_groups[IN], equal_to("SHIZZLE"))
         assert_that(vlan_list[2].access_groups[OUT], equal_to("WHIZZLE"))
+        assert_that(vlan_list[2].interfaces, is_([]))
 
         v3 = vlan_list[3]
         assert_that(v3.number, equal_to(2998))
@@ -159,6 +191,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(v3.access_groups[OUT], equal_to("GAGA"))
         assert_that(len(v3.ips), equal_to(3))
         assert_that(v3.icmp_redirects, equal_to(True))
+        assert_that(v3.interfaces, is_(['FastEthernet0/17', 'FastEthernet0/18']))
 
         v3.ips = sorted(v3.ips, key=lambda ip: (ip.value, ip.prefixlen))
         assert_that(str(v3.ips[0].ip), equal_to('1.1.1.1'))
@@ -190,6 +223,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(len(vlan_list[4].ips), equal_to(0))
         assert_that(vlan_list[4].access_groups[IN], equal_to(None))
         assert_that(vlan_list[4].access_groups[OUT], equal_to(None))
+        assert_that(vlan_list[4].interfaces, is_([]))
 
     def test_get_vlan_with_no_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1750 | begin vlan").and_return([
@@ -201,6 +235,8 @@ class CiscoTest(unittest.TestCase):
             "                                              ^"
             "% Invalid input detected at '^' marker."
         ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").once().ordered().and_return([])
 
         vlan = self.switch.get_vlan(1750)
 
@@ -226,6 +262,8 @@ class CiscoTest(unittest.TestCase):
             " no ip address"
             "end"
         ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").once().ordered().and_return([])
 
         vlan = self.switch.get_vlan(1750)
 
@@ -267,6 +305,8 @@ class CiscoTest(unittest.TestCase):
             "end"
         ])
 
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").once().ordered().and_return([])
+
         vlan = self.switch.get_vlan(1750)
 
         assert_that(vlan.number, is_(1750))
@@ -298,6 +338,57 @@ class CiscoTest(unittest.TestCase):
             self.switch.get_vlan(1750)
 
         assert_that(str(expect.exception), equal_to("Vlan 1750 not found"))
+
+    def test_get_vlan_has_interface_filled(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 900 | begin vlan").and_return([
+            "vlan 900",
+            " name Shizzle",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 900 | begin interface").once().ordered().and_return([
+            "                                              ^",
+            "% Invalid input detected at '^' marker."
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").and_return([
+            "interface FastEthernet0/16",
+            " switchport access vlan 900",
+            " switchport mode access",
+            "!",
+            "interface FastEthernet0/17",
+            " switchport trunk allowed vlan 900,1000",
+            " switchport access vlan 900",
+            "!",
+            "interface FastEthernet0/18",
+            " switchport trunk allowed vlan 900,1000",
+            " switchport mode trunk",
+            "!",
+            "interface FastEthernet0/19",
+            " switchport access vlan 1100",
+            " switchport trunk native vlan 2",
+            " switchport trunk allowed vlan 900,1000",
+            " switchport mode access",
+            "!",
+            "interface FastEthernet0/20",
+            " switchport access vlan 1100",
+            " switchport trunk native vlan 900",
+            " switchport trunk allowed vlan 800,500",
+            " switchport mode trunk",
+            "!",
+            "interface FastEthernet0/21",
+            " switchport trunk allowed vlan 899-901",
+            " switchport mode trunk",
+            "!",
+            "line con 0",
+            "transport input ssh"
+        ])
+
+        vlan = self.switch.get_vlan(900)
+
+        assert_that(vlan.number, is_(900))
+        assert_that(vlan.name, is_("Shizzle"))
+        assert_that(vlan.interfaces, is_(['FastEthernet0/16', 'FastEthernet0/17', 'FastEthernet0/18', 'FastEthernet0/20', 'FastEthernet0/21']))
 
     def test_add_vlan(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([])
