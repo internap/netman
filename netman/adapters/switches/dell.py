@@ -97,19 +97,32 @@ class Dell(SwitchBase):
             result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
 
         vlans = parse_vlan_list(result)
+        for vlan in vlans:
+            vlan.interfaces = parse_interface_from_vlan_list(vlan.number, result)
         return vlans
 
-    def get_vlan(self, number):
-        result =  self.shell.do("show vlan id {}".format(number), wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+    def get_vlan(self, vlan_number):
+        result = self.shell.do("show vlan id {}".format(vlan_number), wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        while len(result) > 0 and "--More--" in result[-1]:
+            result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
         if regex.match(".*\^.*", result[0]):
             raise BadVlanNumber
         elif regex.match("^ERROR", result[0]):
             raise UnknownVlan
-        else:
-            while len(result) > 0 and "--More--" in result[-1]:
-                result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        vlan = parse_vlan_list(result)[0]
+        vlan.interfaces = parse_interface_from_vlan_list(vlan.number, result)
+        return vlan
 
-            return parse_vlan_list(result)[0]
+    def get_vlan_interfaces(self, vlan_number):
+        result = self.shell.do("show vlan id {}".format(vlan_number), wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        while len(result) > 0 and "--More--" in result[-1]:
+            result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        if regex.match(".*\^.*", result[0]):
+            raise BadVlanNumber
+        elif regex.match("^ERROR", result[0]):
+            raise UnknownVlan
+
+        return parse_interface_from_vlan_list(vlan_number, result)
 
     def get_interface(self, interface_id):
         return self.read_interface(interface_id)
@@ -325,27 +338,31 @@ def parse_vlan_list(result):
         if regex.match('^(\d+)(.*)', line):
             number, leftovers = regex
             name = None
-            ports = None
-            if regex.match('^\s{1,6}(\S+)\s+([a-z0-9-,/]+)', leftovers):
-                name, ports = regex
-            elif regex.match('^\s{1,6}(\S+).*', leftovers):
+            if regex.match('^\s{1,6}(\S+).*', leftovers):
                 name = regex[0]
-            elif regex.match('^\s*([a-z0-9-,/]+)', leftovers):
-                ports = regex[0]
-
             vlan = Vlan(number=int(number),
                         name=name if int(number) > 1 else "default")
             vlans.append(vlan)
-            if ports:
-                vlan.interfaces.extend(parse_interface_list(ports))
-
-        elif regex.match('^\s+([a-z0-9-,/]+)', line):
-            vlan.interfaces.extend(parse_interface_list(regex[0]))
-
     return vlans
 
 
-def parse_interface_list(ports):
+def parse_interface_from_vlan_list(vlan_number, result):
+    vlan_interfaces = []
+    number = None
+    for line in result:
+        if regex.match('^(\d+)(.*)', line):
+            number, leftover = regex
+            if int(number) == vlan_number:
+                if regex.match('^\s{1,6}\S*\s+([a-z0-9-,/]+).*', leftover):
+                    vlan_interfaces.extend(parse_interface_port_list(regex[0]))
+
+        elif regex.match('^\s+([a-z0-9-,/]+).*', line) and int(number) == vlan_number:
+            vlan_interfaces.extend(parse_interface_port_list(regex[0]))
+
+    return vlan_interfaces
+
+
+def parse_interface_port_list(ports):
     port_list = filter(None, ports.split(','))
     interface_list = []
     for port in port_list:
