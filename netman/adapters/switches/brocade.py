@@ -304,6 +304,17 @@ class Brocade(SwitchBase):
             with self.config(), self.interface_vlan(vlan):
                 self.shell.do("no vrf forwarding {}".format(vlan.vrf_forwarding))
 
+    def get_vlan_interfaces(self, vlan_number):
+        interfaces = []
+        result = self._show_vlan(vlan_number)
+        if result[0].startswith("Error"):
+            raise UnknownVlan(vlan_number)
+        for line in result:
+            if regex.match("(Untagged|Statically tagged) Ports\s+: (.*)$", line):
+                for real_name in _to_real_names(parse_if_ranges(regex[1])):
+                    interfaces.append(real_name)
+        return interfaces
+
     def config(self):
         return SubShell(self.shell, enter="configure terminal", exit_cmd='exit')
 
