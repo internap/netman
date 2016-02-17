@@ -2326,6 +2326,40 @@ class CiscoTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("DHCP relay server 10.10.10.1 not found on VLAN 1234"))
 
+    def test_get_vlan_interfaces(self):
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config | begin interface").and_return([
+            "interface FastEthernet0/16",
+            " switchport access vlan 2222",
+            " switchport mode access",
+            "!",
+            "interface FastEthernet0/17",
+            " switchport trunk allowed vlan 2222,2998",
+            " switchport access vlan 2222",
+            "!",
+            "interface FastEthernet0/18",
+            " switchport trunk allowed vlan 2222,2998",
+            " switchport mode trunk",
+            "!",
+            "interface FastEthernet0/19",
+            " switchport access vlan 1100",
+            " switchport trunk native vlan 2",
+            " switchport trunk allowed vlan 2222,2998",
+            " switchport mode access",
+            "!",
+            "interface FastEthernet0/20",
+            " switchport access vlan 1100",
+            " switchport trunk native vlan 2222",
+            " switchport trunk allowed vlan 800,500",
+            " switchport mode trunk",
+            "!",
+            "line con 0",
+            "transport input ssh"
+        ])
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(2222)
+        assert_that(vlan_interfaces, is_(['FastEthernet0/16', 'FastEthernet0/17', 'FastEthernet0/18', 'FastEthernet0/20']))
+
     def test_set_vlan_icmp_redirects_state_enable(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
             "Building configuration...",

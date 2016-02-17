@@ -89,7 +89,7 @@ class Cisco(SwitchBase):
             vlan,
             self.ssh.do("show running-config interface vlan {} | begin interface".format(number))
         )
-        apply_interfaces_data(vlan, self.get_interfaces())
+        vlan.interfaces = get_vlan_interfaces_from_data(vlan.number, self.get_interfaces())
         return vlan
 
     def get_vlans(self):
@@ -115,7 +115,7 @@ class Cisco(SwitchBase):
                     )
         interfaces = self.get_interfaces()
         for vlan in vlans.values():
-            apply_interfaces_data(vlan, interfaces)
+            vlan.interfaces = get_vlan_interfaces_from_data(vlan.number, interfaces)
 
         return vlans.values()
 
@@ -295,6 +295,9 @@ class Cisco(SwitchBase):
 
         with self.config(), self.interface_vlan(vlan_number):
             self.ssh.do("no ip helper-address {}".format(ip_address))
+            
+    def get_vlan_interfaces(self, vlan_number):
+        return get_vlan_interfaces_from_data(vlan_number, self.get_interfaces())
 
     def set_bond_trunk_mode(self, number):
         with NamedBond(number) as bond:
@@ -505,19 +508,21 @@ def parse_vlan_ranges(all_ranges):
         return full_list
 
 
-def apply_interfaces_data(vlan, interfaces_data):
+def get_vlan_interfaces_from_data(vlan_number, interfaces_data):
+    vlan_interfaces = []
     for interface in interfaces_data:
         if interface.port_mode is TRUNK:
-            if interface.trunk_vlans and vlan.number in interface.trunk_vlans:
-                vlan.interfaces.append(interface.name)
-            elif vlan.number == interface.trunk_native_vlan:
-                vlan.interfaces.append(interface.name)
-        elif interface.port_mode is ACCESS and interface.access_vlan == vlan.number:
-            vlan.interfaces.append(interface.name)
+            if interface.trunk_vlans and vlan_number in interface.trunk_vlans:
+                vlan_interfaces.append(interface.name)
+            elif vlan_number == interface.trunk_native_vlan:
+                vlan_interfaces.append(interface.name)
+        elif interface.port_mode is ACCESS and interface.access_vlan == vlan_number:
+            vlan_interfaces.append(interface.name)
         elif interface.port_mode is DYNAMIC:
-            if interface.access_vlan == vlan.number or interface.trunk_native_vlan == vlan.number or \
-                    (interface.trunk_vlans and vlan.number in interface.trunk_vlans):
-                vlan.interfaces.append(interface.name)
+            if interface.access_vlan == vlan_number or interface.trunk_native_vlan == vlan_number or \
+                    (interface.trunk_vlans and vlan_number in interface.trunk_vlans):
+                vlan_interfaces.append(interface.name)
+    return vlan_interfaces
 
 
 def parse(single_range):
