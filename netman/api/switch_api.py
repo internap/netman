@@ -32,6 +32,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans', view_func=self.add_vlan, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>', view_func=self.get_vlan, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>', view_func=self.remove_vlan, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/interfaces', view_func=self.get_vlan_interfaces, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/ips', view_func=self.add_ip, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/ips/<path:ip_network>', view_func=self.remove_ip, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrrp-groups', view_func=self.add_vrrp_group, methods=['POST'])
@@ -94,6 +95,25 @@ class SwitchApi(SwitchApiBase):
         vlans = sorted(switch.get_vlans(), key=lambda x: x.number)
 
         return 200, [vlan.to_api(v) for v in vlans]
+
+    @to_response
+    @resource(Switch, Vlan)
+    def get_vlan_interfaces(self, switch, vlan_number):
+        """
+        Displays interfaces use in a VLAN
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        :code 200 OK:
+
+        Example output:
+
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_vlans_vlan_interfaces.json
+            :language: json
+
+        """
+
+        return 200, switch.get_vlan_interfaces(vlan_number)
 
     @to_response
     @resource(Switch, Vlan)

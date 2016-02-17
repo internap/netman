@@ -135,6 +135,9 @@ class RemoteSwitch(SwitchBase):
     def remove_vlan(self, number):
         self.delete("/vlans/{0}".format(str(number)))
 
+    def get_vlan_interfaces(self, vlan_number):
+        return self.get("/vlans/{}/interfaces".format(vlan_number)).json()
+
     def set_vlan_access_group(self, vlan_number, direction, name):
         self.put('/vlans/{vlan_number}/access-groups/{direction}'.format(
             vlan_number=vlan_number,

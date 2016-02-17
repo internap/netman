@@ -106,6 +106,30 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(200))
         assert_that(result, equal_to([]))
 
+    def test_get_vlan_interfaces(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_vlan_interfaces').with_args(1).and_return(
+            ["ethernet 1/4", "FastEthernet0/3", "GigabitEthernet0/8"]
+        ).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/vlans/1/interfaces")
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_switch_hostname_vlans_vlan_interfaces.json"))
+
+    def test_get_vlan_interfaces_nonexistent_vlan_raises(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_vlan_interfaces').with_args(4000).and_raise(UnknownVlan('4000')).ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/vlans/4000/interfaces")
+
+        assert_that(code, equal_to(404))
+        assert_that(result, equal_to({'error': 'Vlan 4000 not found'}))
+
     def test_single_interfaces_serialization(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
