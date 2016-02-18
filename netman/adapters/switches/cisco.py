@@ -22,7 +22,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, UnknownBond
+    VlanAlreadyExist, UnknownBond, InvalidAccessGroupName
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
@@ -250,7 +250,7 @@ class Cisco(SwitchBase):
         with self.config(), self.interface_vlan(vlan_number):
             result = self.ssh.do("ip access-group {} {}".format(name, 'in' if direction == IN else 'out'))
             if len(result) > 0:
-                raise ValueError("Access group name \"{}\" is invalid".format(name))
+                raise InvalidAccessGroupName(name)
 
     def unset_vlan_access_group(self, vlan_number, direction):
         vlan = self.get_vlan_interface_data(vlan_number)

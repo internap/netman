@@ -28,7 +28,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownI
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, VrrpAlreadyExistsForVlan, BadVrrpTimers, \
     BadVrrpTracking, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, \
-    UnknownBond
+    UnknownBond, InvalidAccessGroupName
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -1612,10 +1612,10 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        with self.assertRaises(ValueError) as expect:
+        with self.assertRaises(InvalidAccessGroupName) as expect:
             self.switch.set_vlan_access_group(2500, OUT, "TheAc cessGroup")
 
-        assert_that(str(expect.exception), equal_to("Access group name \"TheAc cessGroup\" is invalid"))
+        assert_that(str(expect.exception), equal_to("Access Group Name is invalid: TheAc cessGroup"))
 
     def test_set_access_group_without_interface_creates_it(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 2500").once().ordered().and_return([
