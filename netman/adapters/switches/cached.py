@@ -11,18 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from collections import OrderedDict
 import copy
+from collections import OrderedDict
 
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
-from netman.core.objects.interface_states import ON, OFF
+from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
-
 
 __all__ = ['CachedSwitch']
 
@@ -84,6 +82,11 @@ class InterfaceCache(Cache):
     object_key = 'name'
 
 
+class VlanInterfaceCache(Cache):
+    object_type = str
+    object_key = 'number'
+
+
 class BondCache(Cache):
     object_type = Bond
     object_key = 'number'
@@ -95,6 +98,7 @@ class CachedSwitch(SwitchBase):
         self.real_switch = real_switch
         self.vlans_cache = VlanCache().invalidated()
         self.interfaces_cache = InterfaceCache().invalidated()
+        self.vlan_interfaces_cache = VlanInterfaceCache().invalidated()
         self.bonds_cache = BondCache().invalidated()
 
     def _connect(self):
@@ -129,6 +133,12 @@ class CachedSwitch(SwitchBase):
             self.get_vlan(number)
 
         return copy.deepcopy(self.vlans_cache.values())
+
+    def get_vlan_interfaces(self, number):
+        if (self.vlan_interfaces_cache.refresh_items and number not in self.vlan_interfaces_cache) \
+                or number in self.vlan_interfaces_cache.refresh_items:
+            self.vlan_interfaces_cache[number] = self.real_switch.get_vlan_interfaces(number)
+        return copy.deepcopy(self.vlan_interfaces_cache[number])
 
     def get_interface(self, instance_id):
         if (self.interfaces_cache.refresh_items and instance_id not in self.interfaces_cache) \
