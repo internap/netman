@@ -11,18 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import string
-from collections import OrderedDict
 import copy
+from collections import OrderedDict
 
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
-from netman.core.objects.interface_states import ON, OFF
+from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
-
 
 __all__ = ['CachedSwitch']
 
@@ -85,7 +83,7 @@ class InterfaceCache(Cache):
 
 
 class VlanInterfaceCache(Cache):
-    object_type = string
+    object_type = str
     object_key = 'number'
 
 
