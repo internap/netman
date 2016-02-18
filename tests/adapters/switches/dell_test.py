@@ -398,8 +398,49 @@ class DellTest(unittest.TestCase):
         vlan = self.switch.get_vlan(1000)
 
         assert_that(vlan.interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'ethernet 1/g4', 'ethernet 1/g7',
+                                               'ethernet 1/g13', 'ethernet 1/g17', 'ethernet 1/g18', 'ethernet 1/g19', 'ethernet 1/g20', 'ethernet 1/xg4',
+                                               'ethernet 2/g2']))
+
+    def test_get_vlan_interfaces(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000   MyVlanName                       ch2-3,ch5-6,   Static    Required",
+            "                                        1/g4,1/g7,"
+        ])
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(1000)
+
+        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'ethernet 1/g4', 'ethernet 1/g7']))
+
+    def test_get_vlan_interfaces_multipage(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000   MyVlanName                       ch2-3,ch5-7,   Static    Required",
+            "                                        1/g4,1/g7,",
+            "                                        1/g13,",
+            "--More-- or (q)uit"
+        ])
+
+        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "                                        1/g17-1/g20,",
+            "                                        1/xg4,2/g2,"
+        ])
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(1000)
+
+        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 7', 'ethernet 1/g4', 'ethernet 1/g7',
                                               'ethernet 1/g13', 'ethernet 1/g17', 'ethernet 1/g18', 'ethernet 1/g19', 'ethernet 1/g20', 'ethernet 1/xg4',
                                                'ethernet 2/g2']))
+
+    def test_get_vlan_interfaces_with_unknown_vlan_raises(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "ERROR: This VLAN does not exist."
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan_interfaces(2019)
 
     def test_get_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g1").and_return([
