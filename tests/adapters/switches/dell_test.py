@@ -434,7 +434,7 @@ class DellTest(unittest.TestCase):
                                               'ethernet 1/g13', 'ethernet 1/g17', 'ethernet 1/g18', 'ethernet 1/g19', 'ethernet 1/g20', 'ethernet 1/xg4',
                                                'ethernet 2/g2']))
 
-    def test_get_vlan_interfaces_with_unknown_vlan(self):
+    def test_get_vlan_interfaces_with_unknown_vlan_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "ERROR: This VLAN does not exist."
         ])
