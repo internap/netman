@@ -83,6 +83,14 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(self.switch.get_vlan(1), is_(all_vlans[0]))
         assert_that(self.switch.get_vlan(2), is_(all_vlans[1]))
 
+    def test_get_vlan_interfaces(self):
+        vlan_interfaces = ["port-channel 1", "port-channel 3", "ethernet 0/2"]
+
+        self.real_switch_mock.should_receive("get_vlan_interfaces").with_args(1).once().and_return(
+                vlan_interfaces)
+        assert_that(self.switch.get_vlan_interfaces(1), is_(vlan_interfaces))
+        assert_that(self.switch.get_vlan_interfaces(1), is_(vlan_interfaces))
+
     def test_access_new_vlan_after_vlan_list(self):
         all_vlans = [Vlan(1, 'first'), Vlan(2, 'second')]
         vlan3 = Vlan(3, 'third', ips=[IPNetwork("2.2.2.2/24")])
