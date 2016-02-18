@@ -417,7 +417,7 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
-            "1000   MyVlanName                       ch2-3,ch5-6,   Static    Required",
+            "1000   MyVlanName                       ch2-3,ch5-7,   Static    Required",
             "                                        1/g4,1/g7,",
             "                                        1/g13,",
             "--More-- or (q)uit"
@@ -430,7 +430,7 @@ class DellTest(unittest.TestCase):
 
         vlan_interfaces = self.switch.get_vlan_interfaces(1000)
 
-        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'ethernet 1/g4', 'ethernet 1/g7',
+        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 7', 'ethernet 1/g4', 'ethernet 1/g7',
                                               'ethernet 1/g13', 'ethernet 1/g17', 'ethernet 1/g18', 'ethernet 1/g19', 'ethernet 1/g20', 'ethernet 1/xg4',
                                                'ethernet 2/g2']))
 
