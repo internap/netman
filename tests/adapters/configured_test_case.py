@@ -60,6 +60,11 @@ class ValidatingCachedSwitch(CachedSwitch):
         assert_that(vlans, is_(self.real_switch.get_vlans()))
         return vlans
 
+    def get_vlan_interfaces(self, number):
+        vlan_interfaces = super(ValidatingCachedSwitch, self).get_vlan_interfaces(number)
+        assert_that(vlan_interfaces, is_(self.real_switch.get_vlan_interfaces(number)))
+        return vlan_interfaces
+
 
 class ConfiguredTestCase(unittest.TestCase):
     _dev_sample = None
