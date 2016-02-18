@@ -111,7 +111,7 @@ class Juniper(SwitchBase):
 
     def get_vlan_from_node(self, vlan_node, config):
         vlan_id_node = first(vlan_node.xpath("vlan-id"))
-        vlan_name_node = first(vlan_node.xpath("name"))
+
         vlan = None
         if vlan_id_node is not None:
             vlan = Vlan(number=int(vlan_id_node.text))
@@ -130,11 +130,7 @@ class Juniper(SwitchBase):
                     vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
 
             interface_nodes = config.xpath("data/configuration/interfaces/interface")
-            for interface in interface_nodes:
-                members_node = interface.xpath("unit/family/ethernet-switching/vlan/members")
-                if is_vlan_in_interface_members(vlan.number, vlan_name_node.text, members_node):
-                    vlan.interfaces.append(first(interface.xpath("name")).text)
-
+            vlan.interfaces = _get_vlan_interfaces_from_node(vlan_node, interface_nodes)
         return vlan
 
 
@@ -654,6 +650,16 @@ class Juniper(SwitchBase):
         self.fill_interface_from_node(bond, bond_node, config)
         return bond
 
+    def get_vlan_interfaces(self, vlan_number):
+        config = self.query(one_vlan_by_vlan_id(vlan_number), all_interfaces)
+
+        if not config.xpath("data/configuration/vlans/vlan"):
+            raise UnknownVlan(vlan_number)
+
+        vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
+        interface_nodes = config.xpath("data/configuration/interfaces/interface")
+        return _get_vlan_interfaces_from_node(vlan_node, interface_nodes)
+
 
 def all_vlans():
     return new_ele("vlans")
@@ -1069,15 +1075,26 @@ def _compute_edge_state_modifications(interface_id, edge, config):
     return modifications
 
 
-def is_vlan_in_interface_members(vlan_id, vlan_name, members_node):
-    for member in members_node:
-        if regex.match("(\d+)-(\d+)", member.text):
+def _get_vlan_interfaces_from_node(vlan_node, interface_nodes):
+    vlan_name = first(vlan_node.xpath("name")).text
+    vlan_number = int(first(vlan_node.xpath("vlan-id")).text)
+    interfaces = []
+    for interface in interface_nodes:
+        members = [members.text for members in interface.xpath("unit/family/ethernet-switching/vlan/members")]
+        if _is_vlan_in_interface_members(vlan_number, vlan_name, members):
+            interfaces.append(first(interface.xpath("name")).text)
+    return interfaces
+
+
+def _is_vlan_in_interface_members(vlan_number, vlan_name, members):
+    for member_name in members:
+        if regex.match("(\d+)-(\d+)", member_name):
             start, end = regex
-            if int(start) <= vlan_id <= int(end):
+            if int(start) <= vlan_number <= int(end):
                 return True
-        elif member.text == vlan_name:
+        elif member_name == vlan_name:
             return True
-        elif int(member.text) == vlan_id:
+        elif int(member_name) == vlan_number:
             return True
 
     return False
