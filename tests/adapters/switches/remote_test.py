@@ -27,7 +27,7 @@ from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist, BadBondLinkSpeed, LockedSwitch, \
-    NetmanException, UnknownInterface, UnknownSession
+    NetmanException, UnknownInterface, UnknownSession, UnknownVlan
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -547,6 +547,38 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(vrrp_group2.id, is_(2))
         assert_that(vrrp_group2.ips, is_([IPAddress("3.3.3.1")]))
         assert_that(vrrp_group2.priority, is_(100))
+
+    def test_get_vlan_interfaces(self):
+        self.requests_mock.should_receive("get").once().with_args(
+                url=self.netman_url+'/switches/toto/vlans/1/interfaces',
+                headers=self.headers
+        ).and_return(
+            Reply(
+                content=open_fixture('get_switch_hostname_vlans_vlan_interfaces.json').read(),
+                status_code=200)
+        )
+
+        interfaces = self.switch.get_vlan_interfaces(1)
+
+        assert_that(interfaces, is_(["ethernet 1/4", "FastEthernet0/3", "GigabitEthernet0/8"]))
+
+    def test_get_vlan_interfaces_with_no_vlan_raises(self):
+        self.requests_mock.should_receive("get").once().with_args(
+                url=self.netman_url+'/switches/toto/vlans/4000/interfaces',
+                headers=self.headers
+        ).and_return(
+                Reply(
+                        content=json.dumps({
+                            "error": "Vlan 4000 not found",
+                            "error-module": UnknownVlan.__module__,
+                            "error-class": UnknownVlan.__name__
+                        }),
+                        status_code=404))
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan_interfaces('4000')
+
+        assert_that(str(expect.exception), equal_to("Vlan 4000 not found"))
 
     def test_get_interface(self):
         self.requests_mock.should_receive("get").once().with_args(
