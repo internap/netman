@@ -333,6 +333,41 @@ class BrocadeTest(unittest.TestCase):
         assert_that(str(vlan.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
         assert_that(str(vlan.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
 
+    def test_get_vlan_interface_with_untagged_interface(self):
+        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
+                vlan_display(1, 'DEFAULT-VLAN', tagged_port_str="ethe 1/2 ethe 1/23 to 1/24")
+        )
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(1)
+
+        assert_that(vlan_interfaces, equal_to(["ethernet 1/2", "ethernet 1/23", "ethernet 1/24"]))
+
+    def test_get_vlan_interface_with_tagged_interface(self):
+        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
+                vlan_display(1, 'DEFAULT-VLAN', untagged_port_str="ethe 1/2")
+        )
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(1)
+
+        assert_that(vlan_interfaces, equal_to(["ethernet 1/2"]))
+
+    def test_get_vlan_interface_with_untagged_and_tagged_interface(self):
+        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
+                vlan_display(1, 'DEFAULT-VLAN', untagged_port_str="ethe 1/1", tagged_port_str="ethe 1/2 ethe 1/23 to 1/24")
+        )
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(1)
+
+        assert_that(vlan_interfaces, equal_to(["ethernet 1/1", "ethernet 1/2", "ethernet 1/23", "ethernet 1/24"]))
+
+    def test_get_vlan_interface_unknown_vlan(self):
+        self.shell_mock.should_receive("do").with_args("show vlan inexistent").once().ordered().and_return([
+            "Error: vlan inexistent is not configured"
+        ])
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.get_vlan_interfaces("inexistent")
+
     def test_get_vlan_unknown_interface_raises(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return([
             "Error: vlan 1750 is not configured"
