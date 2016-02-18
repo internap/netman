@@ -293,6 +293,26 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan None not found"))
 
+    def test_get_vlan_interfaces(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "VLAN       Name                         Ports          Type      Authorization",
+            "-----  ---------------                  -------------  -----     -------------",
+            "1000   MyVlanName                       ch2-3,ch5-6,   Static    Required",
+            "                                        1/g4,1/g7,"
+        ])
+
+        vlan_interfaces = self.switch.get_vlan_interfaces(1000)
+
+        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'ethernet 1/g4', 'ethernet 1/g7']))
+
+    def test_get_vlan_interfaces_with_unknown_vlan(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+            "ERROR: This VLAN does not exist."
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.get_vlan_interfaces(2019)
+
     def test_get_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface tengigabitethernet 0/0/12").and_return([
             "switchport access vlan 1234"
