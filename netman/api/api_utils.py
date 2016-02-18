@@ -20,7 +20,7 @@ from flask import make_response, request, Response, current_app
 from werkzeug.routing import BaseConverter
 from netman.api import NETMAN_API_VERSION
 
-from netman.core.objects.exceptions import UnknownResource, Conflict
+from netman.core.objects.exceptions import UnknownResource, Conflict, InvalidValue
 
 
 def to_response(fn):
@@ -36,7 +36,7 @@ def to_response(fn):
                     response = json_response(data, code)
                 else:
                     response = make_response("", code)
-        except (BadRequest, ValueError) as e:
+        except InvalidValue as e:
             response = exception_to_response(e, 400)
         except UnknownResource as e:
             response = exception_to_response(e, 404)
@@ -94,7 +94,7 @@ class RegexConverter(BaseConverter):
         self.regex = items[0]
 
 
-class BadRequest(Exception):
+class BadRequest(InvalidValue):
     pass
 
 

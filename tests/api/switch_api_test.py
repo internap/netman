@@ -28,7 +28,7 @@ from netman.api.switch_api import SwitchApi
 from netman.api.switch_session_api import SwitchSessionApi
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, UnknownInterface, \
-    UnknownSwitch, OperationNotCompleted, UnknownSession, SessionAlreadyExists
+    UnknownSwitch, OperationNotCompleted, UnknownSession, SessionAlreadyExists, InvalidAccessGroupName
 from netman.core.objects.interface import Interface
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC, BOND_MEMBER
 from netman.core.objects.vlan import Vlan
@@ -955,13 +955,13 @@ class SwitchApiTest(BaseApiTest):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('set_vlan_access_group').with_args(2500, OUT, "blablabla").once().ordered() \
-            .and_raise(ValueError('Access group name \"blablabla\" is invalid'))
+            .and_raise(InvalidAccessGroupName("blablabla"))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/vlans/2500/access-groups/out", raw_data="blablabla")
 
         assert_that(code, equal_to(400))
-        assert_that(result, equal_to({'error': 'Access group name \"blablabla\" is invalid'}))
+        assert_that(result, equal_to({'error': 'Access Group Name is invalid: blablabla'}))
 
     def delete_put_access_groups_in(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()

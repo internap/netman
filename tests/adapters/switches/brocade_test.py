@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
     BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist
+    VlanAlreadyExist, InvalidAccessGroupName
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -1330,10 +1330,10 @@ class BrocadeTest(unittest.TestCase):
         ])
         self.shell_mock.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
-        with self.assertRaises(ValueError) as expect:
+        with self.assertRaises(InvalidAccessGroupName) as expect:
             self.switch.set_vlan_access_group(2500, OUT, "TheAcc essGroup")
 
-        assert_that(str(expect.exception), equal_to("Access group name \"TheAcc essGroup\" is invalid"))
+        assert_that(str(expect.exception), equal_to("Access Group Name is invalid: TheAcc essGroup"))
 
     def test_set_access_group_needs_to_remove_actual_access_group_to_override_it(self):
         self.shell_mock.should_receive("do").with_args("show vlan 2500").once().ordered().and_return(

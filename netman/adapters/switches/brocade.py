@@ -27,7 +27,8 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
-    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, NetmanException
+    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, NetmanException, \
+    InvalidAccessGroupName
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -278,7 +279,7 @@ class Brocade(SwitchBase):
                 self.shell.do("no ip access-group {} {}".format(vlan.access_groups[direction], {IN: 'in', OUT: 'out'}[direction]))
             result = self.shell.do("ip access-group {} {}".format(name, {IN: 'in', OUT: 'out'}[direction]))
             if len(result) > 0 and not result[0].startswith("Warning:"):
-                raise ValueError("Access group name \"{}\" is invalid".format(name))
+                raise InvalidAccessGroupName(name)
 
     def unset_vlan_access_group(self, vlan_number, direction):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)

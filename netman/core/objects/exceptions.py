@@ -19,6 +19,11 @@ class NetmanException(Exception):
     pass
 
 
+class InvalidValue(NetmanException):
+    def __init__(self, msg="Invalid Value"):
+        super(InvalidValue, self).__init__(msg)
+
+
 class UnknownResource(NetmanException):
     def __init__(self, msg="Resource not found"):
         super(UnknownResource, self).__init__(msg)
@@ -136,55 +141,55 @@ class VlanAlreadyInTrunk(Conflict):
 
 class VrrpAlreadyExistsForVlan(Conflict):
     def __init__(self, vlan=None, vrrp_group_id=None):
-        Conflict.__init__(self, "Vrrp group {group} is already in use on vlan {vlan}".format(group=vrrp_group_id, vlan=vlan))
+        super(VrrpAlreadyExistsForVlan, self).__init__("Vrrp group {group} is already in use on vlan {vlan}".format(group=vrrp_group_id, vlan=vlan))
 
 
-class VrrpDoesNotExistForVlan(ValueError):
+class VrrpDoesNotExistForVlan(InvalidValue):
     def __init__(self, vlan=None, vrrp_group_id=None):
-        ValueError.__init__(self, "Vrrp group {group} does not exist for vlan {vlan}".format(group=vrrp_group_id, vlan=vlan))
+        super(VrrpDoesNotExistForVlan, self).__init__("Vrrp group {group} does not exist for vlan {vlan}".format(group=vrrp_group_id, vlan=vlan))
 
 
-class NoIpOnVlanForVrrp(ValueError):
+class NoIpOnVlanForVrrp(InvalidValue):
     def __init__(self, vlan=None):
-        ValueError.__init__(self, "Vlan {vlan} needs an IP before configuring VRRP".format(vlan=vlan))
+        super(NoIpOnVlanForVrrp, self).__init__("Vlan {vlan} needs an IP before configuring VRRP".format(vlan=vlan))
 
 
-class BadVlanNumber(ValueError):
+class BadVlanNumber(InvalidValue):
     def __init__(self):
         super(BadVlanNumber, self).__init__("Vlan number is invalid")
 
 
-class BadInterfaceDescription(ValueError):
+class BadInterfaceDescription(InvalidValue):
     def __init__(self, desc=None):
         super(BadInterfaceDescription, self).__init__("Invalid description : {}".format(desc))
 
 
-class BadVrrpGroupNumber(ValueError):
+class BadVrrpGroupNumber(InvalidValue):
     def __init__(self, minimum=None, maximum=None):
         super(BadVrrpGroupNumber, self).__init__("VRRP group number is invalid, must be contained between {min} and {max}".format(min=minimum, max=maximum))
 
 
-class BadVrrpPriorityNumber(ValueError):
+class BadVrrpPriorityNumber(InvalidValue):
     def __init__(self, minimum=None, maximum=None):
         super(BadVrrpPriorityNumber, self).__init__("VRRP priority value is invalid, must be contained between {min} and {max}".format(min=minimum, max=maximum))
 
 
-class BadVrrpTimers(ValueError):
+class BadVrrpTimers(InvalidValue):
     def __init__(self):
         super(BadVrrpTimers, self).__init__("VRRP timers values are invalid")
 
 
-class BadVrrpAuthentication(ValueError):
+class BadVrrpAuthentication(InvalidValue):
     def __init__(self):
         super(BadVrrpAuthentication, self).__init__("VRRP authentication is invalid")
 
 
-class BadVrrpTracking(ValueError):
+class BadVrrpTracking(InvalidValue):
     def __init__(self):
         super(BadVrrpTracking, self).__init__("VRRP tracking values are invalid")
 
 
-class BadVlanName(ValueError):
+class BadVlanName(InvalidValue):
     def __init__(self):
         super(BadVlanName, self).__init__("Vlan name is invalid")
 
@@ -199,7 +204,7 @@ class UnableToAcquireLock(UnavailableResource):
         super(UnableToAcquireLock, self).__init__("Unable to acquire a lock in a timely fashion")
 
 
-class BadBondNumber(ValueError):
+class BadBondNumber(InvalidValue):
     def __init__(self):
         super(BadBondNumber, self).__init__("Bond number is invalid")
 
@@ -219,7 +224,7 @@ class UnknownBond(UnknownResource):
         super(UnknownBond, self).__init__("Bond {} not found".format(number))
 
 
-class BadBondLinkSpeed(ValueError):
+class BadBondLinkSpeed(InvalidValue):
     def __init__(self):
         super(BadBondLinkSpeed, self).__init__("Malformed bond link speed")
 
@@ -229,7 +234,7 @@ class UnknownSwitch(UnknownResource):
         super(UnknownSwitch, self).__init__("Switch \"{0}\" is not configured".format(name))
 
 
-class MalformedSwitchSessionRequest(ValueError):
+class MalformedSwitchSessionRequest(InvalidValue):
     def __init__(self):
         super(MalformedSwitchSessionRequest, self).__init__("Malformed switch session request")
 
@@ -252,3 +257,8 @@ class CommandTimeout(Exception):
 class CouldNotConnect(Exception):
     def __init__(self, host=None, port=None):
         super(CouldNotConnect, self).__init__("Could not connect to {} on port {}".format(host, port))
+
+
+class InvalidAccessGroupName(InvalidValue):
+    def __init__(self, name=None):
+        super(InvalidAccessGroupName, self).__init__("Access Group Name is invalid: {}".format(name))
