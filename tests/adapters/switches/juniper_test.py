@@ -491,9 +491,9 @@ class JuniperTest(unittest.TestCase):
                           <unit>
                             <family>
                               <ethernet-switching>
+                                <native-vlan-id>705</native-vlan-id>
                                 <vlan>
                                   <members>687</members>
-                                  <members>705</members>
                                   <members>708</members>
                                 </vlan>
                               </ethernet-switching>

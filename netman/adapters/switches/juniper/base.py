@@ -1080,6 +1080,10 @@ def _get_vlan_interfaces_from_node(vlan_node, interface_nodes):
     vlan_number = int(first(vlan_node.xpath("vlan-id")).text)
     interfaces = []
     for interface in interface_nodes:
+        trunk_native_vlan = interface.xpath("unit/family/ethernet-switching/native-vlan-id")
+        if trunk_native_vlan and vlan_number == int(trunk_native_vlan[0].text):
+            interfaces.append(first(interface.xpath("name")).text)
+
         members = [members.text for members in interface.xpath("unit/family/ethernet-switching/vlan/members")]
         if _is_vlan_in_interface_members(vlan_number, vlan_name, members):
             interfaces.append(first(interface.xpath("name")).text)
