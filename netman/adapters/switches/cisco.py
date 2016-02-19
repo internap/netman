@@ -89,7 +89,6 @@ class Cisco(SwitchBase):
             vlan,
             self.ssh.do("show running-config interface vlan {} | begin interface".format(number))
         )
-        vlan.interfaces = get_vlan_interfaces_from_data(vlan.number, self.get_interfaces())
         return vlan
 
     def get_vlans(self):
@@ -113,10 +112,6 @@ class Cisco(SwitchBase):
                         current_vlan,
                         self.ssh.do("show running-config interface vlan {}".format(current_vlan.number))
                     )
-        interfaces = self.get_interfaces()
-        for vlan in vlans.values():
-            vlan.interfaces = get_vlan_interfaces_from_data(vlan.number, interfaces)
-
         return vlans.values()
 
     def add_vlan(self, number, name=None):

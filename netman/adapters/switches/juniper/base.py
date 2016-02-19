@@ -128,9 +128,6 @@ class Juniper(SwitchBase):
                     vlan.ips = parse_ips(interface_vlan_node)
                     vlan.access_groups[IN] = parse_inet_filter(interface_vlan_node, "input")
                     vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
-
-            interface_nodes = config.xpath("data/configuration/interfaces/interface")
-            vlan.interfaces = _get_vlan_interfaces_from_node(vlan_node, interface_nodes)
         return vlan
 
 

@@ -45,12 +45,6 @@ def telnet(switch_descriptor):
     return BackwardCompatibleBrocade(switch_descriptor=switch_descriptor, shell_factory=TelnetClient)
 
 
-class BadVlanInterfaceList(ValueError):
-    def __init__(self, vlan_number, msg):
-        self.vlan_number = vlan_number
-        super(ValueError, self).__init__(msg)
-
-
 class Brocade(SwitchBase):
     def __init__(self, switch_descriptor, shell_factory):
         super(Brocade, self).__init__(switch_descriptor)
@@ -420,10 +414,7 @@ class Brocade(SwitchBase):
     def _list_vlans(self):
         vlans = []
         for vlan_data in split_on_bang(self.shell.do("show running-config vlan | begin vlan")):
-            try:
-                vlans.append(parse_vlan(vlan_data))
-            except BadVlanInterfaceList as e:
-                vlans.append(self._get_vlan(e.vlan_number))
+            vlans.append(parse_vlan(vlan_data))
         return vlans
 
     def _get_vlan(self, vlan_number, include_vif_data=False):
@@ -440,9 +431,6 @@ class Brocade(SwitchBase):
                 vlan.vlan_interface_name = regex[0]
                 if include_vif_data:
                     add_interface_vlan_data(vlan, self.shell.do("show running-config interface ve {}".format(regex[0])))
-            elif regex.match("(Untagged|Statically tagged) Ports\s+: (.*)$", line):
-                for real_name in _to_real_names(parse_if_ranges(regex[1])):
-                    vlan.interfaces.append(real_name)
         return vlan
 
     def _show_vlan(self, vlan_number):
@@ -461,11 +449,6 @@ def parse_vlan(vlan_data):
     for line in vlan_data[1:]:
         if regex.match("^\srouter-interface ve (\d+)", line):
             current_vlan.vlan_interface_name = regex[0]
-        elif regex.match("^ (untagged|tagged) (.*)$", line):
-            for real_name in _to_real_names(parse_if_ranges(regex[1])):
-                current_vlan.interfaces.append(real_name)
-        elif regex.match("^ no untagged (.*)$", line):
-            raise BadVlanInterfaceList(current_vlan.number, msg="vlan has no untagged interface")
 
     return current_vlan
 

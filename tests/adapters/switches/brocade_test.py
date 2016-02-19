@@ -126,10 +126,6 @@ class BrocadeTest(unittest.TestCase):
             "!"
         ])
 
-        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
-                vlan_display(1, 'DEFAULT-VLAN', tagged_port_str="ethe 1/2 ethe 1/23 to 1/24")
-        )
-
         self.shell_mock.should_receive("do").with_args("show running-config interface").once()\
             .ordered().and_return([
                 'interface ve 428',
@@ -214,11 +210,6 @@ class BrocadeTest(unittest.TestCase):
         assert_that(str(vlan201.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
         assert_that(str(vlan201.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
 
-        assert_that(vlan1.interfaces, equal_to(["ethernet 1/2", "ethernet 1/23", "ethernet 1/24"]))
-        assert_that(vlan201.interfaces, equal_to(["ethernet 1/1"]))
-        assert_that(vlan2222.interfaces, equal_to(["ethernet 1/1", "ethernet 1/2"]))
-        assert_that(vlan3333.interfaces, equal_to([]))
-
     def test_get_vlan_with_no_interface(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
             vlan_display(1750)
@@ -255,16 +246,6 @@ class BrocadeTest(unittest.TestCase):
         assert_that(vlan.ips, is_(empty()))
         assert_that(vlan.vrrp_groups, is_(empty()))
         assert_that(vlan.dhcp_relay_servers, is_(empty()))
-
-    def test_get_vlan_ports(self):
-        self.shell_mock.should_receive("do").with_args("show vlan 1").once().ordered().and_return(
-            vlan_display(1, "DEFAULT-VLAN", untagged_port_str='ethe 1/2 ethe 1/23 to 1/24',
-                         tagged_port_str="ethe 1/4")
-        )
-
-        vlan = self.switch.get_vlan(1)
-
-        assert_that(vlan.interfaces, is_(['ethernet 1/2', 'ethernet 1/23', 'ethernet 1/24', 'ethernet 1/4']))
 
     def test_get_vlan_with_a_full_interface(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1750").once().ordered().and_return(
