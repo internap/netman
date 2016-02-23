@@ -30,17 +30,16 @@ class GetVlanInterfacesTest(ConfiguredTestCase):
     def test_returns_vlan_interfaces(self):
         self.client.add_vlan(1000, name="vlan1000")
 
-        self.try_to.set_trunk_mode(self.test_ports[0].name)
-        self.try_to.set_interface_native_vlan(self.test_ports[0].name, 1000)
+        self.try_to.set_access_mode(self.test_ports[0].name)
+        self.try_to.set_access_vlan(self.test_ports[0].name, 1000)
 
-        self.try_to.set_access_mode(self.test_ports[1].name)
-        self.try_to.set_access_vlan(self.test_ports[1].name, 1000)
+        self.try_to.set_trunk_mode(self.test_ports[1].name)
+        self.try_to.add_trunk_vlan(self.test_ports[1].name, 1000)
 
-        self.try_to.set_trunk_mode(self.test_ports[2].name)
-        self.try_to.add_trunk_vlan(self.test_ports[2].name, 1000)
+        # At this time, interface_native_vlan is not supported on get_vlan_interfaces
 
         assert_that(self.client.get_vlan_interfaces(1000),
-                    is_([self.test_ports[0].name, self.test_ports[1].name, self.test_ports[2].name]))
+                    is_([self.test_ports[0].name, self.test_ports[1].name]))
 
     def test_fails_when_the_vlan_does_not_exist(self):
         with self.assertRaises(UnknownVlan):
