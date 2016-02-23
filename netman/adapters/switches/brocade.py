@@ -308,7 +308,7 @@ class Brocade(SwitchBase):
             if regex.match("(Untagged|Statically tagged) Ports\s+: (.*)$", line):
                 for real_name in _to_real_names(parse_if_ranges(regex[1])):
                     interfaces.append(real_name)
-        return interfaces
+        return sorted(interfaces)
 
     def config(self):
         return SubShell(self.shell, enter="configure terminal", exit_cmd='exit')
