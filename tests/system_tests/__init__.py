@@ -89,7 +89,7 @@ class NetmanClient(object):
 
         def invocation(url, *args, **kwargs):
             return getattr(requests, name)(
-                    "{}:{}{}".format(self.host, self.port, url),
+                    ("{}:{}" + url).format(self.host, self.port, hostname=self.switch.hostname),
                     headers=headers,
                     *args, **kwargs
             )

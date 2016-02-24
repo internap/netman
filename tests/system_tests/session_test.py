@@ -2,9 +2,12 @@ import json
 import time
 import unittest
 
-from hamcrest import assert_that, less_than, greater_than
+from hamcrest import assert_that
 from hamcrest import is_
 
+from netman.adapters.switches.remote import RemoteSwitch
+from netman.adapters.threading_lock_factory import ThreadingLockFactory
+from netman.core.objects.flow_control_switch import FlowControlSwitch
 from tests.system_tests import NetmanTestApp, get_available_switch, create_session
 
 
@@ -50,3 +53,27 @@ class SessionTest(unittest.TestCase):
             result = client.post("/switches-sessions/{}".format(first_session_id),
                                  data=json.dumps({"hostname": client.switch.hostname}))
             assert_that(result.status_code, is_(409), result.text)
+
+    def test_remote_sessions_can_continue_on_a_different_netman(self):
+        with NetmanTestApp() as partial_client1, NetmanTestApp() as partial_client2:
+            switch_descriptor = get_available_switch("juniper")
+
+            client1 = partial_client1(switch_descriptor)
+            first_netman_url = "{}:{}".format(client1.host, client1.port)
+
+            client2 = partial_client2(switch_descriptor)
+            second_netman_url = "{}:{}".format(client2.host, client2.port)
+
+            remote_switch = RemoteSwitch(switch_descriptor)
+            remote_switch._proxy = first_netman_url
+            switch = FlowControlSwitch(remote_switch, ThreadingLockFactory().new_lock())
+
+            with switch.transaction():
+                switch.add_vlan(1498, "one")
+
+                remote_switch._proxy = second_netman_url
+
+                switch.add_vlan(1499, "two")
+
+            assert_that(client1.get("/switches/{hostname}/vlans/1498").json()["name"], is_("one"))
+            assert_that(client1.get("/switches/{hostname}/vlans/1499").json()["name"], is_("two"))
