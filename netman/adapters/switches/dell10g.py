@@ -230,30 +230,20 @@ def parse_interface_list(ports):
 
 def parse_vlan_list(result):
     vlans = []
-    vlan = None
     for line in result:
         if regex.match('^(\d+)(.*)', line):
             number, leftovers = regex
             name = None
-            ports = None
             if regex.match('^\s{1,6}(\S+)\s+([A-Za-z0-9-,/]+)', leftovers):
                 name, ports = regex
             elif regex.match('^\s{1,6}(\S+).*', leftovers):
                 name = regex[0]
-            elif regex.match('^\s*([A-Za-z0-9-,/]+)', leftovers):
-                ports = regex[0]
 
             if name == "VLAN{:0>4}".format(number):
                 name = None
             vlan = Vlan(number=int(number),
                         name=name if int(number) > 1 else "default")
             vlans.append(vlan)
-            if ports:
-                vlan.interfaces.extend(parse_interface_list(ports))
-
-        elif regex.match('^\s+([A-Za-z0-9-,/]+)', line):
-            vlan.interfaces.extend(parse_interface_list(regex[0]))
-
     return vlans
 
 

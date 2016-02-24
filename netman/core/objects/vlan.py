@@ -18,14 +18,12 @@ from netman.core.objects.access_groups import OUT, IN
 
 class Vlan(Model):
     def __init__(self, number=None, name=None, ips=None, vrrp_groups=None, vrf_forwarding=None, access_group_in=None,
-                 access_group_out=None, dhcp_relay_servers=None, icmp_redirects=None, interfaces=None):
+                 access_group_out=None, dhcp_relay_servers=None, icmp_redirects=None):
         self.number = number
         self.name = name
         self.access_groups = {IN: access_group_in, OUT: access_group_out}
         self.vrf_forwarding = vrf_forwarding
         self.ips = ips or []
-        self.interfaces = interfaces or []
         self.vrrp_groups = vrrp_groups or []
         self.dhcp_relay_servers = dhcp_relay_servers or []
         self.icmp_redirects = icmp_redirects
-        self.interfaces = interfaces or []
