@@ -56,6 +56,7 @@ class GetInterfaceTest(ConfiguredTestCase):
     def tearDown(self):
         self.janitor.unset_interface_access_vlan(self.test_ports[0].name)
         self.janitor.unset_interface_native_vlan(self.test_ports[0].name)
+        self.janitor.set_access_mode(self.test_ports[0].name)
 
         self.janitor.remove_vlan(1000)
         self.janitor.remove_vlan(2000)
