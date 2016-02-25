@@ -45,3 +45,30 @@ class JuniperCustomStrategies(object):
     def add_update_bond_members_speed_operations(self, update, slave_nodes, speed):
         for interface_node in slave_nodes:
             update.add_interface(interface_speed_update(first_text(interface_node.xpath("name")), speed))
+
+    def get_interface_trunk_native_vlan_id_node(self, interface):
+        return interface.xpath("unit/family/ethernet-switching/native-vlan-id")
+
+    def set_native_vlan_id_node(self, interface_node, native_vlan_id_node):
+        return interface_node.xpath("//ethernet-switching")[0].append(native_vlan_id_node)
+
+    def interface_native_vlan_id_update(self, name, unit, native_vlan_id_node, trunk_mode=None):
+        content = to_ele("""
+            <interface>
+                <name>{}</name>
+                <unit>
+                    <name>{}</name>
+                    <family>
+                        <ethernet-switching>
+                        </ethernet-switching>
+                    </family>
+                </unit>
+            </interface>
+            """.format(name, unit))
+
+        if trunk_mode is not None:
+            content.xpath("//ethernet-switching")[0].append(trunk_mode)
+
+        self.set_native_vlan_id_node(content, native_vlan_id_node)
+
+        return content

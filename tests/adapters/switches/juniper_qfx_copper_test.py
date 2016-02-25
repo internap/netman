@@ -171,6 +171,7 @@ class JuniperTest(unittest.TestCase):
               </interface>
               <interface>
                 <name>ge-0/0/3</name>
+                <native-vlan-id>2000</native-vlan-id>
                 <unit>
                   <name>0</name>
                   <family>
@@ -180,7 +181,6 @@ class JuniperTest(unittest.TestCase):
                         <members>999-1001</members>
                         <members>1000</members>
                       </vlan>
-                      <native-vlan-id>2000</native-vlan-id>
                     </ethernet-switching>
                   </family>
                 </unit>
@@ -259,6 +259,42 @@ class JuniperTest(unittest.TestCase):
         assert_that(if5.name, equal_to("ge-0/0/5"))
         assert_that(if5.port_mode, equal_to(BOND_MEMBER))
         assert_that(if5.bond_master, equal_to(10))
+
+    def test_get_interface_with_trunk_native_vlan_at_root(self):
+        self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                     <interfaces>
+                       <interface>
+                          <name>ge-0/0/1</name>
+                        </interface>
+                      </interfaces>
+                    <vlans />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/1</name>
+                    <native-vlan-id>1000</native-vlan-id>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+                <vlans/>
+            """))
+
+        if1 = self.switch.get_interface('ge-0/0/1')
+
+        assert_that(if1.name, equal_to("ge-0/0/1"))
+        assert_that(if1.trunk_native_vlan, equal_to(1000))
 
     def test_port_mode_access_with_no_port_mode_or_vlan_set_just_sets_the_port_mode(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""

@@ -42,3 +42,9 @@ class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
 
     def add_update_bond_members_speed_operations(self, update, slave_nodes, speed):
         pass
+
+    def get_interface_trunk_native_vlan_id_node(self, interface):
+        return interface.xpath("native-vlan-id")
+
+    def set_native_vlan_id_node(self, interface_node, native_vlan_id_node):
+        return interface_node.xpath("//interface")[0].append(native_vlan_id_node)
