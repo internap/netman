@@ -23,7 +23,7 @@ def netconf(switch_descriptor):
 
 
 class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
-    def set_interface_port_mode_update_element(self, mode):
+    def get_interface_port_mode_update_element(self, mode):
         return to_ele("<interface-mode>{}</interface-mode>".format(mode))
 
     def get_port_mode_node_in_inteface_node(self, interface_node):

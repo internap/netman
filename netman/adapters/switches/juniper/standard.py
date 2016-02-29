@@ -23,7 +23,7 @@ def netconf(switch_descriptor, *args, **kwargs):
 
 
 class JuniperCustomStrategies(object):
-    def set_interface_port_mode_update_element(self, mode):
+    def get_interface_port_mode_update_element(self, mode):
         return to_ele("<port-mode>{}</port-mode>".format(mode))
 
     def get_port_mode_node_in_inteface_node(self, interface_node):
@@ -52,23 +52,3 @@ class JuniperCustomStrategies(object):
     def set_native_vlan_id_node(self, interface_node, native_vlan_id_node):
         return interface_node.xpath("//ethernet-switching")[0].append(native_vlan_id_node)
 
-    def interface_native_vlan_id_update(self, name, unit, native_vlan_id_node, trunk_mode=None):
-        content = to_ele("""
-            <interface>
-                <name>{}</name>
-                <unit>
-                    <name>{}</name>
-                    <family>
-                        <ethernet-switching>
-                        </ethernet-switching>
-                    </family>
-                </unit>
-            </interface>
-            """.format(name, unit))
-
-        if trunk_mode is not None:
-            content.xpath("//ethernet-switching")[0].append(trunk_mode)
-
-        self.set_native_vlan_id_node(content, native_vlan_id_node)
-
-        return content
