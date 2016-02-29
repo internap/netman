@@ -33,7 +33,7 @@ class VlanManagementTest(ConfiguredTestCase):
         self.client.set_vlan_access_group(2999, OUT, "ACL-OUT")
         self.client.set_vlan_vrf(2999, "DEFAULT-LAN")
         self.client.add_ip_to_vlan(2999, IPNetwork("10.10.10.2/29"))
-        self.client.add_vrrp_group(vlan_number=2999, group_id=73, ips=[IPAddress("10.10.0.1")], priority=110,
+        self.client.add_vrrp_group(vlan_number=2999, group_id=73, ips=[IPAddress("10.10.10.1")], priority=110,
                                    track_id=self.test_vrrp_track_id, track_decrement=50, hello_interval=5, dead_interval=15)
         self.client.add_dhcp_relay_server(2999, IPAddress("10.10.10.11"))
         self.try_to.set_vlan_icmp_redirects_state(2999, False)
