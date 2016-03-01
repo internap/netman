@@ -413,7 +413,7 @@ class Juniper(SwitchBase):
 
                 self._push(update)
 
-    def set_interface_state(self, interface_id, state=ON):
+    def set_interface_state(self, interface_id, state):
         update = Update()
         update.add_interface(interface_state_update(interface_id, state))
 
@@ -424,7 +424,7 @@ class Juniper(SwitchBase):
             raise UnknownInterface(interface_id)
 
     def unset_interface_state(self, interface_id):
-        self.set_interface_state(interface_id)
+        self.set_interface_state(interface_id, state=ON)
 
     def set_interface_lldp_state(self, interface_id, enabled):
         config = self.query(one_interface(interface_id), one_protocol_interface("lldp", interface_id))
