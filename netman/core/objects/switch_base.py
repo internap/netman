@@ -80,6 +80,9 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_interface_state(self, interface_id, state):
         raise NotImplementedError()
 
+    def unset_interface_state(self, interface_id):
+        raise NotImplementedError()
+
     def set_interface_native_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
