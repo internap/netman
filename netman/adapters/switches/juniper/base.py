@@ -202,7 +202,7 @@ class Juniper(SwitchBase):
         interface = self.node_to_interface(interface_node, config)
 
         if self.get_port_mode(interface_node) in (TRUNK, None):
-            update_attributes.append(self.custom_strategies.set_interface_port_mode_update_element("access"))
+            update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("access"))
 
         if len(interface.trunk_vlans) > 0:
             update_attributes.append(to_ele('<vlan operation="delete" />'))
@@ -222,7 +222,7 @@ class Juniper(SwitchBase):
         interface = self.get_interface(interface_id)
 
         if interface.port_mode is ACCESS:
-            update_attributes.append(self.custom_strategies.set_interface_port_mode_update_element("trunk"))
+            update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("trunk"))
 
         if interface.access_vlan is not None:
             update_attributes.append(to_ele('<vlan operation="delete" />'))
@@ -247,7 +247,7 @@ class Juniper(SwitchBase):
         if interface.port_mode == TRUNK:
             raise InterfaceInWrongPortMode("trunk")
         elif self.get_port_mode(interface_node) is None:
-            update_attributes.append(self.custom_strategies.set_interface_port_mode_update_element("access"))
+            update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("access"))
 
         if interface.access_vlan != vlan:
             for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
@@ -280,7 +280,8 @@ class Juniper(SwitchBase):
             raise AccessVlanNotSet(interface_id)
 
     def set_interface_native_vlan(self, interface_id, vlan):
-        update_attributes = []
+        port_mode_node = None
+        native_vlan_id_node = None
 
         config = self.query(all_interfaces, all_vlans)
 
@@ -294,17 +295,19 @@ class Juniper(SwitchBase):
         if actual_port_mode is ACCESS:
             raise InterfaceInWrongPortMode("access")
         elif actual_port_mode is None:
-            update_attributes.append(self.custom_strategies.set_interface_port_mode_update_element("trunk"))
+            port_mode_node = self.custom_strategies.get_interface_port_mode_update_element("trunk")
 
         if vlan in interface.trunk_vlans:
             raise VlanAlreadyInTrunk(vlan)
         elif interface.trunk_native_vlan != vlan:
-            update_attributes.append(to_ele("<native-vlan-id>{}</native-vlan-id>".format(vlan)))
+            native_vlan_id_node = to_ele("<native-vlan-id>{}</native-vlan-id>".format(vlan))
 
-        if update_attributes:
+        if native_vlan_id_node is not None:
 
+            interface = interface_update(interface_id, "0", [port_mode_node] if port_mode_node is not None else [])
+            self.custom_strategies.set_native_vlan_id_node(interface, native_vlan_id_node)
             update = Update()
-            update.add_interface(interface_update(interface_id, "0", update_attributes))
+            update.add_interface(interface)
 
             try:
                 self._push(update)
@@ -342,7 +345,7 @@ class Juniper(SwitchBase):
             update = Update()
             update.add_interface(interface_update(
                 interface_id, "0",
-                [self.custom_strategies.set_interface_port_mode_update_element("trunk")] if actual_port_mode is None else None,
+                [self.custom_strategies.get_interface_port_mode_update_element("trunk")] if actual_port_mode is None else None,
                 [to_ele("<members>{}</members>".format(vlan))]
             ))
 
@@ -626,7 +629,7 @@ class Juniper(SwitchBase):
             interface.access_vlan = first(vlans)
         else:
             interface.trunk_vlans = vlans
-        interface.trunk_native_vlan = value_of(interface_node.xpath("unit/family/ethernet-switching/native-vlan-id"), transformer=int)
+        interface.trunk_native_vlan = value_of(self.custom_strategies.get_interface_trunk_native_vlan_id_node(interface_node), transformer=int)
         interface.shutdown = first(interface_node.xpath("disable")) is not None
         return interface
 
@@ -655,7 +658,21 @@ class Juniper(SwitchBase):
 
         vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
         interface_nodes = config.xpath("data/configuration/interfaces/interface")
-        return _get_vlan_interfaces_from_node(vlan_node, interface_nodes)
+        return self.get_vlan_interfaces_from_node(vlan_node, interface_nodes)
+
+    def get_vlan_interfaces_from_node(self, vlan_node, interface_nodes):
+        vlan_name = first(vlan_node.xpath("name")).text
+        vlan_number = int(first(vlan_node.xpath("vlan-id")).text)
+        interfaces = []
+        for interface in interface_nodes:
+            native_vlan_id_node = self.custom_strategies.get_interface_trunk_native_vlan_id_node(interface)
+            if len(native_vlan_id_node) == 1 and int(first(native_vlan_id_node).text) == vlan_number:
+                interfaces.append(first(interface.xpath("name")).text)
+
+            members = [members.text for members in interface.xpath("unit/family/ethernet-switching/vlan/members")]
+            if _is_vlan_in_interface_members(vlan_number, vlan_name, members):
+                interfaces.append(first(interface.xpath("name")).text)
+        return interfaces
 
 
 def all_vlans():
@@ -1070,17 +1087,6 @@ def _compute_edge_state_modifications(interface_id, edge, config):
             if no_root_port_node is not None:
                 modifications.append("<no-root-port operation=\"delete\" />")
     return modifications
-
-
-def _get_vlan_interfaces_from_node(vlan_node, interface_nodes):
-    vlan_name = first(vlan_node.xpath("name")).text
-    vlan_number = int(first(vlan_node.xpath("vlan-id")).text)
-    interfaces = []
-    for interface in interface_nodes:
-        members = [members.text for members in interface.xpath("unit/family/ethernet-switching/vlan/members")]
-        if _is_vlan_in_interface_members(vlan_number, vlan_name, members):
-            interfaces.append(first(interface.xpath("name")).text)
-    return interfaces
 
 
 def _is_vlan_in_interface_members(vlan_number, vlan_name, members):
