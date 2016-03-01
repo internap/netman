@@ -4086,14 +4086,14 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
-    def test_enable_interface_succeeds(self):
+    def test_set_interface_state_to_on_succeeds(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
-                    <enable />
+                    <disable operation="delete" />
                   </interface>
                 </interfaces>
               </configuration>
@@ -4102,14 +4102,47 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.set_interface_state("ge-0/0/6", ON)
 
-    def test_enable_interface_on_unkown_interface_raises(self):
+    def test_set_interface_state_to_off_succeeds(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <disable />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_interface_state("ge-0/0/6", OFF)
+
+    def test_unset_interface_state_succeeds(self):
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <disable operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.unset_interface_state("ge-0/0/6")
+
+    def test_set_interface_state_to_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
                 <interfaces>
                   <interface>
                     <name>ge-0/0/99</name>
-                    <enable />
+                    <disable operation="delete"/>
                   </interface>
                 </interfaces>
               </configuration>
@@ -4127,23 +4160,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
-    def test_disable_interface_succeeds(self):
-        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-            <config>
-              <configuration>
-                <interfaces>
-                  <interface>
-                    <name>ge-0/0/6</name>
-                    <disable />
-                  </interface>
-                </ienablenterfaces>
-              </configuration>
-            </config>
-        """)).and_return(an_ok_response())
-
-        self.switch.set_interface_state("ge-0/0/6", OFF)
-
-    def test_disable_interface_on_unkown_interface_raises(self):
+    def test_set_interface_state_to_off_unknown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -5352,6 +5369,7 @@ class IsXmlFlexmockArgMatcher(object):
                 else:
                     assert_that(actual[i].text is not None, "Node is " + node.tag)
                     assert_that(node.text.strip(), equal_to(actual[i].text.strip()))
+            assert_that(actual[i].attrib, has_length(len(node.attrib)))
             for name, value in node.attrib.items():
                 assert_that(actual[i].attrib, has_key(name))
                 assert_that(actual[i].attrib[name], equal_to(value))
