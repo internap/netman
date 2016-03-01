@@ -466,6 +466,16 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'Unreadable content "". Should be either "true" or "false"'}))
 
+    def test_unset_interface_state(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('unset_interface_state').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/shutdown")
+
+        assert_that(code, equal_to(204))
+
     def test_enable_icmp_redirects(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
