@@ -1176,6 +1176,35 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_interface_state("ge-0/0/6", OFF)
 
+    def test_unset_interface_state(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/shutdown',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.unset_interface_state("ge-0/0/6")
+
+    def test_unset_interface_state_raises_if_interface_does_not_exist(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ethernet 1/INEXISTENT/shutdown',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content=json.dumps({
+                    "error": "Interface ethernet 1/INEXISTENT not found",
+                    "error-module": UnknownInterface.__module__,
+                    "error-class": UnknownInterface.__name__
+                }),
+                status_code=404))
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.unset_interface_state('ethernet 1/INEXISTENT')
+
+        assert_that(str(expect.exception), equal_to("Interface ethernet 1/INEXISTENT not found"))
+
     def test_add_bond(self):
         self.requests_mock.should_receive("post").once().with_args(
             url=self.netman_url+'/switches/toto/bonds',
