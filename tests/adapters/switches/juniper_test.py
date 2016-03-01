@@ -4135,6 +4135,32 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.unset_interface_state("ge-0/0/6")
 
+    def test_unset_interface_state_raises_on_unknown_interface(self):
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <disable operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.unset_interface_state("ge-0/0/99")
+
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
+
     def test_set_interface_state_to_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
@@ -5363,13 +5389,13 @@ class IsXmlFlexmockArgMatcher(object):
         for i, node in enumerate(expected):
             assert_that(node.tag, equal_to(unqualify(actual[i].tag)))
             assert_that(node, has_length(len(actual[i])))
+            assert_that(actual[i].attrib, has_length(len(node.attrib)))
             if node.text is not None:
                 if node.text.strip() == "":
                     assert_that(actual[i].text is None or actual[i].text.strip() == "")
                 else:
                     assert_that(actual[i].text is not None, "Node is " + node.tag)
                     assert_that(node.text.strip(), equal_to(actual[i].text.strip()))
-            assert_that(actual[i].attrib, has_length(len(node.attrib)))
             for name, value in node.attrib.items():
                 assert_that(actual[i].attrib, has_key(name))
                 assert_that(actual[i].attrib[name], equal_to(value))
