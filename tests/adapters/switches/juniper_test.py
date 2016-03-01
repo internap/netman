@@ -4297,6 +4297,68 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.set_interface_state("ge-0/0/6", ON)
 
+    def test_reset_interface_succeeds_removing_enabled_state(self):
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <enable />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_interface_state("ge-0/0/6", ON)
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.reset_interface_state("ge-0/0/6")
+
+    def test_reset_interface_succeeds_removing_disabled_state(self):
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                        <disable />
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+            self.switch.set_interface_state("ge-0/0/6", OFF)
+
+            self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+            self.switch.reset_interface_state("ge-0/0/6")
+
     def test_enable_interface_on_unkown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>

@@ -425,7 +425,15 @@ class Juniper(SwitchBase):
             self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
+    def reset_interface_state(self, interface_id):
+        update = Update()
+        update.add_interface(interface_main_update(interface_id, None))
 
+        try:
+            self._push(update)
+        except RPCError as e:
+            self.logger.info("actual setting error was {}".format(e))
+            raise UnknownInterface(interface_id)
 
     def set_interface_lldp_state(self, interface_id, enabled):
         config = self.query(one_interface(interface_id), one_protocol_interface("lldp", interface_id))
