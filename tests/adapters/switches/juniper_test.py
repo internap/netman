@@ -4117,9 +4117,14 @@ class JuniperTest(unittest.TestCase):
         """)).and_return(an_ok_response())
 
         self.switch.set_interface_state("ge-0/0/6", OFF)
+<<<<<<< HEAD
 
     def test_unset_interface_state_succeeds(self):
 
+=======
+
+    def test_unset_interface_state_succeeds(self):
+>>>>>>> ebc6085aecc4277838e1769dec8a173bf159d337
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
