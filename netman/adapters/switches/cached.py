@@ -293,8 +293,7 @@ class CachedSwitch(SwitchBase):
 
     def unset_interface_state(self, interface_id):
         self.real_switch.unset_interface_state(interface_id)
-        interface = self.real_switch.get_interface(interface_id)
-        self.interfaces_cache[interface_id].shutdown = interface.shutdown
+        self.interfaces_cache.refresh_items.add(interface_id)
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
