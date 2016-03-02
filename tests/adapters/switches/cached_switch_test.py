@@ -326,8 +326,6 @@ class CacheSwitchTest(unittest.TestCase):
 
         self.real_switch_mock.should_receive("unset_interface_state").once().with_args('xe-1/0/2')
 
-        self.switch.unset_interface_state('xe-1/0/2')
-
         self.real_switch_mock.should_receive("get_interface").once() \
             .with_args('xe-1/0/2').and_return(Interface('xe-1/0/2', shutdown=False))
 
