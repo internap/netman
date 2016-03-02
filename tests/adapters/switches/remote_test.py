@@ -1176,6 +1176,17 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_interface_state("ge-0/0/6", OFF)
 
+    def test_unset_interface_state(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/shutdown',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.unset_interface_state("ge-0/0/6")
+
     def test_add_bond(self):
         self.requests_mock.should_receive("post").once().with_args(
             url=self.netman_url+'/switches/toto/bonds',
