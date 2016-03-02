@@ -4119,7 +4119,6 @@ class JuniperTest(unittest.TestCase):
         self.switch.set_interface_state("ge-0/0/6", OFF)
 
     def test_unset_interface_state_succeeds(self):
-
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -5395,7 +5394,7 @@ class IsXmlFlexmockArgMatcher(object):
                 else:
                     assert_that(actual[i].text is not None, "Node is " + node.tag)
                     assert_that(node.text.strip(), equal_to(actual[i].text.strip()))
-            assert_that(actual[i].attrib, has_length(len(node.attrib)))
+                    assert_that(actual[i].attrib, has_length(len(node.attrib)))
             for name, value in node.attrib.items():
                 assert_that(actual[i].attrib, has_key(name))
                 assert_that(actual[i].attrib[name], equal_to(value))
