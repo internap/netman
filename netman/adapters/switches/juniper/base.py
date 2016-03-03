@@ -415,9 +415,7 @@ class Juniper(SwitchBase):
 
     def set_interface_state(self, interface_id, state):
         update = Update()
-        update.add_interface(interface_main_update(interface_id, [
-            to_ele("<disable />") if state is OFF else to_ele("<enable />")
-        ]))
+        update.add_interface(interface_state_update(interface_id, state))
 
         try:
             self._push(update)
@@ -425,7 +423,8 @@ class Juniper(SwitchBase):
             self.logger.info("actual setting error was {}".format(e))
             raise UnknownInterface(interface_id)
 
-
+    def unset_interface_state(self, interface_id):
+        self.set_interface_state(interface_id, state=ON)
 
     def set_interface_lldp_state(self, interface_id, enabled):
         config = self.query(one_interface(interface_id), one_protocol_interface("lldp", interface_id))
@@ -825,6 +824,15 @@ def interface_removal(name):
         <interface operation="delete">
             <name>{}</name>
         </interface>""".format(name))
+
+
+def interface_state_update(name, state):
+    interface_state = """<disable />""" if state is OFF else """<disable operation="delete" />"""
+    return to_ele("""
+        <interface>
+            <name>{}</name>
+            {}
+        </interface>""".format(name, interface_state))
 
 
 def vlan_removal(name):
