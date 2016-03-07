@@ -24,14 +24,14 @@ class SetInterfaceStateTest(ConfiguredTestCase):
     _dev_sample = "juniper"
 
     def test_can_open_an_interface(self):
-        self.client.set_interface_state(self.test_ports[0].name, state=ON)
-        interface = self.client.get_interface(self.test_ports[0].name)
+        self.client.set_interface_state(self.test_port, state=ON)
+        interface = self.client.get_interface(self.test_port)
 
         assert_that(interface.shutdown, is_(False))
 
     def test_can_shutdown_an_interface(self):
-        self.client.set_interface_state(self.test_ports[0].name, state=OFF)
-        interface = self.client.get_interface(self.test_ports[0].name)
+        self.client.set_interface_state(self.test_port, state=OFF)
+        interface = self.client.get_interface(self.test_port)
 
         assert_that(interface.shutdown, is_(True))
 
@@ -41,5 +41,5 @@ class SetInterfaceStateTest(ConfiguredTestCase):
         assert_that(str(exc.exception), contains_string("Unknown interface ge-0/0/128"))
 
     def tearDown(self):
-        self.janitor.unset_interface_state(self.test_ports[0].name)
+        self.janitor.unset_interface_state(self.test_port)
         super(SetInterfaceStateTest, self).tearDown()
