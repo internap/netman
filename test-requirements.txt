@@ -5,6 +5,6 @@ pyhamcrest>=1.6
 MockSSH>=1.4.1
 Sphinx
 sphinxcontrib-httpdomain
-fake-switches>=1.0.19
+fake-switches>=1.0.22
 gunicorn>=19.4.5
 futures>=3.0.4
