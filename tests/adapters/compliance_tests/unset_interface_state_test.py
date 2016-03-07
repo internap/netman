@@ -1,4 +1,4 @@
-# Copyright 2015 Internap.
+# Copyright 2016 Internap.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,17 +22,17 @@ from tests.adapters.configured_test_case import ConfiguredTestCase
 class UnsetInterfaceStateTest(ConfiguredTestCase):
     _dev_sample = "juniper"
 
-    def test_unset_an_interface_to_default_state(self):
+    def test_returns_an_interface_to_default_state(self):
 
         default_state = self.client.get_interface(self.test_port).shutdown
 
         self.try_to.set_interface_state(self.test_port, ON)
-        self.try_to.unset_interface_state(self.test_port)
+        self.client.unset_interface_state(self.test_port)
 
         assert_that(self.client.get_interface(self.test_port).shutdown, is_(default_state))
 
         self.try_to.set_interface_state(self.test_port, OFF)
-        self.try_to.unset_interface_state(self.test_port)
+        self.client.unset_interface_state(self.test_port)
 
         assert_that(self.client.get_interface(self.test_port).shutdown, is_(default_state))
 
