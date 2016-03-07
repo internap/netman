@@ -41,4 +41,5 @@ class SetInterfaceStateTest(ConfiguredTestCase):
         assert_that(str(exc.exception), contains_string("Unknown interface ge-0/0/128"))
 
     def tearDown(self):
+        self.janitor.unset_interface_state(self.test_ports[0].name)
         super(SetInterfaceStateTest, self).tearDown()
