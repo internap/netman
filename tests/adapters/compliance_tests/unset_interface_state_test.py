@@ -34,7 +34,7 @@ class UnsetInterfaceStateTest(ConfiguredTestCase):
 
     def test_fails_with_unknown_interface(self):
         with self.assertRaises(UnknownInterface):
-            self.client.unset_interface_state('ethernet 1/nonexistent2000')
+            self.client.unset_interface_state('ge-0/0/1nonexistent2000')
 
     def tearDown(self):
         super(UnsetInterfaceStateTest, self).tearDown()
