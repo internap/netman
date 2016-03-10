@@ -16,21 +16,10 @@ from netman.core.objects import Model
 
 
 class SwitchDescriptor(Model):
-    def __init__(self, model, hostname, username=None, password=None, port=None,
-                 default_vrf=None, default_lan_acl_in=None, default_lan_acl_out=None,
-                 trunked_interfaces=None, parking_vlan=None, netman_server=None, default_port_speed=None,
-                 vrrp_tracking_object=None):
+    def __init__(self, model, hostname, username=None, password=None, port=None, netman_server=None):
         self.model = model
         self.hostname = hostname
         self.username = username
         self.password = password
         self.port = port
-
-        self.default_vrf = default_vrf
-        self.default_lan_acl_in = default_lan_acl_in
-        self.default_lan_acl_out = default_lan_acl_out
-        self.default_port_speed = default_port_speed
-        self.trunked_interfaces = trunked_interfaces
-        self.parking_vlan = parking_vlan
         self.netman_server = netman_server
-        self.vrrp_tracking_object = vrrp_tracking_object
