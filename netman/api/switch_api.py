@@ -47,6 +47,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces', view_func=self.get_interfaces, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.get_interface, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/shutdown', view_func=self.set_shutdown_state, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/shutdown', view_func=self.unset_shutdown_state, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/port-mode', view_func=self.set_port_mode, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.set_access_vlan, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/access-vlan', view_func=self.unset_interface_access_vlan, methods=['DELETE'])
@@ -335,6 +336,19 @@ class SwitchApi(SwitchApiBase):
         else:
             switch.set_interface_state(interface_id, ON)
 
+        return 204, None
+
+    @to_response
+    @resource(Switch, Interface)
+    def unset_shutdown_state(self, switch, interface_id):
+        """
+        Sets the shutdown state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        """
+
+        switch.unset_interface_state(interface_id)
         return 204, None
 
     @to_response
