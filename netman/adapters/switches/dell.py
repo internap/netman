@@ -365,7 +365,6 @@ class Dell(SwitchBase):
 
 def parse_vlan_list(result):
     vlans = []
-    vlan = None
     for line in result:
         if regex.match('^(\d+)(.*)', line):
             number, leftovers = regex
@@ -376,12 +375,6 @@ def parse_vlan_list(result):
                         name=name if int(number) > 1 else "default")
             vlans.append(vlan)
     return vlans
-
-
-
-
-
-
 
 
 def resolve_port_mode(interface_data):
