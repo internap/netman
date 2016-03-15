@@ -12,12 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from hamcrest import assert_that, is_
-from netaddr import IPNetwork, IPAddress
+from hamcrest import assert_that, contains_inanyorder
 
-from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan
-from netman.core.objects.interface_states import ON
 from tests.adapters.configured_test_case import ConfiguredTestCase
 
 
@@ -39,7 +36,7 @@ class GetVlanInterfacesTest(ConfiguredTestCase):
         # At this time, interface_native_vlan is not supported on get_vlan_interfaces
 
         assert_that(self.client.get_vlan_interfaces(1000),
-                    is_([self.test_ports[0].name, self.test_ports[1].name]))
+                    contains_inanyorder([self.test_ports[0].name, self.test_ports[1].name]))
 
     def test_fails_when_the_vlan_does_not_exist(self):
         with self.assertRaises(UnknownVlan):
