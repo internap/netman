@@ -36,7 +36,7 @@ class GetVlanInterfacesTest(ConfiguredTestCase):
         # At this time, interface_native_vlan is not supported on get_vlan_interfaces
 
         assert_that(self.client.get_vlan_interfaces(1000),
-                    contains_inanyorder([self.test_ports[0].name, self.test_ports[1].name]))
+                    contains_inanyorder(self.test_ports[0].name, self.test_ports[1].name))
 
     def test_fails_when_the_vlan_does_not_exist(self):
         with self.assertRaises(UnknownVlan):
