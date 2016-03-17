@@ -14,11 +14,10 @@
 
 from hamcrest import assert_that, is_
 from netman.core.objects.exceptions import UnknownVlan
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
-from tests.adapters.configured_test_case import ConfiguredTestCase
 
-
-class SetVlanIcmpRedirectsStateTest(ConfiguredTestCase):
+class SetVlanIcmpRedirectsStateTest(ComplianceTestCase):
     _dev_sample = "cisco"
 
     def setUp(self):

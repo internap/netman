@@ -15,11 +15,10 @@
 from hamcrest import assert_that, is_
 from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.interface_states import ON, OFF
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
-from tests.adapters.configured_test_case import ConfiguredTestCase
 
-
-class UnsetInterfaceStateTest(ConfiguredTestCase):
+class UnsetInterfaceStateTest(ComplianceTestCase):
     _dev_sample = "juniper"
 
     def test_returns_an_interface_to_default_state(self):

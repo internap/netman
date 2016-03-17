@@ -17,10 +17,10 @@ from hamcrest import assert_that, is_, contains_string
 
 from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.interface_states import ON, OFF
-from tests.adapters.configured_test_case import ConfiguredTestCase
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
-class SetInterfaceStateTest(ConfiguredTestCase):
+class SetInterfaceStateTest(ComplianceTestCase):
     _dev_sample = "juniper"
 
     def test_can_open_an_interface(self):

@@ -17,10 +17,10 @@ from netaddr import IPNetwork, IPAddress
 
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan
-from tests.adapters.configured_test_case import ConfiguredTestCase
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
-class GetVlanTest(ConfiguredTestCase):
+class GetVlanTest(ComplianceTestCase):
     _dev_sample = "dell"
 
     def test_returns_a_vlan_with_all_available_data(self):

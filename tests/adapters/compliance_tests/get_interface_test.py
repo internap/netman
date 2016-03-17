@@ -16,10 +16,10 @@ from hamcrest import assert_that, is_
 
 from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.interface_states import ON
-from tests.adapters.configured_test_case import ConfiguredTestCase
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
-class GetInterfaceTest(ConfiguredTestCase):
+class GetInterfaceTest(ComplianceTestCase):
     _dev_sample = "juniper"
 
     def setUp(self):
