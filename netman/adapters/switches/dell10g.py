@@ -181,6 +181,33 @@ class Dell10G(Dell):
 
         return interface
 
+    def parse_interface_port_list(self, ports):
+        port_list = filter(None, ports.split(','))
+        interfaces = []
+        for line in port_list:
+            if regex.match("Te(\d+/\d+/)(\d+)-(\d+).*", line):
+                debut, start, end = regex
+                for i in range(int(start), int(end)+1):
+                    interfaces.append("tengigabitethernet {0}{1}".format(debut, i))
+            elif regex.match("Te(\d+/\d+/\S+).*", line):
+                interfaces.append("tengigabitethernet {}".format(regex[0]))
+
+            elif regex.match("Fo(\d+/\d+/)(\d+)-(\d+).*", line):
+                debut, start, end = regex
+                for i in range(int(start), int(end)+1):
+                    interfaces.append("fortygigabitethernet {0}{1}".format(debut, i))
+            elif regex.match("Fo(\d+/\d+/\S+).*", line):
+                interfaces.append("fortygigabitethernet {}".format(regex[0]))
+
+            elif regex.match("Po(\d+)-(\d+)", line):
+                start, end = regex
+                for i in range(int(start), int(end)+1):
+                    interfaces.append("port-channel {}".format(i))
+            elif regex.match("Po(\d+).*", line):
+                interfaces.append("port-channel {}".format(regex[0]))
+
+        return interfaces
+
 
 def has_trunk_vlans(interface_data):
     for line in interface_data:
@@ -194,34 +221,6 @@ def parse_interface_names(status_list):
     for line in status_list:
         if regex.match("Te(\d+/\d+/\S+).*", line):
             interfaces.append("tengigabitethernet {}".format(regex[0]))
-        elif regex.match("Po(\d+).*", line):
-            interfaces.append("port-channel {}".format(regex[0]))
-
-    return interfaces
-
-
-def parse_interface_list(ports):
-    port_list = filter(None, ports.split(','))
-    interfaces = []
-    for line in port_list:
-        if regex.match("Te(\d+/\d+/)(\d+)-(\d+).*", line):
-            debut, start, end = regex
-            for i in range(int(start), int(end)+1):
-                interfaces.append("tengigabitethernet {0}{1}".format(debut, i))
-        elif regex.match("Te(\d+/\d+/\S+).*", line):
-            interfaces.append("tengigabitethernet {}".format(regex[0]))
-
-        elif regex.match("Fo(\d+/\d+/)(\d+)-(\d+).*", line):
-            debut, start, end = regex
-            for i in range(int(start), int(end)+1):
-                interfaces.append("fortygigabitethernet {0}{1}".format(debut, i))
-        elif regex.match("Fo(\d+/\d+/\S+).*", line):
-            interfaces.append("fortygigabitethernet {}".format(regex[0]))
-
-        elif regex.match("Po(\d+)-(\d+)", line):
-            start, end = regex
-            for i in range(int(start), int(end)+1):
-                interfaces.append("port-channel {}".format(i))
         elif regex.match("Po(\d+).*", line):
             interfaces.append("port-channel {}".format(regex[0]))
 
