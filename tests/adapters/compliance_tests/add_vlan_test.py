@@ -16,10 +16,10 @@ from hamcrest import assert_that, is_, none, empty
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import BadVlanNumber, BadVlanName, VlanAlreadyExist
 
-from tests.adapters.configured_test_case import ConfiguredTestCase
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
-class AddVlanTest(ConfiguredTestCase):
+class AddVlanTest(ComplianceTestCase):
     _dev_sample = "juniper_qfx_copper"
 
     def test_creates_an_empty_vlan(self):
@@ -58,5 +58,3 @@ class AddVlanTest(ConfiguredTestCase):
     def tearDown(self):
         self.janitor.remove_vlan(1000)
         super(AddVlanTest, self).tearDown()
-
-

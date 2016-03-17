@@ -15,10 +15,10 @@
 from hamcrest import assert_that, is_
 from netaddr import IPNetwork
 
-from tests.adapters.configured_test_case import ConfiguredTestCase
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
-class GetInterfacesTest(ConfiguredTestCase):
+class GetInterfacesTest(ComplianceTestCase):
     _dev_sample = "juniper"
 
     def test_lists_all_physical_interfaces(self):
