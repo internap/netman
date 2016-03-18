@@ -35,6 +35,16 @@ class UnsetInterfaceStateTest(ComplianceTestCase):
 
         assert_that(self.client.get_interface(self.test_port).shutdown, is_(default_state))
 
+    def test_unset_an_interface_twice_works(self):
+        default_state = self.client.get_interface(self.test_port).shutdown
+        self.try_to.set_interface_state(self.test_port, ON)
+
+        self.client.unset_interface_state(self.test_port)
+        self.client.unset_interface_state(self.test_port)
+
+        self.try_to.set_interface_state(self.test_port, default_state)
+        assert_that(self.client.get_interface(self.test_port).shutdown, is_(default_state))
+
     def test_fails_with_unknown_interface(self):
         with self.assertRaises(UnknownInterface):
             self.client.unset_interface_state('ge-0/0/1nonexistent2000')

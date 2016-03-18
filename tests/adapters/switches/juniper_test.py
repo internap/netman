@@ -4160,6 +4160,27 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
+    def test_unset_interface_state_without_disabled(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <disable operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>warning</error-severity>
+            <error-path>[edit interfaces ge-0/0/6]</error-path>
+            <error-message>statement not found: </error-message>
+            </rpc-error>"""))))
+
+        self.switch.unset_interface_state("ge-0/0/6")
+
     def test_set_interface_state_to_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
