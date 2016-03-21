@@ -421,7 +421,10 @@ class Juniper(SwitchBase):
             self._push(update)
         except RPCError as e:
             self.logger.info("actual setting error was {}".format(e))
-            raise UnknownInterface(interface_id)
+            # When sending a "delete operation" on a nonexistent element <disable />, this is the error that is thrown.
+            # It's ignored because the result of this operation would be the same as if the command was successful.
+            if e.message != "statement not found: ":
+                raise UnknownInterface(interface_id)
 
     def unset_interface_state(self, interface_id):
         self.set_interface_state(interface_id, state=ON)

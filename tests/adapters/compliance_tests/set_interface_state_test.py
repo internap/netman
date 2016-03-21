@@ -40,6 +40,13 @@ class SetInterfaceStateTest(ComplianceTestCase):
             self.client.set_interface_state('ge-0/0/128', state=ON)
         assert_that(str(exc.exception), contains_string("Unknown interface ge-0/0/128"))
 
+    def test_set_an_interface_twice_works(self):
+        self.try_to.set_interface_state(self.test_port, ON)
+        self.try_to.set_interface_state(self.test_port, ON)
+
+        self.try_to.set_interface_state(self.test_port, OFF)
+        self.try_to.set_interface_state(self.test_port, OFF)
+
     def tearDown(self):
         self.janitor.unset_interface_state(self.test_port)
         super(SetInterfaceStateTest, self).tearDown()
