@@ -5228,6 +5228,7 @@ class JuniperTest(unittest.TestCase):
     @mock.patch("ncclient.manager.connect")
     def test_connect(self, connect_mock):
         connect_mock.return_value = self.netconf_mock
+        self.netconf_mock._session = mock.Mock()
 
         self.switch = Juniper(
             SwitchDescriptor(model='juniper', hostname="toto", username="tutu", password="titi", port=8000),
@@ -5248,6 +5249,7 @@ class JuniperTest(unittest.TestCase):
     @mock.patch("ncclient.manager.connect")
     def test_connect_without_port_uses_default(self, connect_mock):
         connect_mock.return_value = self.netconf_mock
+        self.netconf_mock._session = mock.Mock()
 
         self.switch = Juniper(
             SwitchDescriptor(model='juniper', hostname="toto", username="tutu", password="titi"),
