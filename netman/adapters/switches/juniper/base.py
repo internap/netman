@@ -56,6 +56,8 @@ class Juniper(SwitchBase):
 
         self.netconf = manager.connect(**params)
 
+        _monkey_patch_issue_125(self.netconf)
+
     def _disconnect(self):
         try:
             self.netconf.close_session()
@@ -1112,3 +1114,70 @@ def _is_vlan_in_interface_members(vlan_number, vlan_name, members):
             return True
 
     return False
+
+
+def _monkey_patch_issue_125(netconf_client):
+    """
+    This is patching ncclient 0.4.7 until this is merged and released on pipy
+    https://github.com/ncclient/ncclient/pull/120
+    """
+
+    import os
+    import types
+    from cStringIO import StringIO
+
+    import ncclient.transport.ssh
+
+    def _ncclient_monkypatch_parse10(self):
+
+        """Messages are delimited by MSG_DELIM. The buffer could have grown by
+        a maximum of BUF_SIZE bytes everytime this method is called. Retains
+        state across method calls and if a byte has been read it will not be
+        considered again."""
+
+        ncclient.transport.ssh.logger.debug("parsing netconf v1.0")
+        delim = ncclient.transport.ssh.MSG_DELIM
+        n = len(delim)
+        expect = self._parsing_state10
+        buf = self._buffer
+        buf.seek(self._parsing_pos10)
+        b = ''
+        while True:
+            x = buf.read(1)
+            b += str(x)
+            if not x: # done reading
+                break
+            elif x == delim[expect]: # what we expected
+                expect += 1 # expect the next delim char
+            else:
+                expect = 0
+                continue
+            # loop till last delim char expected, break if other char encountered
+            for i in range(expect, n):
+                x = buf.read(1)
+                b += str(x)
+                if not x: # done reading
+                    break
+                if x == delim[expect]: # what we expected
+                    expect += 1 # expect the next delim char
+                else:
+                    expect = 0 # reset
+                    break
+            else: # if we didn't break out of the loop, full delim was parsed
+                print "LEN = {}".format(len(b))
+                msg_till = buf.tell() - n
+                print "LEN = {} - {}".format(len(b), msg_till)
+                buf.seek(0)
+                ncclient.transport.ssh.logger.debug('parsed new message')
+                self._dispatch_message(buf.read(msg_till).strip())
+                buf.seek(n, os.SEEK_CUR)
+                rest = buf.read()
+                buf = StringIO()
+                buf.write(rest)
+                buf.seek(0)
+                expect = 0
+        self._buffer = buf
+        self._parsing_state10 = expect
+        self._parsing_pos10 = self._buffer.tell()
+
+    netconf_client._session._parse10 = types.MethodType(_ncclient_monkypatch_parse10, netconf_client._session)
