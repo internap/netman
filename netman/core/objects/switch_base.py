@@ -186,6 +186,9 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         raise NotImplementedError()
 
+    def get_versions(self):
+        raise NotImplementedError()
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

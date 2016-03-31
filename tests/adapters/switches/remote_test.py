@@ -1427,7 +1427,26 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_vlan_icmp_redirects_state(2000, True)
 
+    def test_get_versions(self):
+        data = {
+            "v": "1.0",
+            "units": {
+                "1": {
+                    "v": "1.0"
+                }
+            }
+        }
 
+        self.requests_mock.should_receive("get").once().with_args(
+            url=self.netman_url+'/switches/toto/versions',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content=json.dumps(data),
+                status_code=204))
+
+        result = self.switch.get_versions()
+        assert_that(result, is_(data))
 
     def test_unformatted_exceptions_are_handled(self):
         self.requests_mock.should_receive("put").once().and_return(Reply(

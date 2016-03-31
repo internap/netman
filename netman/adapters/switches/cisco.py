@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 import warnings
 
 from netaddr.ip import IPNetwork, IPAddress
@@ -290,7 +291,7 @@ class Cisco(SwitchBase):
 
         with self.config(), self.interface_vlan(vlan_number):
             self.ssh.do("no ip helper-address {}".format(ip_address))
-            
+
     def get_vlan_interfaces(self, vlan_number):
         vlan_interfaces = get_vlan_interfaces_from_data(vlan_number, self.get_interfaces())
         if not vlan_interfaces:
@@ -413,6 +414,31 @@ class Cisco(SwitchBase):
                 self.ssh.do('ip redirects')
             else:
                 self.ssh.do('no ip redirects')
+
+    def get_versions(self):
+        result = self.ssh.do('show version')
+
+        versions = {}
+        for i, line in enumerate(result):
+            matches = re.match("^(.*)\s:\s(.*)$", line)
+            if matches:
+                values = matches.groups()
+                versions[values[0].strip()] = values[1]
+
+            matches = re.match("^.*(\d+)\s+(\d+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s*$", line)
+            if matches:
+                values = matches.groups()
+                if "units" not in versions:
+                    versions["units"] = {}
+
+                versions["units"][values[0]] = {
+                    "Ports": values[1],
+                    "Model": values[2],
+                    "SW Version": values[3],
+                    "SW Image": values[4]
+                }
+
+        return versions
 
 
 def parse_interface(data):

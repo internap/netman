@@ -28,6 +28,7 @@ from netman.core.objects.interface_states import OFF, ON
 class SwitchApi(SwitchApiBase):
 
     def hook_to(self, server):
+        server.add_url_rule('/switches/<hostname>/versions', view_func=self.get_versions, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/vlans', view_func=self.get_vlans, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/vlans', view_func=self.add_vlan, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>', view_func=self.get_vlan, methods=['GET'])
@@ -77,6 +78,24 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.unset_bond_description, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.edit_bond_spanning_tree, methods=['PUT'])
         return self
+
+    @to_response
+    @resource(Switch)
+    def get_versions(self, switch):
+        """
+        Displays various hardware and software versions about the switch
+
+        :arg str hostname: Hostname or IP of the switch
+        :code 200 OK:
+
+        Example output:
+
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_versions.json
+            :language: json
+
+        """
+
+        return 200, switch.get_versions()
 
     @to_response
     @resource(Switch)

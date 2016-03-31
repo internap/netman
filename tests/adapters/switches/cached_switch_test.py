@@ -792,3 +792,12 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(
             self.switch.get_vlans(),
             is_([Vlan(2, icmp_redirects=False)]))
+
+    def test_get_versions(self):
+        self.real_switch_mock.should_receive("get_versions").once().and_return({"v": "1.0"})
+
+        result1 = self.switch.get_versions()
+        result2 = self.switch.get_versions()
+
+        assert_that(result1, is_({"v": "1.0"}))
+        assert_that(result2, is_({"v": "1.0"}))
