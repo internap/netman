@@ -100,6 +100,7 @@ class CachedSwitch(SwitchBase):
         self.interfaces_cache = InterfaceCache().invalidated()
         self.vlan_interfaces_cache = VlanInterfaceCache().invalidated()
         self.bonds_cache = BondCache().invalidated()
+        self.versions_cache = Cache().invalidated()
 
     def _connect(self):
         return self.real_switch.connect()
@@ -362,3 +363,8 @@ class CachedSwitch(SwitchBase):
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         self.real_switch.set_vlan_icmp_redirects_state(vlan_number, state)
         self.vlans_cache[vlan_number].icmp_redirects = state
+
+    def get_versions(self):
+        if self.versions_cache.refresh_items:
+            self.versions_cache = Cache([(0, self.real_switch.get_versions())])
+        return copy.deepcopy(self.versions_cache[0])        

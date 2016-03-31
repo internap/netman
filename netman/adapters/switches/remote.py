@@ -284,6 +284,9 @@ class RemoteSwitch(SwitchBase):
         self.put('/vlans/{}/icmp-redirects'.format(vlan_number),
                  raw_data=_get_json_boolean(state))
 
+    def get_versions(self):
+        return self.get("/versions").json()
+
     def get(self, relative_url):
         return self._retry_on_unknown_session(
             lambda: self.validated(

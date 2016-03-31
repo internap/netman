@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import json
 
 from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, equal_to, is_
@@ -21,7 +22,7 @@ from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.vrrp_group import VrrpGroup
 from tests import ExactIpNetwork
-from tests.api import matches_fixture
+from tests.api import matches_fixture, open_fixture
 from tests.api.base_api_test import BaseApiTest
 from netman.api.api_utils import RegexConverter
 from netman.api.switch_api import SwitchApi
@@ -1286,6 +1287,18 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(400))
         assert_that(result['error'], is_('Unknown key: unknown_key'))
+
+    def test_get_versions(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_versions').once().ordered()\
+            .and_return(json.load(open_fixture("get_switch_hostname_versions.json")))
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/versions")
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_switch_hostname_versions.json"))
 
     def test_uncaught_exceptions_are_formatted_correctly(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()

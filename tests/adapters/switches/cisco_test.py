@@ -2430,3 +2430,87 @@ class CiscoTest(unittest.TestCase):
             self.switch.set_vlan_icmp_redirects_state(1234, False)
 
         assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
+
+    def test_get_versions_success(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show version").once().ordered().and_return([
+            "Cisco IOS Software, C3750 Software (C3750-IPSERVICESK9-M), Version 12.2(58)SE2, RELEASE SOFTWARE (fc1)",
+            "Technical Support: http://www.cisco.com/techsupport",
+            "Copyright (c) 1986-2011 by Cisco Systems, Inc.",
+            "Compiled Thu 21-Jul-11 01:53 by prod_rel_team",
+            "ROM: Bootstrap program is C3750 boot loader",
+            "BOOTLDR: C3750 Boot Loader (C3750-HBOOT-M) Version 12.2(44)SE5, RELEASE SOFTWARE (fc1)",
+            "my-switch uptime is 1 year, 18 weeks, 5 days, 1 hour, 11 minutes",
+            "System returned to ROM by power-on",
+            "System image file is \"flash:c3750-ipservicesk9-mz.122-58.SE2.bin\"",
+            "This product contains cryptographic features and is subject to United",
+            "States and local country laws governing import, export, transfer and",
+            "use. Delivery of Cisco cryptographic products does not imply",
+            "third-party authority to import, export, distribute or use encryption.",
+            "Importers, exporters, distributors and users are responsible for",
+            "compliance with U.S. and local country laws. By using this product you",
+            "agree to comply with applicable laws and regulations. If you are unable",
+            "to comply with U.S. and local laws, return this product immediately.",
+            "A summary of U.S. laws governing Cisco cryptographic products may be found at:",
+            "http://www.cisco.com/wwl/export/crypto/tool/stqrg.html",
+            "If you require further assistance please contact us by sending email to",
+            "export@cisco.com.",
+            "cisco WS-C3750G-24TS-1U (PowerPC405) processor (revision H0) with 131072K bytes of memory.",
+            "Processor board ID FOC1530X2F7",
+            "Last reset from power-on",
+            "80 Virtual Ethernet interfaces",
+            "28 Gigabit Ethernet interfaces",
+            "The password-recovery mechanism is enabled.",
+            "512K bytes of flash-simulated non-volatile configuration memory.",
+            "Base ethernet MAC Address       : 00:00:00:00:00:00",
+            "Motherboard assembly number     : 73-10219-09",
+            "Power supply part number        : 341-0098-02",
+            "Motherboard serial number       : FOC153019Z6",
+            "Power supply serial number      : ALD153000BB",
+            "Model revision number           : H0",
+            "Motherboard revision number     : A0",
+            "Model number                    : WS-C3750G-24TS-S1U",
+            "System serial number            : FOC1530X2F7",
+            "Top Assembly Part Number        : 800-26859-03",
+            "Top Assembly Revision Number    : C0",
+            "Version ID                      : V05",
+            "CLEI Code Number                : COMB600BRA",
+            "Hardware Board Revision Number  : 0x09",
+            "Switch Ports Model              SW Version            SW Image",
+            "------ ----- -----              ----------            ----------",
+            "*    1 28    WS-C3750G-24TS-1U  12.2(58)SE2           C3750-IPSERVICESK9-M",
+            "*    2 28    WS-C3750G-24TS-1U  12.2(58)SE2           C3750-IPSERVICESK9-M",
+            "Configuration register is 0xF",
+        ])
+
+        versions = self.switch.get_versions()
+
+        assert_that(versions, equal_to({
+            "units" : {
+                "1": {
+                    "Ports": "28",
+                    "Model": "WS-C3750G-24TS-1U",
+                    "SW Version": "12.2(58)SE2",
+                    "SW Image": "C3750-IPSERVICESK9-M"
+                },
+                "2": {
+                    "Ports": "28",
+                    "Model": "WS-C3750G-24TS-1U",
+                    "SW Version": "12.2(58)SE2",
+                    "SW Image": "C3750-IPSERVICESK9-M"
+                }
+            },
+            "Base ethernet MAC Address": "00:00:00:00:00:00",
+            "Motherboard assembly number": "73-10219-09",
+            "Power supply part number": "341-0098-02",
+            "Motherboard serial number": "FOC153019Z6",
+            "Power supply serial number": "ALD153000BB",
+            "Model revision number": "H0",
+            "Motherboard revision number": "A0",
+            "Model number": "WS-C3750G-24TS-S1U",
+            "System serial number": "FOC1530X2F7",
+            "Top Assembly Part Number": "800-26859-03",
+            "Top Assembly Revision Number": "C0",
+            "Version ID": "V05",
+            "CLEI Code Number": "COMB600BRA",
+            "Hardware Board Revision Number": "0x09",            
+        }))
