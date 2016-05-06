@@ -62,7 +62,7 @@ class NetmanTestApp(object):
         return params
 
     def _wait_until_port_is_opened(self, port):
-        for i in range(0, 5):
+        for i in range(0, 20):
             try:
                 requests.get("http://127.0.0.1:{}".format(port))
                 return
