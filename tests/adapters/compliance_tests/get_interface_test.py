@@ -16,6 +16,7 @@ from hamcrest import assert_that, is_
 
 from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.interface_states import ON
+from tests import has_message
 from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
@@ -50,8 +51,10 @@ class GetInterfaceTest(ComplianceTestCase):
         assert_that(interface_from_single.trunk_vlans, is_(interface_from_multiple.trunk_vlans))
 
     def test_getinterface_nonexistent_raises(self):
-        with self.assertRaises(UnknownInterface):
+        with self.assertRaises(UnknownInterface)as expect:
             self.client.get_interface('ethernet 1/nonexistent2000')
+
+        assert_that(expect.exception, has_message("Unknown interface ethernet 1/nonexistent2000"))
 
     def tearDown(self):
         self.janitor.unset_interface_access_vlan(self.test_ports[0].name)

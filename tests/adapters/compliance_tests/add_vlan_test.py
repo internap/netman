@@ -15,6 +15,7 @@
 from hamcrest import assert_that, is_, none, empty
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import BadVlanNumber, BadVlanName, VlanAlreadyExist
+from tests import has_message
 
 from tests.adapters.compliance_test_case import ComplianceTestCase
 
@@ -44,16 +45,22 @@ class AddVlanTest(ComplianceTestCase):
     def test_fails_if_the_vlan_already_exist(self):
         self.client.add_vlan(1000)
 
-        with self.assertRaises(VlanAlreadyExist):
+        with self.assertRaises(VlanAlreadyExist) as expect:
             self.client.add_vlan(1000)
 
+        assert_that(expect.exception, has_message("Vlan 1000 already exists"))
+
     def test_fails_with_a_wrong_number(self):
-        with self.assertRaises(BadVlanNumber):
+        with self.assertRaises(BadVlanNumber) as expect:
             self.client.add_vlan(9001)
 
+        assert_that(expect.exception, has_message("Vlan number is invalid"))
+
     def test_fails_with_a_wrong_name(self):
-        with self.assertRaises(BadVlanName):
+        with self.assertRaises(BadVlanName) as expect:
             self.client.add_vlan(1000, name="A space isn't good")
+
+        assert_that(expect.exception, has_message("Vlan name is invalid"))
 
     def tearDown(self):
         self.janitor.remove_vlan(1000)

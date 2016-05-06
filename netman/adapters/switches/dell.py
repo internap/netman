@@ -104,9 +104,9 @@ class Dell(SwitchBase):
         while len(result) > 0 and "--More--" in result[-1]:
             result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
         if regex.match(".*\^.*", result[0]):
-            raise BadVlanNumber
+            raise BadVlanNumber()
         elif regex.match("^ERROR", result[0]):
-            raise UnknownVlan
+            raise UnknownVlan(vlan_number)
         vlan = parse_vlan_list(result)[0]
         return vlan
 
@@ -115,9 +115,9 @@ class Dell(SwitchBase):
         while len(result) > 0 and "--More--" in result[-1]:
             result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
         if regex.match(".*\^.*", result[0]):
-            raise BadVlanNumber
+            raise BadVlanNumber()
         elif regex.match("^ERROR", result[0]):
-            raise UnknownVlan
+            raise UnknownVlan(vlan_number)
 
         return self.parse_interface_from_vlan_list(vlan_number, result)
 

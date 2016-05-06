@@ -58,9 +58,9 @@ class Dell10G(Dell):
     def get_vlan(self, number):
         result = self.shell.do("show vlan id {}".format(number))
         if regex.match(".*\^.*", result[0]):
-            raise BadVlanNumber
+            raise BadVlanNumber()
         elif regex.match("^ERROR", result[0]):
-            raise UnknownVlan
+            raise UnknownVlan(number)
         else:
             return parse_vlan_list(result)[0]
 

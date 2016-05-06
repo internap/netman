@@ -14,6 +14,7 @@
 
 from hamcrest import assert_that, is_
 from netman.core.objects.exceptions import UnknownVlan
+from tests import has_message
 from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
@@ -37,8 +38,10 @@ class SetVlanIcmpRedirectsStateTest(ComplianceTestCase):
         assert_that(vlan.icmp_redirects, is_(False))
 
     def test_raises_UnknownVlan_when_operating_on_a_vlan_that_does_not_exist(self):
-        with self.assertRaises(UnknownVlan):
+        with self.assertRaises(UnknownVlan) as expect:
             self.client.set_vlan_icmp_redirects_state(2000, False)
+
+        assert_that(expect.exception, has_message("Vlan 2000 not found"))
 
     def tearDown(self):
         self.janitor.remove_vlan(1000)

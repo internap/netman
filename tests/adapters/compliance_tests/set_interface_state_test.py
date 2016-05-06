@@ -13,10 +13,11 @@
 # limitations under the License.
 
 
-from hamcrest import assert_that, is_, contains_string
+from hamcrest import assert_that, is_
 
 from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.interface_states import ON, OFF
+from tests import has_message
 from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
@@ -36,9 +37,10 @@ class SetInterfaceStateTest(ComplianceTestCase):
         assert_that(interface.shutdown, is_(True))
 
     def test_fails_if_the_interface_does_not_exist(self):
-        with self.assertRaises(UnknownInterface) as exc:
+        with self.assertRaises(UnknownInterface) as expect:
             self.client.set_interface_state('ge-0/0/128', state=ON)
-        assert_that(str(exc.exception), contains_string("Unknown interface ge-0/0/128"))
+
+        assert_that(expect.exception, has_message("Unknown interface ge-0/0/128"))
 
     def test_set_an_interface_twice_works(self):
         self.try_to.set_interface_state(self.test_port, ON)
