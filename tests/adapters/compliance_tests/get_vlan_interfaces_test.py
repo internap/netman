@@ -15,6 +15,7 @@
 from hamcrest import assert_that, contains_inanyorder
 
 from netman.core.objects.exceptions import UnknownVlan
+from tests import has_message
 from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
@@ -39,8 +40,10 @@ class GetVlanInterfacesTest(ComplianceTestCase):
                     contains_inanyorder(self.test_ports[0].name, self.test_ports[1].name))
 
     def test_fails_when_the_vlan_does_not_exist(self):
-        with self.assertRaises(UnknownVlan):
+        with self.assertRaises(UnknownVlan)as expect:
             self.client.get_vlan_interfaces(2000)
+
+        assert_that(expect.exception, has_message("Vlan 2000 not found"))
 
     def tearDown(self):
         self.janitor.unset_interface_access_vlan(self.test_ports[0].name)

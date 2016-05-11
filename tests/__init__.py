@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from functools import wraps
 import warnings
+from functools import wraps
 
-from tests.adapters.model_list import available_models
+from hamcrest.core.core.isequal import IsEqual
 from netaddr import IPNetwork
-from tests.adapters.shell.terminal_client_test import telnet_hook_to_reactor, ssh_hook_to_reactor
+
 from global_reactor import ThreadedReactor
+from tests.adapters.model_list import available_models
+from tests.adapters.shell.terminal_client_test import telnet_hook_to_reactor, ssh_hook_to_reactor
 
 
 def setup():
@@ -56,3 +58,12 @@ def ignore_deprecation_warnings(func):
             ret = func(*args, **kwargs)
             return ret
     return func_wrapper
+
+
+def has_message(msg):
+    return HasMessage(msg)
+
+
+class HasMessage(IsEqual):
+    def _matches(self, item):
+        return super(HasMessage, self)._matches(str(item))

@@ -307,7 +307,7 @@ class DellTest(unittest.TestCase):
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.get_vlan(2019)
 
-        assert_that(str(expect.exception), equal_to("Vlan None not found"))
+        assert_that(str(expect.exception), equal_to("Vlan 2019 not found"))
 
     def test_get_vlan_multipage(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
@@ -377,6 +377,8 @@ class DellTest(unittest.TestCase):
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.get_vlan_interfaces(2019)
+
+        assert_that(str(expect.exception), equal_to("Vlan 2019 not found"))
 
     def test_get_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g1").and_return([
