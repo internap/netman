@@ -3,7 +3,7 @@ mock>=1.0.1
 pyhamcrest>=1.6
 flexmock>=0.10.2
 fake-switches>=1.0.25
-MockSSH>=1.4.1
+MockSSH>=1.4.2
 Sphinx
 sphinxcontrib-httpdomain
 gunicorn>=19.4.5
