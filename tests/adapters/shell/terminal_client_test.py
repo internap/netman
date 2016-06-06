@@ -34,7 +34,7 @@ from tests.adapters.shell.mock_terminal_commands import passwd_change_protocol_p
 command_passwd = MockSSH.PromptingCommand(
     name='passwd',
     password='1234',
-    password_prompt="Password:",
+    prompt="Password:",
     success_callbacks=[passwd_change_protocol_prompt],
     failure_callbacks=[passwd_write_password_to_transport])
 
