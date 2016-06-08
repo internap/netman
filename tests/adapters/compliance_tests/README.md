@@ -18,6 +18,9 @@ Test Format
   tested method.  Example : in a class called AddVlanTest, the test
   test_fails_if_the_vlan_exists should be read as "add_vlan fails if the
   vlan exists"
+- Compliance Test classes MUST be a subclass of ComplianceTestCase, they MUST NOT inherit directly from 
+  ConfiguredTestCase. When using ConfiguredTestCase you only execute the tests against one switch,
+  ComplianceTestCase class is responsible for test duplication for each of the implemented switches. 
 
 Tests Expectations
 ------------------
@@ -26,6 +29,3 @@ Tests Expectations
   behaviors should be covered in their respective unit test suite
 - Tests should be idempotent, meaning they should clean everything they added
   in a reliable way, implementing the tearDown method is reliable
-
-
-
