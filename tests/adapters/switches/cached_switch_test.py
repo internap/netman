@@ -474,6 +474,8 @@ class CacheSwitchTest(unittest.TestCase):
 
         self.real_switch_mock.should_receive("add_bond").once().with_args(123)
         self.switch.add_bond(123)
+
+        self.real_switch_mock.should_receive("get_bond").once().and_return(Bond(123))
         assert_that(self.switch.get_bond(123).number, is_(123))
 
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
@@ -490,6 +492,8 @@ class CacheSwitchTest(unittest.TestCase):
 
         self.real_switch_mock.should_receive("add_bond").once().with_args(123)
         self.switch.add_bond(123)
+
+        self.real_switch_mock.should_receive("get_bond").once().and_return(Bond(123))
         assert_that(self.switch.get_bond(123).number, is_(123))
 
         assert_that(

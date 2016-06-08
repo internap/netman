@@ -298,7 +298,7 @@ class CachedSwitch(SwitchBase):
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
-        self.bonds_cache[number] = Bond(number=number)
+        self.bonds_cache.refresh_items.add(number)
 
     def remove_bond(self, number):
         self.real_switch.remove_bond(number)
