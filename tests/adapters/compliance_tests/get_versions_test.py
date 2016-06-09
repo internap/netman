@@ -13,11 +13,10 @@
 # limitations under the License.
 
 from hamcrest import assert_that, greater_than
+from tests.adapters.compliance_test_case import ComplianceTestCase
 
-from tests.adapters.configured_test_case import ConfiguredTestCase
 
-
-class GetVersionsTest(ConfiguredTestCase):
+class GetVersionsTest(ComplianceTestCase):
     _dev_sample = "cisco"
 
     def test_returns_a_dictionary_of_various_hardware_and_software_versions(self):
