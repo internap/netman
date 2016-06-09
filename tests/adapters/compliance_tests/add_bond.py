@@ -6,7 +6,7 @@ from tests.adapters.compliance_test_case import ComplianceTestCase
 class AddBondTest(ComplianceTestCase):
     _dev_sample = "juniper"
 
-    def test_bond_is_created(self):
+    def test_creates_the_bond(self):
         self.client.add_bond(42)
 
         bond_from_get_bond = self.client.get_bond(42)
@@ -15,7 +15,7 @@ class AddBondTest(ComplianceTestCase):
 
         self.janitor.remove_bond(42)
 
-    def test_add_bond_twice_raise(self):
+    def test_raises_if_bond_already_exists(self):
         self.client.add_bond(42)
 
         with self.assertRaises(BondAlreadyExist):
@@ -23,6 +23,6 @@ class AddBondTest(ComplianceTestCase):
 
         self.janitor.remove_bond(42)
 
-    def test_out_of_range(self):
+    def test_raises_if_bond_number_is_out_of_range(self):
         with self.assertRaises(BadBondNumber):
             self.client.add_bond(1000)

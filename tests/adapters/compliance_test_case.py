@@ -39,7 +39,7 @@ def _create_associated_test_classes(test_case_name, test_class):
 
 def _wrap_tests_with_not_implemented_tolerance(test_class):
     for method in dir(test_class):
-        if method.startswith("test_"):
+        if method.startswith("test_") or method == "setUp":
             _wrap_test_method(method, test_class)
     return test_class
 
