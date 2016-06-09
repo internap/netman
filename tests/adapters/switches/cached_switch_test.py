@@ -23,7 +23,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
-from netman.core.objects.port_modes import ACCESS, TRUNK
+from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
@@ -550,12 +550,15 @@ class CacheSwitchTest(unittest.TestCase):
 
         self.switch.add_interface_to_bond('xe-1/0/2', 1)
 
+        self.real_switch_mock.should_receive("get_interfaces").once() \
+            .and_return([Interface('xe-1/0/2', bond_master=1, port_mode=BOND_MEMBER)])
+
         assert_that(
             self.switch.get_bonds(),
             is_([Bond(1, members=['xe-1/0/2'])]))
         assert_that(
             self.switch.get_interfaces(),
-            is_([Interface('xe-1/0/2', bond_master=1)]))
+            is_([Interface('xe-1/0/2', bond_master=1, port_mode=BOND_MEMBER)]))
 
     def test_remove_interface_from_bond(self):
         self.real_switch_mock.should_receive("get_bonds").once() \
@@ -571,12 +574,15 @@ class CacheSwitchTest(unittest.TestCase):
 
         self.switch.remove_interface_from_bond('xe-1/0/2')
 
+        self.real_switch_mock.should_receive("get_interfaces").once() \
+            .and_return([Interface('xe-1/0/2', bond_master=None, port_mode=ACCESS)])
+
         assert_that(
             self.switch.get_bonds(),
             is_([Bond(1, members=[])]))
         assert_that(
             self.switch.get_interfaces(),
-            is_([Interface('xe-1/0/2', bond_master=None)]))
+            is_([Interface('xe-1/0/2', bond_master=None, port_mode=ACCESS)]))
 
     def test_set_bond_link_speed(self):
         self.real_switch_mock.should_receive("get_bonds").once().and_return(
