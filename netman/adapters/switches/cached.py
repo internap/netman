@@ -298,7 +298,7 @@ class CachedSwitch(SwitchBase):
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
-        self.bonds_cache[number] = Bond(number=number)
+        self.bonds_cache.refresh_items.add(number)
 
     def remove_bond(self, number):
         self.real_switch.remove_bond(number)
@@ -307,11 +307,12 @@ class CachedSwitch(SwitchBase):
     def add_interface_to_bond(self, interface, bond_number):
         self.real_switch.add_interface_to_bond(interface, bond_number)
         self.bonds_cache[bond_number].members.append(interface)
-        self.interfaces_cache[interface].bond_master = bond_number
+        self.interfaces_cache.refresh_items.add(interface)
 
     def remove_interface_from_bond(self, interface):
         self.real_switch.remove_interface_from_bond(interface)
         self.interfaces_cache[interface].bond_master = None
+        self.interfaces_cache.refresh_items.add(interface)
         for bond in self.bonds_cache.values():
             try:
                 bond.members.remove(interface)
