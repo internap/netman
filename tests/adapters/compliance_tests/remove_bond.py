@@ -4,18 +4,18 @@ from netman.core.objects.exceptions import UnknownBond
 from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
-class DeleteBondTest(ComplianceTestCase):
+class RemoveBondTest(ComplianceTestCase):
     _dev_sample = "juniper"
 
     def setUp(self):
-        super(DeleteBondTest, self).setUp()
+        super(RemoveBondTest, self).setUp()
         self.client.add_bond(42)
 
     def tearDown(self):
         self.janitor.remove_bond(42)
-        super(DeleteBondTest, self).tearDown()
+        super(RemoveBondTest, self).tearDown()
 
-    def test_deletes_the_bond(self):
+    def test_removes_the_bond(self):
         self.client.remove_bond(42)
 
         with self.assertRaises(UnknownBond):
@@ -43,7 +43,7 @@ class DeleteBondTest(ComplianceTestCase):
         interface = self.client.get_interface(self.test_port)
         assert_that(interface.bond_master, is_(None))
 
-    def raises_on_out_of_range_bond_number(self):
+    def test_raises_on_out_of_range_bond_number(self):
         with self.assertRaises(UnknownBond):
             self.client.remove_bond(999)
 
