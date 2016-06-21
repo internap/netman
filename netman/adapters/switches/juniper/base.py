@@ -318,6 +318,22 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
+    def reset_interface(self, interface_id):
+        content = to_ele("""
+            <interface operation=\"replace\">
+                <name>{0}</name>
+            </interface>
+        """.format(interface_id))
+        update = Update()
+        update.add_interface(content)
+
+        try:
+            self._push(update)
+        except RPCError as e:
+            if "port value outside range" in e.message:
+                raise UnknownInterface(interface_id)
+            raise
+
     def unset_interface_native_vlan(self, interface_id):
         interface = self.get_interface(interface_id)
 
