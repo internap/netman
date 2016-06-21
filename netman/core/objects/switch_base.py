@@ -89,6 +89,9 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def unset_interface_native_vlan(self, interface_id):
         raise NotImplementedError()
 
+    def reset_interface(self, interface_id):
+        raise NotImplementedError()
+
     def get_vlan_interfaces(self, vlan_number):
         raise NotImplementedError()
 
