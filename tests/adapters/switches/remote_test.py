@@ -979,6 +979,35 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.set_access_vlan("ge-0/0/6", 1000)
 
+    def test_reset_interface(self):
+        self.requests_mock.should_receive("put").once().with_args(
+                url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6',
+                headers=self.headers,
+                data=None
+        ).and_return(
+                Reply(
+                        content='',
+                        status_code=204))
+
+        self.switch.reset_interface("ge-0/0/6")
+
+    def test_reset_interface_with_unknown_interface_raises(self):
+        self.requests_mock.should_receive("put").once().with_args(
+                url=self.netman_url+'/switches/toto/interfaces/ne-0/0/66',
+                headers=self.headers,
+                data=None
+        ).and_return(
+                Reply(
+                        content=json.dumps({
+                            "error": "Interface ethernet ne-0/0/66 not found",
+                            "error-module": UnknownInterface.__module__,
+                            "error-class": UnknownInterface.__name__
+                        }),
+                        status_code=404))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.reset_interface('ne-0/0/66')
+
     def test_unset_interface_access_vlan(self):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/access-vlan',

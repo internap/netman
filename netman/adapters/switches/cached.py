@@ -226,6 +226,10 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_access_vlan(interface_id, vlan)
         self.interfaces_cache[interface_id].access_vlan = vlan
 
+    def reset_interface(self, interface_id):
+        self.real_switch.reset_interface(interface_id)
+        self.interfaces_cache.refresh_items.add(interface_id)
+
     def unset_interface_access_vlan(self, interface_id):
         self.real_switch.unset_interface_access_vlan(interface_id)
         self.interfaces_cache[interface_id].access_vlan = None
