@@ -211,6 +211,18 @@ class CacheSwitchTest(unittest.TestCase):
             is_([Interface('eth0', access_vlan=123)])
         )
 
+    def test_reset_interface_invalidate_cache(self):
+        self.real_switch_mock.should_receive("get_interface").with_args("eth0").once().\
+            and_return([Interface('eth0')])
+        self.switch.get_interface('eth0')
+
+        self.real_switch_mock.should_receive("reset_interface").with_args('eth0')
+        self.switch.reset_interface('eth0')
+
+        self.real_switch_mock.should_receive("get_interface").with_args("eth0").once(). \
+            and_return([Interface('eth0')])
+        self.switch.get_interface('eth0')
+
     def test_unset_interface_access_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once().and_return(
             [Interface('eth0', access_vlan=123)])

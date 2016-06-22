@@ -426,6 +426,26 @@ class SwitchApiTest(BaseApiTest):
         })
         assert_that(code, equal_to(200))
 
+    def test_reset_interface(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('reset_interface').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4")
+
+        assert_that(code, equal_to(204))
+
+    def test_put_interface_with_data_is_not_implemented(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4",
+                                raw_data='providing data is not supported')
+
+        assert_that(code, equal_to(501))
+
     def test_set_interface_state_off(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
