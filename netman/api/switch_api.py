@@ -382,7 +382,7 @@ class SwitchApi(SwitchApiBase):
             ``trunk`` or ``access``
         """
 
-        mode = request.data.lower()
+        mode = request.get_data().lower()
         if mode == 'trunk':
             switch.set_trunk_mode(interface_id)
         elif mode == 'access':
@@ -404,7 +404,7 @@ class SwitchApi(SwitchApiBase):
             ``trunk`` or ``access``
         """
 
-        mode = request.data.lower()
+        mode = request.get_data().lower()
         if mode == 'trunk':
             switch.set_bond_trunk_mode(bond_number)
         elif mode == 'access':
