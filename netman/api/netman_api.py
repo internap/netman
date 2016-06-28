@@ -34,9 +34,9 @@ class NetmanApi(object):
 
     def hook_to(self, server):
         self.app = server
-        server.add_url_rule('/netman/info', view_func=self.get_info, methods=['GET'])
-        server.add_url_rule('/netman/apidocs/', view_func=self.api_docs, methods=['GET'])
-        server.add_url_rule('/netman/apidocs/<path:filename>', view_func=self.api_docs, methods=['GET'])
+        server.add_url_rule('/netman/info',endpoint="netman_info",view_func=self.get_info, methods=['GET'])
+        server.add_url_rule('/netman/apidocs/', endpoint="netman_apidocs" ,view_func=self.api_docs, methods=['GET'])
+        server.add_url_rule('/netman/apidocs/<path:filename>', endpoint="netman_apidocs" ,view_func=self.api_docs, methods=['GET'])
 
     @to_response
     def get_info(self):
@@ -65,7 +65,7 @@ class NetmanApi(object):
         Shows this documentation
 
         """
-        return send_from_directory(os.path.dirname(__file__) + "/doc_generated/html/", filename or "index.html")
+        return send_from_directory(os.path.dirname(__file__) + "/doc/html/", filename or "index.html")
 
 
 def _class_fqdn(obj):
