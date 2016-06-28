@@ -9,4 +9,4 @@ ChangeLog
 *.egg
 .eggs/
 .venv
-netman/api/doc
+doc_generated/
