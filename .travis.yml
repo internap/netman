@@ -9,10 +9,9 @@ script: tox -r
 deploy:
   provider: pypi
   user: internaphosting
+  distributions: "build_sphinx sdist"
   password:
     secure: Pfbbk3NfTIWAxz44Zyti21+huQIBlaUXlMlCd6iDYWU+e2lqZwo5WSrBEnhwotBGorf4YyZzTRoUqs6P9x8Swp2AeV5pNprXvS9ff+0+ALQ+DtR2OBudXFC6c2AZEGVOCALvPEyl9mJURwtT7843SnnoN0ZcS0RmbPuNrigbvJQRx/5e7NqpE3fVPPJ1OHISVTTnCTAITbfU7UtdxUiuPaRUYALQ/Ffgk6SzN/FvQiCVwWws8gXMTPe02QvVYQDg7sRuel0nfu7AfuAPbDmRgmZwVi48t0+FNWfyRxjepd5yDEgG3m0GYGpvtG+c0ElglPSMmK+ewRPZXFM9AgepJK4HsdHebpZH1kwIwita37ZEis2hgU97bfVo2dwhF5KBdixiJpDxUu09oiSGzvAbGWZA4Qx/m9Tw/TDm5+bBp+qca4HhKgp7JiDS5CJumjDCfCzs5Yw0yTxmiHvJjaJttRycgcyiW/NeiytBUY69NZzzQceKUkrns1Dr9g/I0W4QPMeSQWWOsvxb80Wflzxwz0ozLemcWmuekR7dxOaR4gRQl/vwHsLg87GoXL3w34VfefPv48Xn/VuLfN7AYC2H9QNqlO6JRUxS/hH1hQGsMn9TpQhhqW8zi7cKfXG/sO83Ur024kI4tntm9V93hUrsN1+VAvX27SR4L4bpa6wwMrg=
   on:
     tags: true
     repo: internap/netman
-    distributions: "build_sphinx sdist"
-
