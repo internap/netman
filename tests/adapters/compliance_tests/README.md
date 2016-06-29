@@ -11,6 +11,7 @@ Test Format
 -----------
 
 - 1 Method = 1 Test Class
+- Each compliance test filename must end with "_test"
 - Test classes names MUST be the tested method in CamelCase suffixed by
   "Test"
 - Each test in the class MUST be by with "test_"
