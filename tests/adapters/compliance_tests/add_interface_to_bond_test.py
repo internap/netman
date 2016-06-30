@@ -33,7 +33,7 @@ class AddInterfaceToBondTest(ComplianceTestCase):
 
     def test_raises_on_invalid_interface(self):
         with self.assertRaises(UnknownInterface):
-            self.client.add_interface_to_bond("nonexistent", 42)
+            self.client.add_interface_to_bond("nonexistent 1/42", 42)
 
     def test_resets_the_interface_trunk_vlans(self):
         self.client.add_vlan(90)
