@@ -2514,27 +2514,3 @@ class CiscoTest(unittest.TestCase):
             "CLEI Code Number": "COMB600BRA",
             "Hardware Board Revision Number": "0x09",            
         }))
-
-    def test_reset_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
-            "Enter configuration commands, one per line.  End with CNTL/Z."
-        ])
-        self.mocked_ssh_client.should_receive("do").with_args("default interface FastEthernet0/4").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
-
-        self.switch.reset_interface("FastEthernet0/4")
-
-    def test_reset_interface_unknown_interface_name_raises(self):
-        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
-            "Enter configuration commands, one per line.  End with CNTL/Z."
-        ])
-        self.mocked_ssh_client.should_receive("do").with_args("default interface WrongInterfaceName0/4").and_return([
-            "         ^"
-            "% Invalid input detected at '^' marker."
-        ]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).once().ordered()
-
-        with self.assertRaises(UnknownInterface) as expect:
-            self.switch.reset_interface("WrongInterfaceName0/4")
-
-        assert_that(str(expect.exception), equal_to("Unknown interface WrongInterfaceName0/4"))
