@@ -2580,6 +2580,28 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
+    def test_reset_interface_with_invalid_interface_raises(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="replace">
+                    <name>ne-0/0/9</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            Invalid interface type in 'ne-0/0/9'
+            </error-message>
+            </rpc-error>"""))))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.reset_interface("ne-0/0/9")
+
     def test_reset_interface_with_unknown_rpcerror_raises(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
@@ -2595,14 +2617,14 @@ class JuniperTest(unittest.TestCase):
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
-            invalid interface type in 'ne-0/0/9'
+            Unknown error
             </error-message>
             </rpc-error>"""))))
 
         with self.assertRaises(RPCError) as expect:
             self.switch.reset_interface("ne-0/0/9")
 
-        assert_that(str(expect.exception), contains_string("invalid interface type"))
+        assert_that(str(expect.exception), contains_string("Unknown error"))
 
     def test_unset_interface_access_vlan_removes_the_vlan_members(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
