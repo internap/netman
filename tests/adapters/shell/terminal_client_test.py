@@ -81,7 +81,7 @@ class TerminalClientTest(unittest.TestCase):
 
     def test_connect_timeout(self):
         with self.assertRaises(ConnectTimeout) as expect:
-            self.client("1.0.0.1", "whatever", "whatever", connect_timeout=1)
+            self.client("10.0.0.0", "whatever", "whatever", connect_timeout=1)
 
         assert_that(str(expect.exception), starts_with("Timed out while connecting to 1.0.0.1 on port"))
 
