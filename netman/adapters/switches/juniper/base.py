@@ -330,7 +330,7 @@ class Juniper(SwitchBase):
         try:
             self._push(update)
         except RPCError as e:
-            if "port value outside range" in e.message:
+            if "port value outside range" in e.message or "Invalid interface type" in e.message:
                 raise UnknownInterface(interface_id)
             raise
 
