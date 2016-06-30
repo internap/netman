@@ -163,6 +163,23 @@ class Brocade(SwitchBase):
     def set_interface_native_vlan(self, interface_id, vlan):
         return self.set_access_vlan(interface_id, vlan)
 
+    def reset_interface(self, interface_id):
+        result = self.shell.do("show vlan {}".format(interface_id))
+        if result and ('Invalid input' in result[0] or 'Error' in result[0]) :
+            raise UnknownInterface(interface_id)
+
+        operations = self._get_operations(result)
+
+        with self.config():
+            if len(operations) > 0:
+                for operation in operations:
+                    self.shell.do("vlan {}".format(operation[0]))
+                    self.shell.do("no {} {}".format(operation[1], interface_id))
+                self.shell.do("exit")
+            result = self.shell.do("no interface {}".format(interface_id))
+            if result:
+                raise UnknownInterface(interface_id)
+
     def set_interface_state(self, interface_id, state):
         with self.config(), self.interface(interface_id):
             self.shell.do("disable" if state is OFF else "enable")
@@ -201,12 +218,7 @@ class Brocade(SwitchBase):
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
-        operations = []
-        for line in result:
-            if regex.match("VLAN: (\d*)  ([^\s]*)", line):
-                vlan, state = regex
-                if int(vlan) > 1:
-                    operations.append((vlan, state.lower()))
+        operations = self._get_operations(result)
 
         if len(operations) > 0 and not (len(operations) == 1 and operations[0][1] == "untagged"):
             with self.config():
@@ -436,6 +448,14 @@ class Brocade(SwitchBase):
     def _show_vlan(self, vlan_number):
         return self.shell.do("show vlan {}".format(vlan_number))
 
+    def _get_operations(self, result):
+        operations = []
+        for line in result:
+            if regex.match("VLAN: (\d*)  ([^\s]*)", line):
+                vlan, state = regex
+                if int(vlan) > 1:
+                    operations.append((vlan, state.lower()))
+        return operations
 
 def parse_vlan(vlan_data):
     regex.match("^vlan (\d+).*", vlan_data[0])
@@ -619,6 +639,9 @@ class BackwardCompatibleBrocade(Brocade):
         return super(BackwardCompatibleBrocade, self).add_vrrp_group(vlan_number, group_id, ips, priority,
                                                                      hello_interval, dead_interval,
                                                                      _add_ethernet(track_id), track_decrement)
+
+    def reset_interface(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).reset_interface(_add_ethernet(interface_id))
 
 
 def _add_ethernet(interface_id):
