@@ -415,6 +415,12 @@ class Cisco(SwitchBase):
             else:
                 self.ssh.do('no ip redirects')
 
+    def reset_interface(self, interface_id):
+        with self.config():
+            for line in self.ssh.do('default interface {}'.format(interface_id)):
+                if 'Invalid input detected' in line:
+                    raise UnknownInterface(interface_id)
+
     def get_versions(self):
         result = self.ssh.do('show version')
 
