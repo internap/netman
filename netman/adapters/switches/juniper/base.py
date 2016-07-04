@@ -215,15 +215,16 @@ class Juniper(SwitchBase):
         if len(update_attributes) > 0:
             update = Update()
             update.add_interface(interface_update(interface_id, "0", update_attributes))
-
-            self._push(update)
+            self._push_interface_update(interface_id, update)
 
     def set_trunk_mode(self, interface_id):
         update_attributes = []
 
-        interface = self.get_interface(interface_id)
+        config = self.query(one_interface(interface_id), all_vlans)
+        interface_node = self.get_interface_config(interface_id, config)
+        interface = self.node_to_interface(interface_node, config)
 
-        if interface.port_mode is ACCESS:
+        if interface.port_mode is ACCESS or interface.port_mode is None:
             update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("trunk"))
 
         if interface.access_vlan is not None:
@@ -233,7 +234,7 @@ class Juniper(SwitchBase):
             update = Update()
             update.add_interface(interface_update(interface_id, "0", update_attributes))
 
-            self._push(update)
+            self._push_interface_update(interface_id, update)
 
     def set_access_vlan(self, interface_id, vlan):
         update_attributes = []
@@ -252,8 +253,9 @@ class Juniper(SwitchBase):
             update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("access"))
 
         if interface.access_vlan != vlan:
-            for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
-                update_vlan_members.append(to_ele('<members operation="delete">{}</members>'.format(members.text)))
+            if interface_node is not None:
+                for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
+                    update_vlan_members.append(to_ele('<members operation="delete">{}</members>'.format(members.text)))
             update_vlan_members.append(to_ele("<members>{}</members>".format(vlan)))
 
         if update_attributes or update_vlan_members:
@@ -261,14 +263,16 @@ class Juniper(SwitchBase):
             update.add_interface(interface_update(interface_id, "0", update_attributes, update_vlan_members))
 
             try:
-                self._push(update)
+                self._push_interface_update(interface_id, update)
             except RPCError as e:
                 if "No vlan matches vlan tag" in e.message:
                     raise UnknownVlan(vlan)
                 raise
 
     def unset_interface_access_vlan(self, interface_id):
-        interface = self.get_interface(interface_id)
+        config = self.query(one_interface(interface_id), all_vlans)
+        interface_node = self.get_interface_config(interface_id, config)
+        interface = self.node_to_interface(interface_node, config)
 
         if interface.port_mode == TRUNK:
             raise InterfaceInWrongPortMode("trunk")
@@ -312,7 +316,7 @@ class Juniper(SwitchBase):
             update.add_interface(interface)
 
             try:
-                self._push(update)
+                self._push_interface_update(interface_id, update)
             except RPCError as e:
                 if "No vlan matches vlan tag" in e.message:
                     raise UnknownVlan(vlan)
@@ -335,7 +339,9 @@ class Juniper(SwitchBase):
             raise
 
     def unset_interface_native_vlan(self, interface_id):
-        interface = self.get_interface(interface_id)
+        config = self.query(one_interface(interface_id), all_vlans)
+        interface_node = self.get_interface_config(interface_id, config)
+        interface = self.node_to_interface(interface_node, config)
 
         if interface.trunk_native_vlan is None:
             raise NativeVlanNotSet(interface_id)
@@ -367,11 +373,14 @@ class Juniper(SwitchBase):
                 [to_ele("<members>{}</members>".format(vlan))]
             ))
 
-            self._push(update)
+            self._push_interface_update(interface_id, update)
 
     def remove_trunk_vlan(self, interface_id, vlan):
         config = self.query(all_interfaces, all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
+        if interface_node is None:
+            raise UnknownInterface(interface_id)
+
         interface = self.node_to_interface(interface_node, config)
 
         if interface.port_mode is ACCESS:
@@ -415,7 +424,6 @@ class Juniper(SwitchBase):
 
     def edit_interface_spanning_tree(self, interface_id, edge=None):
         config = self.query(one_interface(interface_id), one_protocol_interface("rstp", interface_id))
-        self.get_interface_config(interface_id, config)
 
         if edge is not None:
             modifications = _compute_edge_state_modifications(interface_id, edge, config)
@@ -429,7 +437,7 @@ class Juniper(SwitchBase):
                    </interface>
                 """.format(interface_id, "".join(modifications))))
 
-                self._push(update)
+                self._push_interface_update(interface_id, update)
 
     def set_interface_state(self, interface_id, state):
         update = Update()
@@ -465,7 +473,8 @@ class Juniper(SwitchBase):
         if update_ele is not None:
             update = Update()
             update.add_protocol_interface("lldp", update_ele)
-            self._push(update)
+
+            self._push_interface_update(interface_id, update)
 
     def add_bond(self, number):
         config = self.query(one_interface(bond_name(number)))
@@ -503,7 +512,6 @@ class Juniper(SwitchBase):
     def add_interface_to_bond(self, interface, bond_id):
         config = self.query(all_interfaces, all_vlans, rstp_protocol_interfaces)
         bond = self.node_to_bond(self.get_bond_config(bond_id, config), config)
-        self.get_interface_config(interface, config=config)
 
         update = Update()
         self.custom_strategies.add_enslave_to_bond_operations(update, interface, bond)
@@ -511,7 +519,7 @@ class Juniper(SwitchBase):
         for name_node in config.xpath("data/configuration/protocols/rstp/interface/name[starts-with(text(),'{}')]".format(interface)):
             update.add_protocol_interface("rstp", rstp_interface_removal(name_node.text))
 
-        self._push(update)
+        self._push_interface_update(interface, update)
 
     def remove_interface_from_bond(self, interface):
         config = self.query(all_interfaces)
@@ -581,6 +589,16 @@ class Juniper(SwitchBase):
     def edit_bond_spanning_tree(self, number, edge=None):
         return self.edit_interface_spanning_tree(bond_name(number), edge=edge)
 
+    def _push_interface_update(self, interface_id, configuration):
+        try:
+            self._push(configuration)
+        except RPCError as e:
+            if "port value outside range" in e.message \
+                    or "Invalid interface type" in e.message \
+                    or "device value outside range" in e.message:
+                raise UnknownInterface(interface_id)
+            raise
+
     def _push(self, configuration):
         config = new_ele('config')
         config.append(configuration.root)
@@ -602,6 +620,8 @@ class Juniper(SwitchBase):
     def get_interface(self, interface_id):
         config = self.query(one_interface(interface_id), all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
+        if interface_node is None:
+            raise UnknownInterface(interface_id)
 
         return self.node_to_interface(interface_node, config)
 
@@ -609,8 +629,6 @@ class Juniper(SwitchBase):
         config = config or self.query(one_interface(interface_id))
         interface_node = first(config.xpath(
             "data/configuration/interfaces/interface/name[text()=\"{0:s}\"]/..".format(interface_id)))
-        if interface_node is None:
-            raise UnknownInterface(interface_id)
         return interface_node
 
     def get_vlan_config(self, number, config):
@@ -634,6 +652,9 @@ class Juniper(SwitchBase):
                 bond_name(bond_id)))
 
     def get_port_mode(self, interface_node):
+        if interface_node is None:
+            return None
+
         if get_bond_master(interface_node) is not None:
             return BOND_MEMBER
         actual_port_mode_node = first(self.custom_strategies.get_port_mode_node_in_inteface_node(interface_node))
@@ -643,20 +664,22 @@ class Juniper(SwitchBase):
             return {"access": ACCESS, "trunk": TRUNK}[actual_port_mode_node.text]
 
     def fill_interface_from_node(self, interface, interface_node, config):
-        interface.port_mode = self.get_port_mode(interface_node) or ACCESS
-        vlans = list_vlan_members(interface_node, config)
-        if interface.port_mode is ACCESS:
-            interface.access_vlan = first(vlans)
-        else:
-            interface.trunk_vlans = vlans
-        interface.trunk_native_vlan = value_of(self.custom_strategies.get_interface_trunk_native_vlan_id_node(interface_node), transformer=int)
-        interface.shutdown = first(interface_node.xpath("disable")) is not None
+        if interface_node is not None:
+            interface.port_mode = self.get_port_mode(interface_node) or ACCESS
+            vlans = list_vlan_members(interface_node, config)
+            if interface.port_mode is ACCESS:
+                interface.access_vlan = first(vlans)
+            else:
+                interface.trunk_vlans = vlans
+            interface.trunk_native_vlan = value_of(self.custom_strategies.get_interface_trunk_native_vlan_id_node(interface_node), transformer=int)
+            interface.shutdown = first(interface_node.xpath("disable")) is not None
         return interface
 
     def node_to_interface(self, interface_node, config):
         interface = Interface()
-        interface.name = value_of(interface_node.xpath("name"))
-        interface.bond_master = get_bond_master(interface_node)
+        if interface_node is not None:
+            interface.name = value_of(interface_node.xpath("name"))
+            interface.bond_master = get_bond_master(interface_node)
         self.fill_interface_from_node(interface, interface_node, config)
         return interface
 
@@ -1101,20 +1124,24 @@ def _compute_edge_state_modifications(interface_id, edge, config):
     modifications = []
     rstp_node = first(config.xpath("data/configuration/protocols/rstp/interface/name[text()=\"{0:s}\"]/.."
                                    .format(interface_id)))
+
+    edge_node = None
+    no_root_port_node = None
     if rstp_node is not None:
         edge_node = first(rstp_node.xpath("edge"))
         no_root_port_node = first(rstp_node.xpath("no-root-port"))
 
-        if edge is True:
-            if edge_node is None:
-                modifications.append("<edge />")
-            if no_root_port_node is None:
-                modifications.append("<no-root-port />")
-        elif edge is False:
-            if edge_node is not None:
-                modifications.append("<edge operation=\"delete\" />")
-            if no_root_port_node is not None:
-                modifications.append("<no-root-port operation=\"delete\" />")
+    if edge is True:
+        if edge_node is None:
+            modifications.append("<edge />")
+        if no_root_port_node is None:
+            modifications.append("<no-root-port />")
+    elif edge is False:
+        if edge_node is not None:
+            modifications.append("<edge operation=\"delete\" />")
+        if no_root_port_node is not None:
+            modifications.append("<no-root-port operation=\"delete\" />")
+
     return modifications
 
 

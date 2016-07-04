@@ -1775,14 +1775,76 @@ class JuniperTest(unittest.TestCase):
                 <vlans/>
               </configuration>
             </filter>
-        """)).and_return(a_configuration())
+        """)).and_return(a_configuration("""
+            <interfaces/>
+            <vlans/>
+        """))
 
-        self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..63 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_access_mode("ge-0/0/6")
+            self.switch.set_access_mode("ge-0/0/99")
 
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
+
+    def test_port_mode_access_on_default_interface_works(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces/>
+            <vlans/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("ge-0/0/6")
 
     def test_port_mode_access_with_trunk_mode_wipes_all_trunk_stuff(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -2040,6 +2102,45 @@ class JuniperTest(unittest.TestCase):
               <configuration>
                 <interfaces>
                   <interface>
+                    <name>ge-0/0/99</name>
+                  </interface>
+                </interfaces>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(a_port_value_outside_range_rpc_error())
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.set_trunk_mode("ge-0/0/99")
+
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
+
+    def test_port_mode_trunk_on_default_interface_works(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
                     <name>ge-0/0/6</name>
                   </interface>
                 </interfaces>
@@ -2048,12 +2149,27 @@ class JuniperTest(unittest.TestCase):
             </filter>
         """)).and_return(a_configuration())
 
-        self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
 
-        with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_trunk_mode("ge-0/0/6")
-
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
+        self.switch.set_trunk_mode("ge-0/0/6")
 
     def test_set_access_vlan_on_interface_with_access_mode_and_no_vlan_succeeds_easily(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -2338,6 +2454,48 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Vlan 1000 not found"))
 
+    def test_set_access_vlan_on_default_interface_works(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <vlans>
+              <vlan>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </vlan>
+            </vlans>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                          <vlan>
+                            <members>1000</members>
+                          </vlan>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_vlan("ge-0/0/6", 1000)
+
     def test_set_access_vlan_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
@@ -2355,12 +2513,33 @@ class JuniperTest(unittest.TestCase):
             </vlans>
         """))
 
-        self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>access</port-mode>
+                          <vlan>
+                            <members>1000</members>
+                          </vlan>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(a_port_value_outside_range_rpc_error())
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_access_vlan("ge-0/0/6", 1000)
+            self.switch.set_access_vlan("ge-0/0/99", 1000)
 
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_reset_interface_works(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
@@ -2553,7 +2732,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Operation cannot be performed on a trunk mode interface"))
 
-    def test_unset_interface_access_vlan_on_unknown_interface_raises(self):
+    def test_unset_interface_access_vlan_on_default_interface_works(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -2569,10 +2748,8 @@ class JuniperTest(unittest.TestCase):
 
         self.netconf_mock.should_receive("edit_config").never()
 
-        with self.assertRaises(UnknownInterface) as expect:
+        with self.assertRaises(AccessVlanNotSet):
             self.switch.unset_interface_access_vlan("ge-0/0/6")
-
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_set_interface_native_vlan_on_interface_with_trunk_mode_and_no_native_vlan_succeeds_easily(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -2894,27 +3071,86 @@ class JuniperTest(unittest.TestCase):
 
     def test_set_interface_native_vlan_on_unknown_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-            <filter>
-              <configuration>
-                <interfaces/>
-                <vlans/>
-              </configuration>
-            </filter>
-        """)).and_return(a_configuration("""
-            <vlans>
-              <vlan>
-                <name>PATATE</name>
-                <vlan-id>1000</vlan-id>
-              </vlan>
-            </vlans>
-        """))
+                <filter>
+                  <configuration>
+                    <interfaces/>
+                    <vlans/>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>PATATE</name>
+                    <vlan-id>1000</vlan-id>
+                  </vlan>
+                </vlans>
+            """))
 
-        self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                          <native-vlan-id>1000</native-vlan-id>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(a_port_value_outside_range_rpc_error())
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
+            self.switch.set_interface_native_vlan("ge-0/0/99", 1000)
 
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
+
+    def test_set_interface_native_vlan_on_default_interface_works(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces/>
+                    <vlans/>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <vlans>
+                  <vlan>
+                    <name>PATATE</name>
+                    <vlan-id>1000</vlan-id>
+                  </vlan>
+                </vlans>
+            """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                          <native-vlan-id>1000</native-vlan-id>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
     def test_unset_interface_native_vlan_succeeds(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -3002,7 +3238,7 @@ class JuniperTest(unittest.TestCase):
 
         assert_that(str(expect.exception), contains_string("Trunk native Vlan is not set on interface ge-0/0/6"))
 
-    def test_unset_interface_native_vlan_on_unknown_interface_raises(self):
+    def test_unset_interface_native_vlan_on_default_interface_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3018,10 +3254,8 @@ class JuniperTest(unittest.TestCase):
 
         self.netconf_mock.should_receive("edit_config").never()
 
-        with self.assertRaises(UnknownInterface) as expect:
+        with self.assertRaises(NativeVlanNotSet):
             self.switch.unset_interface_native_vlan("ge-0/0/6")
-
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
 
     def test_add_trunk_vlan_on_interface_with_trunk_mode_and_no_vlan_succeeds_easily(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -3353,12 +3587,33 @@ class JuniperTest(unittest.TestCase):
             </vlans>
         """))
 
-        self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+             <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                          <port-mode>trunk</port-mode>
+                          <vlan>
+                            <members>1000</members>
+                          </vlan>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(a_port_value_outside_range_rpc_error())
 
         with self.assertRaises(UnknownInterface) as expect:
-            self.switch.add_trunk_vlan("ge-0/0/6", 1000)
+            self.switch.add_trunk_vlan("ge-0/0/99", 1000)
 
-        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/6"))
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
 
     def test_remove_trunk_vlan_removes_the_vlan_members_in_every_possible_way(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -4140,9 +4395,29 @@ class JuniperTest(unittest.TestCase):
                 </protocols>
               </configuration>
             </filter>
-        """)).and_return(a_configuration())
+        """)).and_return(a_configuration(""))
 
-        self.netconf_mock.should_receive("edit_config").never()
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <rstp>
+                    <interface>
+                      <name>ge-0/0/99</name>
+                      <edge />
+                      <no-root-port />
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>
+            """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.edit_interface_spanning_tree('ge-0/0/99', edge=True)
@@ -4717,8 +4992,31 @@ class JuniperTest(unittest.TestCase):
             <vlans/>
         """))
 
-        with self.assertRaises(UnknownInterface) as expect:
-            self.switch.add_interface_to_bond('ge-0/0/1', 10)
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="replace">
+                    <name>ge-0/0/99</name>
+                    <ether-options>
+                      <ieee-802.3ad>
+                        <bundle>ae10</bundle>
+                      </ieee-802.3ad>
+                    </ether-options>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_raise(
+                RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..47 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.add_interface_to_bond('ge-0/0/99', 10)
 
     def test_remove_interface_from_bond(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -5102,6 +5400,85 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.set_interface_lldp_state('ge-0/0/6', True)
 
+    def test_set_interface_lldp_state_from_default_interface(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <protocols>
+                  <lldp>
+                    <interface>
+                      <name>ge-0/0/6</name>
+                    </interface>
+                  </lldp>
+                </protocols>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_interface_lldp_state('ge-0/0/6', True)
+
+    def test_set_interface_lldp_state_from_unknown_interface_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/99</name>
+                      </interface>
+                    </interfaces>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/99</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces/>
+            """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <protocols>
+                      <lldp>
+                        <interface>
+                          <name>ge-0/0/99</name>
+                        </interface>
+                      </lldp>
+                    </protocols>
+                  </configuration>
+                </config>
+            """)).and_raise(a_port_value_outside_range_rpc_error())
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.set_interface_lldp_state('ge-0/0/99', True)
+
+        assert_that(str(expect.exception), contains_string("Unknown interface ge-0/0/99"))
+
     def test_set_interface_lldp_state_when_disabled(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
@@ -5449,6 +5826,16 @@ def an_ok_response():
         <rpc-reply message-id="urn:uuid:34c41736-bed3-11e4-8c40-7c05070fe456">
         <ok/>
         </rpc-reply>"""), JunosDeviceHandler(None).transform_reply())
+
+
+def a_port_value_outside_range_rpc_error():
+    return RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..63 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>""")))
 
 
 def is_xml(string):
