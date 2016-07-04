@@ -163,6 +163,12 @@ class Brocade(SwitchBase):
     def set_interface_native_vlan(self, interface_id, vlan):
         return self.set_access_vlan(interface_id, vlan)
 
+    def reset_interface(self, interface_id):
+        with self.config():
+            result = self.shell.do("no interface {}".format(interface_id))
+            if result:
+                raise UnknownInterface(interface_id)
+
     def set_interface_state(self, interface_id, state):
         with self.config(), self.interface(interface_id):
             self.shell.do("disable" if state is OFF else "enable")
@@ -619,6 +625,9 @@ class BackwardCompatibleBrocade(Brocade):
         return super(BackwardCompatibleBrocade, self).add_vrrp_group(vlan_number, group_id, ips, priority,
                                                                      hello_interval, dead_interval,
                                                                      _add_ethernet(track_id), track_decrement)
+
+    def reset_interface(self, interface_id):
+        return super(BackwardCompatibleBrocade, self).reset_interface(_add_ethernet(interface_id))
 
 
 def _add_ethernet(interface_id):

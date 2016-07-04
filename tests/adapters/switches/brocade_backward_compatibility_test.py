@@ -16,7 +16,7 @@ import unittest
 
 from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, instance_of, is_, equal_to
-from mock import patch, Mock
+from mock import Mock
 from netaddr.ip import IPAddress
 
 from netman.adapters.switches.brocade import Brocade, BackwardCompatibleBrocade
@@ -221,3 +221,11 @@ class BrocadeBackwardCompatibilityTest(unittest.TestCase):
 
         self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.2.3.4")], priority=110, hello_interval=5, dead_interval=15,
                                    track_id="1/1", track_decrement=50)
+
+    @ignore_deprecation_warnings
+    def test_reset_interfaces_accepts_no_ethernet(self):
+        self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("no interface ethernet 1/4").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("exit").once().ordered()
+
+        self.switch.reset_interface("1/4")
