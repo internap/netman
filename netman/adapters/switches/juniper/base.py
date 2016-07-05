@@ -331,12 +331,7 @@ class Juniper(SwitchBase):
         update = Update()
         update.add_interface(content)
 
-        try:
-            self._push(update)
-        except RPCError as e:
-            if "port value outside range" in e.message:
-                raise UnknownInterface(interface_id)
-            raise
+        self._push_interface_update(interface_id, update)
 
     def unset_interface_native_vlan(self, interface_id):
         config = self.query(one_interface(interface_id), all_vlans)
