@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
     BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, InvalidAccessGroupName
+    VlanAlreadyExist, InvalidAccessGroupName, InvalidValue
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -584,6 +584,53 @@ class BrocadeTest(unittest.TestCase):
             self.switch.set_access_vlan("ethernet 9/999", vlan=2999)
 
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 9/999"))
+
+    def test_reset_interfaces_works(self):
+        self.shell_mock.should_receive("do").with_args("show vlan ethernet 1/4").once().ordered().and_return([])
+
+        self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("no interface ethernet 1/4").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("exit").once().ordered()
+
+        self.switch.reset_interface("ethernet 1/4")
+
+    def test_reset_interfaces_on_invalid_input_raises_unknown_interface(self):
+        self.shell_mock.should_receive("do").with_args("show vlan ethernet 9/999").once().ordered().and_return([
+            'Invalid input -> 9/999',
+            'Type ? for a list'])
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.reset_interface("ethernet 9/999")
+
+    def test_reset_interfaces_on_invalid_interface_raises_unknown_interface(self):
+        self.shell_mock.should_receive("do").with_args("show vlan ethernet 1/64").once().ordered().and_return([
+            'Error - invalid interface 1/64'])
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.reset_interface("ethernet 1/64")
+
+    def test_reset_interfaces_on_invalid_slot_raises_unknown_interface(self):
+        self.shell_mock.should_receive("do").with_args("show vlan ethernet 2/1").once().ordered().and_return([
+            'Error - interface 2/1 is not an ETHERNET interface'])
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.reset_interface("ethernet 2/1")
+
+    def test_reset_interfaces_cleans_tagged_vlans(self):
+        self.shell_mock.should_receive("do").with_args("show vlan ethernet 1/4").and_return(['VLAN: 1200  Untagged',
+                                                                                             'VLAN: 1201  Tagged'])
+
+        self.shell_mock.should_receive("do").with_args("configure terminal").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("vlan 1200").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("no untagged ethernet 1/4").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("vlan 1201").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("no tagged ethernet 1/4").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("exit").and_return([]).once().ordered()
+
+        self.shell_mock.should_receive("do").with_args("no interface ethernet 1/4").once().ordered().and_return([])
+        self.shell_mock.should_receive("do").with_args("exit").and_return([]).once().ordered()
+
+        self.switch.reset_interface("ethernet 1/4")
 
     def test_unset_interface_access_vlan(self):
         self.shell_mock.should_receive("do").with_args("show vlan brief | include ethe 1/4").once().ordered().and_return([
