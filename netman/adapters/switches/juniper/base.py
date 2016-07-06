@@ -132,15 +132,19 @@ class Juniper(SwitchBase):
                     vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
         return vlan
 
-
     def get_interfaces(self):
+        physical_interfaces = self._list_physical_interfaces()
         config = self.query(all_interfaces, all_vlans)
 
         interface_list = []
-        for interface_node in config.xpath("data/configuration/interfaces/interface"):
-            interface_name = value_of(interface_node.xpath("name"))
-            if interface_name != "vlan" and not interface_name.startswith("ae"):
-                interface_list.append(self.node_to_interface(interface_node, config))
+        for phys_int in physical_interfaces:
+            if not phys_int.name.startswith("ae"):
+                interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
+                                                    .format(phys_int.name)))
+                if interface_node is not None:
+                    interface_list.append(self.node_to_interface(interface_node, config))
+                else:
+                    interface_list.append(phys_int.to_interface())
 
         return interface_list
 
@@ -522,15 +526,14 @@ class Juniper(SwitchBase):
         self._push_interface_update(interface, update)
 
     def remove_interface_from_bond(self, interface):
-        config = self.query(all_interfaces)
-        node = self.get_interface_config(interface, config)
+        try:
+            update = Update()
+            update.add_interface(free_from_bond_operation(interface))
+            self._push(update)
+        except RPCError:
+            self._get_physical_interface(interface)
 
-        if len(node.xpath('ether-options/ieee-802.3ad')) is 0:
-            raise InterfaceNotInBond
-
-        update = Update()
-        update.add_interface(free_from_bond_operation(interface))
-        self._push(update)
+            raise InterfaceNotInBond()
 
     def set_bond_link_speed(self, number, speed):
         config = self.query(all_interfaces)
@@ -620,10 +623,10 @@ class Juniper(SwitchBase):
     def get_interface(self, interface_id):
         config = self.query(one_interface(interface_id), all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
-        if interface_node is None:
-            raise UnknownInterface(interface_id)
+        if interface_node is not None:
+            return self.node_to_interface(interface_node, config)
 
-        return self.node_to_interface(interface_node, config)
+        return self._get_physical_interface(interface_id).to_interface()
 
     def get_interface_config(self, interface_id, config=None):
         config = config or self.query(one_interface(interface_id))
@@ -716,6 +719,22 @@ class Juniper(SwitchBase):
             if _is_vlan_in_interface_members(vlan_number, vlan_name, members):
                 interfaces.append(first(interface.xpath("name")).text)
         return interfaces
+
+    def _get_physical_interface(self, interface_id):
+        try:
+            return next(i for i in self._list_physical_interfaces() if i.name == interface_id)
+        except StopIteration:
+            raise UnknownInterface(interface_id)
+
+    def _list_physical_interfaces(self):
+        terse = self.netconf.rpc(to_ele("""
+            <get-interface-information>
+              <terse/>
+            </get-interface-information>
+        """))
+
+        return [_PhysicalInterface(i.xpath("name")[0].text, shutdown=i.xpath("admin-status")[0].text == "down")
+                for i in terse.xpath("interface-information/physical-interface")]
 
 
 def all_vlans():
@@ -1157,6 +1176,15 @@ def _is_vlan_in_interface_members(vlan_number, vlan_name, members):
             return True
 
     return False
+
+
+class _PhysicalInterface(object):
+    def __init__(self, name, shutdown):
+        self.name = name
+        self.shutdown = shutdown
+
+    def to_interface(self):
+        return Interface(name=self.name, shutdown=self.shutdown, port_mode=ACCESS)
 
 
 def _monkey_patch_issue_125(netconf_client):
