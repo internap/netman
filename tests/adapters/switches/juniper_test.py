@@ -2777,7 +2777,7 @@ class JuniperTest(unittest.TestCase):
             <config>
               <configuration>
                 <interfaces>
-                  <interface operation="replace">
+                  <interface operation="delete">
                     <name>ge-0/0/6</name>
                   </interface>
                 </interfaces>
@@ -2792,7 +2792,7 @@ class JuniperTest(unittest.TestCase):
             <config>
               <configuration>
                 <interfaces>
-                  <interface operation="replace">
+                  <interface operation="delete">
                     <name>ge-0/0/99</name>
                   </interface>
                 </interfaces>
@@ -2816,7 +2816,7 @@ class JuniperTest(unittest.TestCase):
             <config>
               <configuration>
                 <interfaces>
-                  <interface operation="replace">
+                  <interface operation="delete">
                     <name>ne-0/0/9</name>
                   </interface>
                 </interfaces>
@@ -2838,7 +2838,7 @@ class JuniperTest(unittest.TestCase):
             <config>
               <configuration>
                 <interfaces>
-                  <interface operation="replace">
+                  <interface operation="delete">
                     <name>ne-0/0/9</name>
                   </interface>
                 </interfaces>

@@ -328,7 +328,7 @@ class Juniper(SwitchBase):
 
     def reset_interface(self, interface_id):
         content = to_ele("""
-            <interface operation=\"replace\">
+            <interface operation=\"delete\">
                 <name>{0}</name>
             </interface>
         """.format(interface_id))
