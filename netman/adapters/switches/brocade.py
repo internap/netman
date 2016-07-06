@@ -168,7 +168,7 @@ class Brocade(SwitchBase):
         if result and ('Invalid input' in result[0] or 'Error' in result[0]) :
             raise UnknownInterface(interface_id)
 
-        operations = self._get_operations(result)
+        operations = self._get_vlan_association_removal_operations(result)
 
         with self.config():
             if len(operations) > 0:
@@ -218,7 +218,7 @@ class Brocade(SwitchBase):
         if result and 'Invalid input' in result[0]:
             raise UnknownInterface(interface_id)
 
-        operations = self._get_operations(result)
+        operations = self._get_vlan_association_removal_operations(result)
 
         if len(operations) > 0 and not (len(operations) == 1 and operations[0][1] == "untagged"):
             with self.config():
@@ -448,7 +448,7 @@ class Brocade(SwitchBase):
     def _show_vlan(self, vlan_number):
         return self.shell.do("show vlan {}".format(vlan_number))
 
-    def _get_operations(self, result):
+    def _get_vlan_association_removal_operations(self, result):
         operations = []
         for line in result:
             if regex.match("VLAN: (\d*)  ([^\s]*)", line):
