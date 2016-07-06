@@ -825,6 +825,79 @@ class JuniperTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, equal_to(None))
         assert_that(interface.trunk_vlans, equal_to([]))
 
+    def test_get_unconfigured_but_existing_interface_returns_an_empty_interface(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                    <filter>
+                      <configuration>
+                          <interfaces>
+                            <interface>
+                              <name>ge-0/0/27</name>
+                            </interface>
+                          </interfaces>
+                        <vlans />
+                      </configuration>
+                    </filter>
+                """)).and_return(a_configuration("""
+                    <interfaces/>
+                    <vlans/>
+                """))
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/27</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
+
+        interface = self.switch.get_interface('ge-0/0/27')
+
+        assert_that(interface.name, equal_to("ge-0/0/27"))
+        assert_that(interface.shutdown, equal_to(False))
+        assert_that(interface.port_mode, equal_to(ACCESS))
+        assert_that(interface.access_vlan, equal_to(None))
+        assert_that(interface.trunk_native_vlan, equal_to(None))
+        assert_that(interface.trunk_vlans, equal_to([]))
+
+    def test_get_unconfigured_interface_could_be_disabled(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                    <filter>
+                      <configuration>
+                          <interfaces>
+                            <interface>
+                              <name>ge-0/0/27</name>
+                            </interface>
+                          </interfaces>
+                        <vlans />
+                      </configuration>
+                    </filter>
+                """)).and_return(a_configuration("""
+                    <interfaces/>
+                    <vlans/>
+                """))
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/27</name>
+                        <admin-status>down</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
+
+        assert_that(self.switch.get_interface('ge-0/0/27').shutdown, equal_to(True))
+
     def test_get_nonexistent_interface_raises(self):
         self.switch.in_transaction = False
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
@@ -842,6 +915,19 @@ class JuniperTest(unittest.TestCase):
                     <interfaces/>
                     <vlans/>
                 """))
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/1</name>
+                        <admin-status>down</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.get_interface('ge-0/0/INEXISTENT')
@@ -850,6 +936,80 @@ class JuniperTest(unittest.TestCase):
 
     def test_get_interfaces(self):
         self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/1</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/1.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/2</name>
+                        <admin-status>down</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/2.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/3</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/3.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/4</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/4.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/5</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
 
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
@@ -978,8 +1138,79 @@ class JuniperTest(unittest.TestCase):
         assert_that(if5.port_mode, equal_to(BOND_MEMBER))
         assert_that(if5.bond_master, equal_to(10))
 
+    def test_get_interfaces_lists_configuration_less_interfaces(self):
+        self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/1</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/2</name>
+                        <admin-status>down</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
+
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces />
+                <vlans />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces />
+            <vlans/>
+        """))
+
+        if1, if2 = self.switch.get_interfaces()
+
+        assert_that(if1.name, equal_to("ge-0/0/1"))
+        assert_that(if1.shutdown, equal_to(False))
+        assert_that(if1.port_mode, equal_to(ACCESS))
+        assert_that(if1.access_vlan, equal_to(None))
+        assert_that(if1.trunk_native_vlan, equal_to(None))
+        assert_that(if1.trunk_vlans, equal_to([]))
+
+        assert_that(if2.name, equal_to("ge-0/0/2"))
+        assert_that(if2.shutdown, equal_to(True))
+
     def test_get_interfaces_supports_named_vlans(self):
         self.switch.in_transaction = True
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/1</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/1.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                    </interface-information>
+                """)))
+
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -5041,25 +5272,6 @@ class JuniperTest(unittest.TestCase):
             self.switch.add_interface_to_bond('ge-0/0/99', 10)
 
     def test_remove_interface_from_bond(self):
-        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-            <filter>
-              <configuration>
-                <interfaces/>
-              </configuration>
-            </filter>
-        """)).and_return(a_configuration("""
-            <interfaces>
-              <interface>
-                <name>ge-0/0/1</name>
-                <ether-options>
-                  <ieee-802.3ad>
-                    <bundle>ae10</bundle>
-                  </ieee-802.3ad>
-                </ether-options>
-              </interface>
-            </interfaces>
-        """))
-
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -5077,24 +5289,82 @@ class JuniperTest(unittest.TestCase):
         self.switch.remove_interface_from_bond('ge-0/0/1')
 
     def test_remove_interface_from_bond_not_in_bond(self):
-        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
-            <filter>
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
               <configuration>
-                <interfaces/>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/1</name>
+                    <ether-options>
+                      <ieee-802.3ad operation="delete" />
+                    </ether-options>
+                  </interface>
+                </interfaces>
               </configuration>
-            </filter>
-        """)).and_return(a_configuration("""
-            <interfaces>
-              <interface>
-                <name>ge-0/0/1</name>
-                <ether-options>
-                </ether-options>
-              </interface>
-            </interfaces>
-        """))
+            </config>""")).and_raise(
+                RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            statement not found: 802.3ad
+            </error-message>
+            </rpc-error>"""))))
 
-        with self.assertRaises(InterfaceNotInBond) as expect:
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+            <get-interface-information>
+              <terse/>
+            </get-interface-information>
+        """)).and_return(an_rpc_response(textwrap.dedent("""
+            <interface-information style="terse">
+              <physical-interface>
+                <name>ge-0/0/1</name>
+                <admin-status>up</admin-status>
+                <oper-status>down</oper-status>
+              </physical-interface>
+            </interface-information>
+        """)))
+
+        with self.assertRaises(InterfaceNotInBond):
             self.switch.remove_interface_from_bond('ge-0/0/1')
+
+    def test_remove_interface_from_bond_unknown_interface_raises(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/27</name>
+                    <ether-options>
+                      <ieee-802.3ad operation="delete" />
+                    </ether-options>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_raise(
+                RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            statement not found: 802.3ad
+            </error-message>
+            </rpc-error>"""))))
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+            <get-interface-information>
+              <terse/>
+            </get-interface-information>
+        """)).and_return(an_rpc_response(textwrap.dedent("""
+            <interface-information style="terse">
+              <physical-interface>
+                <name>ge-0/0/1</name>
+                <admin-status>up</admin-status>
+                <oper-status>down</oper-status>
+              </physical-interface>
+            </interface-information>
+        """)))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.remove_interface_from_bond('ge-0/0/27')
 
     def test_change_bond_speed_update_slaves_and_interface_at_same_time(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -5836,18 +6106,24 @@ class JuniperTest(unittest.TestCase):
 
 
 def a_configuration(inner_data=""):
-    return NCElement("""
-        <rpc-reply xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" message-id="67890">
-          <data>
-            <configuration>%s</configuration>
-          </data>
-        </rpc-reply>""" % inner_data, JunosDeviceHandler(None).transform_reply())
+    return an_rpc_response("""
+        <data>
+          <configuration>{}</configuration>
+        </data>
+        """.format(inner_data))
+
 
 def an_ok_response():
+    return an_rpc_response(textwrap.dedent("""
+        <ok/>
+        """))
+
+
+def an_rpc_response(data):
     return NCElement(textwrap.dedent("""
         <rpc-reply message-id="urn:uuid:34c41736-bed3-11e4-8c40-7c05070fe456">
-        <ok/>
-        </rpc-reply>"""), JunosDeviceHandler(None).transform_reply())
+        {}
+        </rpc-reply>""".format(data)), JunosDeviceHandler(None).transform_reply())
 
 
 def a_port_value_outside_range_rpc_error():

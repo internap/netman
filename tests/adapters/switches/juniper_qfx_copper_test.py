@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import textwrap
 import unittest
 
 import mock
@@ -25,7 +25,7 @@ from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
 from tests import ignore_deprecation_warnings
-from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
+from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration, an_rpc_response
 
 
 @ignore_deprecation_warnings
@@ -126,6 +126,19 @@ class JuniperTest(unittest.TestCase):
                     <interfaces/>
                     <vlans/>
                 """))
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/1</name>
+                        <admin-status>down</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.get_interface('ge-0/0/INEXISTENT')
@@ -134,6 +147,80 @@ class JuniperTest(unittest.TestCase):
 
     def test_get_interfaces(self):
         self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>ge-0/0/1</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/1.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/2</name>
+                        <admin-status>down</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/2.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/3</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/3.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/4</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                        <logical-interface>
+                          <name>ge-0/0/4.0</name>
+                          <admin-status>up</admin-status>
+                          <oper-status>down</oper-status>
+                          <filter-information>
+                          </filter-information>
+                          <address-family>
+                            <address-family-name>eth-switch</address-family-name>
+                          </address-family>
+                        </logical-interface>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>ge-0/0/5</name>
+                        <admin-status>up</admin-status>
+                        <oper-status>down</oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
 
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
