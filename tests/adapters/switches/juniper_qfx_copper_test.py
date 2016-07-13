@@ -133,9 +133,15 @@ class JuniperTest(unittest.TestCase):
                 """)).and_return(an_rpc_response(textwrap.dedent("""
                     <interface-information style="terse">
                       <physical-interface>
-                        <name>ge-0/0/1</name>
-                        <admin-status>down</admin-status>
-                        <oper-status>down</oper-status>
+                        <name>
+                    ge-0/0/1
+                    </name>
+                        <admin-status>
+                    down
+                    </admin-status>
+                        <oper-status>
+                    down
+                    </oper-status>
                       </physical-interface>
                     </interface-information>
                 """)))
@@ -155,69 +161,131 @@ class JuniperTest(unittest.TestCase):
                 """)).and_return(an_rpc_response(textwrap.dedent("""
                     <interface-information style="terse">
                       <physical-interface>
-                        <name>ge-0/0/1</name>
-                        <admin-status>up</admin-status>
-                        <oper-status>down</oper-status>
+                        <name>
+                    ge-0/0/1
+                    </name>
+                        <admin-status>
+                    up
+                    </admin-status>
+                        <oper-status>
+                    down
+                    </oper-status>
                         <logical-interface>
-                          <name>ge-0/0/1.0</name>
-                          <admin-status>up</admin-status>
-                          <oper-status>down</oper-status>
+                          <name>
+                    ge-0/0/1.0
+                    </name>
+                          <admin-status>
+                    up
+                    </admin-status>
+                          <oper-status>
+                    down
+                    </oper-status>
                           <filter-information>
                           </filter-information>
                           <address-family>
-                            <address-family-name>eth-switch</address-family-name>
+                            <address-family-name>
+                    eth-switch
+                    </address-family-name>
                           </address-family>
                         </logical-interface>
                       </physical-interface>
                       <physical-interface>
-                        <name>ge-0/0/2</name>
-                        <admin-status>down</admin-status>
-                        <oper-status>down</oper-status>
+                        <name>
+                    ge-0/0/2
+                    </name>
+                        <admin-status>
+                    down
+                    </admin-status>
+                        <oper-status>
+                    down
+                    </oper-status>
                         <logical-interface>
-                          <name>ge-0/0/2.0</name>
-                          <admin-status>up</admin-status>
-                          <oper-status>down</oper-status>
+                          <name>
+                    ge-0/0/2.0
+                    </name>
+                          <admin-status>
+                    up
+                    </admin-status>
+                          <oper-status>
+                    down
+                    </oper-status>
                           <filter-information>
                           </filter-information>
                           <address-family>
-                            <address-family-name>eth-switch</address-family-name>
+                            <address-family-name>
+                    eth-switch
+                    </address-family-name>
                           </address-family>
                         </logical-interface>
                       </physical-interface>
                       <physical-interface>
-                        <name>ge-0/0/3</name>
-                        <admin-status>up</admin-status>
-                        <oper-status>down</oper-status>
+                        <name>
+                    ge-0/0/3
+                    </name>
+                        <admin-status>
+                    up
+                    </admin-status>
+                        <oper-status>
+                    down
+                    </oper-status>
                         <logical-interface>
-                          <name>ge-0/0/3.0</name>
-                          <admin-status>up</admin-status>
-                          <oper-status>down</oper-status>
+                          <name>
+                    ge-0/0/3.0
+                    </name>
+                          <admin-status>
+                    up
+                    </admin-status>
+                          <oper-status>
+                    down
+                    </oper-status>
                           <filter-information>
                           </filter-information>
                           <address-family>
-                            <address-family-name>eth-switch</address-family-name>
+                            <address-family-name>
+                    eth-switch
+                    </address-family-name>
                           </address-family>
                         </logical-interface>
                       </physical-interface>
                       <physical-interface>
-                        <name>ge-0/0/4</name>
-                        <admin-status>up</admin-status>
-                        <oper-status>down</oper-status>
+                        <name>
+                    ge-0/0/4
+                    </name>
+                        <admin-status>
+                    up
+                    </admin-status>
+                        <oper-status>
+                    down
+                    </oper-status>
                         <logical-interface>
-                          <name>ge-0/0/4.0</name>
-                          <admin-status>up</admin-status>
-                          <oper-status>down</oper-status>
+                          <name>
+                    ge-0/0/4.0
+                    </name>
+                          <admin-status>
+                    up
+                    </admin-status>
+                          <oper-status>
+                    down
+                    </oper-status>
                           <filter-information>
                           </filter-information>
                           <address-family>
-                            <address-family-name>eth-switch</address-family-name>
+                            <address-family-name>
+                    eth-switch
+                    </address-family-name>
                           </address-family>
                         </logical-interface>
                       </physical-interface>
                       <physical-interface>
-                        <name>ge-0/0/5</name>
-                        <admin-status>up</admin-status>
-                        <oper-status>down</oper-status>
+                        <name>
+                    ge-0/0/5
+                    </name>
+                        <admin-status>
+                    up
+                    </admin-status>
+                        <oper-status>
+                    down
+                    </oper-status>
                       </physical-interface>
                     </interface-information>
                 """)))
