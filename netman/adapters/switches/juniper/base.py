@@ -726,7 +726,8 @@ class Juniper(SwitchBase):
             </get-interface-information>
         """))
 
-        return [_PhysicalInterface(i.xpath("name")[0].text, shutdown=i.xpath("admin-status")[0].text == "down")
+        return [_PhysicalInterface(i.xpath("name")[0].text.strip(),
+                                   shutdown=i.xpath("admin-status")[0].text.strip() == "down")
                 for i in terse.xpath("interface-information/physical-interface")]
 
 
