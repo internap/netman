@@ -824,6 +824,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(interface.access_vlan, equal_to(None))
         assert_that(interface.trunk_native_vlan, equal_to(None))
         assert_that(interface.trunk_vlans, equal_to([]))
+        assert_that(interface.auto_negotiation, equal_to(None))
 
     def test_get_unconfigured_but_existing_interface_returns_an_empty_interface(self):
         self.switch.in_transaction = False
@@ -1123,6 +1124,9 @@ class JuniperTest(unittest.TestCase):
               </interface>
               <interface>
                 <name>ge-0/0/3</name>
+                <ether-options>
+                  <no-auto-negotiation/>
+                </ether-options>
                 <unit>
                   <name>0</name>
                   <family>
@@ -1139,6 +1143,9 @@ class JuniperTest(unittest.TestCase):
               </interface>
               <interface>
                 <name>ge-0/0/4</name>
+                <ether-options>
+                  <auto-negotiation/>
+                </ether-options>
                 <unit>
                   <name>0</name>
                   <family>
@@ -1192,6 +1199,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if1.access_vlan, equal_to(None))
         assert_that(if1.trunk_native_vlan, equal_to(None))
         assert_that(if1.trunk_vlans, equal_to([]))
+        assert_that(if1.auto_negotiation, equal_to(None))
 
         assert_that(if2.name, equal_to("ge-0/0/2"))
         assert_that(if2.shutdown, equal_to(True))
@@ -1205,10 +1213,12 @@ class JuniperTest(unittest.TestCase):
         assert_that(if3.access_vlan, equal_to(None))
         assert_that(if3.trunk_native_vlan, equal_to(2000))
         assert_that(if3.trunk_vlans, equal_to([999, 1000, 1001]))
+        assert_that(if3.auto_negotiation, equal_to(False))
 
         assert_that(if4.name, equal_to("ge-0/0/4"))
         assert_that(if4.trunk_native_vlan, equal_to(None))
         assert_that(if4.trunk_vlans, equal_to([]))
+        assert_that(if4.auto_negotiation, equal_to(True))
 
         assert_that(if5.name, equal_to("ge-0/0/5"))
         assert_that(if5.port_mode, equal_to(BOND_MEMBER))

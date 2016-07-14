@@ -16,7 +16,7 @@ from netman.core.objects import Model
 
 
 class BaseInterface(Model):
-    def __init__(self,  shutdown=None, port_mode=None,
+    def __init__(self, shutdown=None, port_mode=None,
                  access_vlan=None, trunk_native_vlan=None, trunk_vlans=None):
         self.shutdown = shutdown
         self.port_mode = port_mode
@@ -26,7 +26,8 @@ class BaseInterface(Model):
 
 
 class Interface(BaseInterface):
-    def __init__(self, name=None, bond_master=None, **interface):
+    def __init__(self, name=None, bond_master=None, auto_negotiation=None, **interface):
         super(Interface, self).__init__(**interface)
         self.name = name
         self.bond_master = bond_master
+        self.auto_negotiation = auto_negotiation
