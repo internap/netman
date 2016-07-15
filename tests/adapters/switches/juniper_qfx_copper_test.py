@@ -108,6 +108,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if1.access_vlan, equal_to(None))
         assert_that(if1.trunk_native_vlan, equal_to(None))
         assert_that(if1.trunk_vlans, equal_to([]))
+        assert_that(if1.auto_negotiation, equal_to(None))
 
     def test_get_nonexistent_interface_raises(self):
         self.switch.in_transaction = False
@@ -342,6 +343,9 @@ class JuniperTest(unittest.TestCase):
               </interface>
               <interface>
                 <name>ge-0/0/4</name>
+                <ether-options>
+                  <no-auto-negotiation/>
+                </ether-options>
                 <unit>
                   <name>0</name>
                   <family>
@@ -393,6 +397,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if1.access_vlan, equal_to(None))
         assert_that(if1.trunk_native_vlan, equal_to(None))
         assert_that(if1.trunk_vlans, equal_to([]))
+        assert_that(if1.auto_negotiation, equal_to(None))
 
         assert_that(if2.name, equal_to("ge-0/0/2"))
         assert_that(if2.shutdown, equal_to(True))
@@ -410,10 +415,12 @@ class JuniperTest(unittest.TestCase):
         assert_that(if4.name, equal_to("ge-0/0/4"))
         assert_that(if4.trunk_native_vlan, equal_to(None))
         assert_that(if4.trunk_vlans, equal_to([]))
+        assert_that(if4.auto_negotiation, equal_to(False))
 
         assert_that(if5.name, equal_to("ge-0/0/5"))
         assert_that(if5.port_mode, equal_to(BOND_MEMBER))
         assert_that(if5.bond_master, equal_to(10))
+        assert_that(if5.auto_negotiation, equal_to(True))
 
     def test_get_interface_with_trunk_native_vlan_at_root(self):
         self.switch.in_transaction = False
