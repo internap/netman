@@ -3622,6 +3622,155 @@ class JuniperTest(unittest.TestCase):
         with self.assertRaises(NativeVlanNotSet):
             self.switch.unset_interface_native_vlan("ge-0/0/6")
 
+    def test_unset_interface_auto_negotiation_state_works_when_enabled(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <ether-options>
+                      <auto-negotiation/>
+                    </ether-options>
+                  </interface>
+                </interfaces>
+            """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                        <ether-options>
+                          <auto-negotiation operation=\"delete\"/>
+                        </ether-options>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.unset_interface_auto_negotiation_state("ge-0/0/6")
+
+    def test_unset_interface_auto_negotiation_state_does_nothing_on_default_interface(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration(""))
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+            <get-interface-information>
+              <terse/>
+            </get-interface-information>
+        """)).and_return(an_rpc_response(textwrap.dedent("""
+            <interface-information style="terse">
+              <physical-interface>
+                <name>
+            ge-0/0/6
+            </name>
+                <admin-status>
+            up
+            </admin-status>
+                <oper-status>
+            down
+            </oper-status>
+              </physical-interface>
+            </interface-information>
+        """)))
+
+        self.switch.unset_interface_auto_negotiation_state("ge-0/0/6")
+
+    def test_unset_interface_auto_negotiation_state_works_when_disabled(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <ether-options>
+                      <no-auto-negotiation/>
+                    </ether-options>
+                  </interface>
+                </interfaces>
+            """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/6</name>
+                        <ether-options>
+                          <no-auto-negotiation operation=\"delete\"/>
+                        </ether-options>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </config>
+            """)).and_return(an_ok_response())
+
+        self.switch.unset_interface_auto_negotiation_state("ge-0/0/6")
+
+    def test_unset_interface_auto_negotiation_state_raises_on_unknown_interface(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <interfaces>
+                      <interface>
+                        <name>ge-0/0/99</name>
+                      </interface>
+                    </interfaces>
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration(""))
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+            <get-interface-information>
+              <terse/>
+            </get-interface-information>
+        """)).and_return(an_rpc_response(textwrap.dedent("""
+            <interface-information style="terse">
+              <physical-interface>
+                <name>
+            ge-0/0/6
+            </name>
+                <admin-status>
+            up
+            </admin-status>
+                <oper-status>
+            down
+            </oper-status>
+              </physical-interface>
+            </interface-information>
+        """)))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.unset_interface_auto_negotiation_state("ge-0/0/99")
+
     def test_add_trunk_vlan_on_interface_with_trunk_mode_and_no_vlan_succeeds_easily(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
