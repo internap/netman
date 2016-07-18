@@ -324,6 +324,35 @@ class Juniper(SwitchBase):
                     raise UnknownVlan(vlan)
                 raise
 
+    def unset_interface_auto_negotiation_state(self, interface_id):
+        config = self.query(one_interface(interface_id))
+        interface_node = self.get_interface_config(interface_id, config)
+
+        if interface_node is None:
+            self._get_physical_interface(interface_id)
+            return
+
+        auto_negotiation_present = first(interface_node.xpath('ether-options/auto-negotiation')) is not None
+        no_auto_negotiation_present = first(interface_node.xpath('ether-options/no-auto-negotiation')) is not None
+
+        if auto_negotiation_present or no_auto_negotiation_present:
+            content = to_ele("""
+                <interface>
+                    <name>{0}</name>
+                </interface>
+            """.format(interface_id))
+            ether_options = to_ele("<ether-options/>")
+            if auto_negotiation_present:
+                ether_options.append(to_ele("<auto-negotiation operation=\"delete\"/>"))
+            elif no_auto_negotiation_present:
+                ether_options.append(to_ele("<no-auto-negotiation operation=\"delete\"/>"))
+            update = Update()
+
+            content.append(ether_options)
+            update.add_interface(content)
+
+            self._push_interface_update(interface_id, update)
+
     def reset_interface(self, interface_id):
         content = to_ele("""
             <interface operation=\"delete\">
