@@ -2938,7 +2938,7 @@ class JuniperTest(unittest.TestCase):
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
-            Invalid interface type in 'ne-0/0/9'
+            invalid interface type in 'ne-0/0/9'
             </error-message>
             </rpc-error>"""))))
 

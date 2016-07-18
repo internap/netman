@@ -162,9 +162,9 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_interfaces').and_return([
             Interface(name="FastEthernet0/3", shutdown=True, port_mode=ACCESS, access_vlan=1999),
-            Interface(name="GigabitEthernet0/6", shutdown=False, port_mode=DYNAMIC, access_vlan=1999, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002]),
+            Interface(name="GigabitEthernet0/6", shutdown=False, port_mode=DYNAMIC, access_vlan=1999, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], auto_negotiation=True),
             Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002]),
-            Interface(name="GigabitEthernet0/8", shutdown=False, bond_master=12, port_mode=BOND_MEMBER, trunk_native_vlan=None, trunk_vlans=[]),
+            Interface(name="GigabitEthernet0/8", shutdown=False, bond_master=12, port_mode=BOND_MEMBER, trunk_native_vlan=None, trunk_vlans=[], auto_negotiation=False),
             ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -494,6 +494,57 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/shutdown")
+
+        assert_that(code, equal_to(204))
+
+    def test_set_interface_auto_negotiation_state_off(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_interface_auto_negotiation_state').with_args('FastEthernet0/4', OFF).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/auto-negotiation", raw_data='false')
+
+        assert_that(code, equal_to(204))
+
+    def test_set_interface_auto_negotiation_state_on(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_interface_auto_negotiation_state').with_args('FastEthernet0/4', ON).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/auto-negotiation", raw_data='true')
+
+        assert_that(code, equal_to(204))
+
+    def test_set_interface_auto_negotiation_state_off_invalid_argument(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
+        self.switch_mock.should_receive('connect').never()
+        self.switch_mock.should_receive('set_interface_auto_negotiation_state').with_args('FastEthernet0/4', OFF).never()
+        self.switch_mock.should_receive('disconnect').never()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/auto-negotiation", raw_data='Patate')
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Unreadable content "patate". Should be either "true" or "false"'}))
+
+    def test_set_interface_auto_negotiation_state_off_no_argument(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
+        self.switch_mock.should_receive('connect').never()
+        self.switch_mock.should_receive('set_interface_auto_negotiation_state').with_args('FastEthernet0/4', OFF).never()
+        self.switch_mock.should_receive('disconnect').never()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/auto-negotiation")
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Unreadable content "". Should be either "true" or "false"'}))
+
+    def test_unset_interface_auto_negotiation_state(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('unset_interface_auto_negotiation_state').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/auto-negotiation")
 
         assert_that(code, equal_to(204))
 

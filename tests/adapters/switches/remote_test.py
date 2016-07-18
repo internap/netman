@@ -1216,6 +1216,41 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.unset_interface_state("ge-0/0/6")
 
+    def test_enable_interface_auto_negotiation(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/auto-negotiation',
+            headers=self.headers,
+            data='true'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_interface_auto_negotiation_state("ge-0/0/6", ON)
+
+    def test_disable_interface_auto_negotiation(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/auto-negotiation',
+            headers=self.headers,
+            data='false'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_interface_auto_negotiation_state("ge-0/0/6", OFF)
+
+    def test_unset_interface_auto_negotiation_state(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/auto-negotiation',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.unset_interface_auto_negotiation_state("ge-0/0/6")
+
     def test_add_bond(self):
         self.requests_mock.should_receive("post").once().with_args(
             url=self.netman_url+'/switches/toto/bonds',

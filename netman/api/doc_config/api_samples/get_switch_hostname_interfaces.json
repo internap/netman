@@ -6,7 +6,8 @@
       "port_mode": "trunk",
       "access_vlan": null,
       "trunk_native_vlan": 2999,
-      "trunk_vlans": [3000, 3001, 3002]
+      "trunk_vlans": [3000, 3001, 3002],
+      "auto_negotiation": null
    },
    {
       "name": "FastEthernet0/3",
@@ -15,7 +16,8 @@
       "port_mode": "access",
       "access_vlan": 1999,
       "trunk_native_vlan": null,
-      "trunk_vlans": []
+      "trunk_vlans": [],
+      "auto_negotiation": null
    },
    {
       "name": "GigabitEthernet0/6",
@@ -24,7 +26,8 @@
       "port_mode": "dynamic",
       "access_vlan": 1999,
       "trunk_native_vlan": 2999,
-      "trunk_vlans": [3000, 3001, 3002]
+      "trunk_vlans": [3000, 3001, 3002],
+      "auto_negotiation": true
    },
    {
       "name": "GigabitEthernet0/8",
@@ -33,6 +36,7 @@
       "port_mode": "bond_member",
       "access_vlan": null,
       "trunk_native_vlan": null,
-      "trunk_vlans": []
+      "trunk_vlans": [],
+      "auto_negotiation": false
    }
 ]

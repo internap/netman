@@ -10,7 +10,8 @@
       "port_mode": "access",
       "access_vlan": 1999,
       "trunk_native_vlan": null,
-      "trunk_vlans": []
+      "trunk_vlans": [],
+      "auto_negotiation": null
     }
   },
   {
@@ -31,7 +32,8 @@
         3000,
         3001,
         3002
-      ]
+      ],
+      "auto_negotiation": null
     }
   },
   {
@@ -49,7 +51,8 @@
         3000,
         3001,
         3002
-      ]
+      ],
+      "auto_negotiation": null
     }
   }
 ]

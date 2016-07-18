@@ -345,6 +345,45 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(self.switch.get_interface('xe-1/0/2').shutdown, is_(False))
 
+    def test_set_interface_auto_negotiation_state_off(self):
+        self.real_switch_mock.should_receive("get_interfaces").once() \
+            .and_return([Interface('xe-1/0/2', auto_negotiation=True)])
+        self.switch.get_interfaces()
+
+        self.real_switch_mock.should_receive("set_interface_auto_negotiation_state").once() \
+            .with_args('xe-1/0/2', OFF)
+
+        self.switch.set_interface_auto_negotiation_state('xe-1/0/2', OFF)
+
+        assert_that(
+            self.switch.get_interfaces(),
+            is_([Interface('xe-1/0/2', auto_negotiation=False)]))
+
+    def test_set_interface_auto_negotiation_state_on(self):
+        self.real_switch_mock.should_receive("get_interfaces").once() \
+            .and_return([Interface('xe-1/0/2')])
+        self.switch.get_interfaces()
+
+        self.real_switch_mock.should_receive("set_interface_auto_negotiation_state").once() \
+            .with_args('xe-1/0/2', ON)
+
+        self.switch.set_interface_auto_negotiation_state('xe-1/0/2', ON)
+
+        assert_that(
+            self.switch.get_interfaces(),
+            is_([Interface('xe-1/0/2', auto_negotiation=True)]))
+
+    def test_unset_interface_auto_negotiation_state(self):
+        self.real_switch_mock.should_receive("get_interfaces").once()\
+            .and_return([Interface('xe-1/0/2', auto_negotiation=False)])
+        self.switch.get_interfaces()
+
+        self.real_switch_mock.should_receive("unset_interface_auto_negotiation_state").once().with_args('xe-1/0/2')
+
+        self.switch.unset_interface_auto_negotiation_state('xe-1/0/2')
+
+        assert_that(self.switch.get_interface('xe-1/0/2').auto_negotiation, is_(None))
+
     def test_set_interface_native_vlan(self):
         self.real_switch_mock.should_receive("get_interfaces").once() \
             .and_return([Interface('xe-1/0/2')])

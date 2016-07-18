@@ -62,6 +62,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/description', view_func=self.unset_interface_description, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/spanning-tree', view_func=self.edit_interface_spanning_tree, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.set_interface_lldp_state, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.set_interface_auto_negotiation_state, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.unset_interface_auto_negotiation_state, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>', view_func=self.get_bond, methods=['GET'])
@@ -361,13 +363,43 @@ class SwitchApi(SwitchApiBase):
     @resource(Switch, Interface)
     def unset_shutdown_state(self, switch, interface_id):
         """
-        Sets the shutdown state of an interface
+        Unsets the shutdown state of an interface
 
         :arg str hostname: Hostname or IP of the switch
         :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
         """
 
         switch.unset_interface_state(interface_id)
+        return 204, None
+
+    @to_response
+    @content(is_boolean)
+    @resource(Switch, Interface)
+    def set_interface_auto_negotiation_state(self, switch, interface_id, state):
+        """
+        Sets the auto_negotiation state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        :body:
+            ``true`` or ``false``
+        """
+
+        switch.set_interface_auto_negotiation_state(interface_id, ON if state is True else OFF)
+
+        return 204, None
+
+    @to_response
+    @resource(Switch, Interface)
+    def unset_interface_auto_negotiation_state(self, switch, interface_id):
+        """
+        Unsets the auto-negotiation state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        """
+
+        switch.unset_interface_auto_negotiation_state(interface_id)
         return 204, None
 
     @to_response

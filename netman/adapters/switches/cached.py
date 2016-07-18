@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 from netman.core.objects.bond import Bond
 from netman.core.objects.interface import Interface
-from netman.core.objects.interface_states import OFF
+from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
@@ -299,6 +299,14 @@ class CachedSwitch(SwitchBase):
     def unset_interface_state(self, interface_id):
         self.real_switch.unset_interface_state(interface_id)
         self.interfaces_cache.refresh_items.add(interface_id)
+
+    def set_interface_auto_negotiation_state(self, interface_id, state):
+        self.real_switch.set_interface_auto_negotiation_state(interface_id, state)
+        self.interfaces_cache[interface_id].auto_negotiation = (state == ON)
+
+    def unset_interface_auto_negotiation_state(self, interface_id):
+        self.real_switch.unset_interface_auto_negotiation_state(interface_id)
+        self.interfaces_cache[interface_id].auto_negotiation = None
 
     def add_bond(self, number):
         self.real_switch.add_bond(number)
