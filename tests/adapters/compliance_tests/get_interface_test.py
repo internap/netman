@@ -39,6 +39,7 @@ class GetInterfaceTest(ComplianceTestCase):
         self.try_to.set_trunk_mode(expected.name)
         self.try_to.set_interface_state(expected.name, ON)
         self.try_to.set_interface_native_vlan(expected.name, 2000)
+        self.try_to.set_interface_auto_negotiation_state(expected.name, ON)
 
         interface_from_single = self.client.get_interface(expected.name)
         interfaces = [inte for inte in self.client.get_interfaces() if inte.name == expected.name]
@@ -49,6 +50,7 @@ class GetInterfaceTest(ComplianceTestCase):
         assert_that(interface_from_single.shutdown, is_(interface_from_multiple.shutdown))
         assert_that(interface_from_single.trunk_native_vlan, is_(interface_from_multiple.trunk_native_vlan))
         assert_that(interface_from_single.trunk_vlans, is_(interface_from_multiple.trunk_vlans))
+        assert_that(interface_from_single.auto_negotiation, is_(interface_from_multiple.auto_negotiation))
 
     def test_getinterface_nonexistent_raises(self):
         with self.assertRaises(UnknownInterface)as expect:

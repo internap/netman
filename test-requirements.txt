@@ -2,7 +2,7 @@ nose>=1.2.1
 mock>=1.0.1
 pyhamcrest>=1.6
 flexmock>=0.10.2
-fake-switches>=1.1.2
+fake-switches>=1.1.4
 MockSSH>=1.4.2
 Sphinx
 sphinxcontrib-httpdomain

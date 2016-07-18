@@ -239,6 +239,12 @@ class RemoteSwitch(SwitchBase):
     def unset_interface_state(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/shutdown')
 
+    def set_interface_auto_negotiation_state(self, interface_id, state):
+        self.put("/interfaces/" + interface_id + '/auto-negotiation', raw_data='true' if state is ON else 'false')
+
+    def unset_interface_auto_negotiation_state(self, interface_id):
+        self.delete("/interfaces/" + interface_id + '/auto-negotiation')
+
     def add_bond(self, number):
         self.post("/bonds", data={'number': number})
 
