@@ -70,7 +70,7 @@ class RemoteSwitch(SwitchBase):
         session_id = self.session_id
         self.session_id = None
         self.validated(self.requests.delete(url=url, headers={'Netman-Verbose-Errors': "yes",
-                                                              'Netman-Max-Version': self.max_version,
+                                                              'Netman-Max-Version': str(self.max_version),
                                                               'Netman-Session-Id': session_id}))
         self.logger.info("Ended session {}".format(self.session_id))
 
@@ -78,7 +78,7 @@ class RemoteSwitch(SwitchBase):
         self.logger.info("Starting Transaction for session_id: {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
-                                                            'Netman-Max-Version': self.max_version,
+                                                            'Netman-Max-Version': str(self.max_version),
                                                             'Netman-Session-Id': self.session_id}, data='start_transaction'))
         self.logger.info("Started Transaction for session_id: {}".format(self.session_id))
 
@@ -86,7 +86,7 @@ class RemoteSwitch(SwitchBase):
         self.logger.info("Commiting {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
-                                                            'Netman-Max-Version': self.max_version,
+                                                            'Netman-Max-Version': str(self.max_version),
                                                             'Netman-Session-Id': self.session_id}, data='commit'))
         self.logger.info("Commited {}".format(self.session_id))
 
@@ -94,7 +94,7 @@ class RemoteSwitch(SwitchBase):
         self.logger.info("Rollbacking {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
-                                                            'Netman-Max-Version': self.max_version,
+                                                            'Netman-Max-Version': str(self.max_version),
                                                             'Netman-Session-Id': self.session_id}, data='rollback'))
         self.logger.info("Rollbacked {}".format(self.session_id))
 
@@ -102,7 +102,7 @@ class RemoteSwitch(SwitchBase):
         self.logger.info("Ending Transaction for session_id: {}".format(self.session_id))
         url = "{netman}/switches-sessions/{session_id}/actions".format(netman=self._proxy, session_id=self.session_id)
         self.validated(self.requests.post(url=url, headers={'Netman-Verbose-Errors': "yes",
-                                                            'Netman-Max-Version': self.max_version,
+                                                            'Netman-Max-Version': str(self.max_version),
                                                             'Netman-Session-Id': self.session_id}, data='end_transaction'))
         self.logger.info("Transaction ended for session_id: {}".format(self.session_id))
 
@@ -325,8 +325,8 @@ class RemoteSwitch(SwitchBase):
             'Netman-Model': self.switch_descriptor.model,
             'Netman-Username': self.switch_descriptor.username,
             'Netman-Password': self.switch_descriptor.password,
-            'Netman-Port': self.switch_descriptor.port,
-            'Netman-Max-Version': self.max_version,
+            'Netman-Port': str(self.switch_descriptor.port),
+            'Netman-Max-Version': str(self.max_version),
             'Netman-Verbose-Errors': "yes"
         }
 
