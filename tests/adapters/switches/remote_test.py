@@ -59,11 +59,11 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock = flexmock()
         self.switch.requests = self.requests_mock
         self.headers = {
-            'Netman-Port': 1234,
+            'Netman-Port': "1234",
             'Netman-Model': 'juniper',
             'Netman-Password': 'titi',
             'Netman-Username': 'tutu',
-            'Netman-Max-Version': 2,
+            'Netman-Max-Version': "2",
             'Netman-Verbose-Errors': 'yes',
         }
 
@@ -89,7 +89,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='start_transaction',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -99,7 +99,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='commit',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -109,7 +109,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='end_transaction',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -118,7 +118,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -169,7 +169,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -229,7 +229,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='commit',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -261,7 +261,7 @@ class RemoteSwitchTest(unittest.TestCase):
             url=self.netman_url+'/switches-sessions/0123456789/actions',
             data='rollback',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -402,13 +402,13 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("post").once().ordered().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={
-                'Netman-Port': 1234,
+                'Netman-Port': "1234",
                 'Netman-Model': 'juniper',
                 'Netman-Password': 'titi',
                 'Netman-Username': 'tutu',
                 'Netman-Verbose-Errors': 'yes',
                 'Netman-Proxy-Server': '1.2.3.4',
-                'Netman-Max-Version': 2,
+                'Netman-Max-Version': "2",
                 'Netman-Session-Id': '0123456789'
             },
             data=JsonData(hostname="toto")
@@ -420,7 +420,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(
@@ -445,13 +445,13 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("post").once().ordered().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={
-                'Netman-Port': 1234,
+                'Netman-Port': "1234",
                 'Netman-Model': 'juniper',
                 'Netman-Password': 'titi',
                 'Netman-Username': 'tutu',
                 'Netman-Verbose-Errors': 'yes',
                 'Netman-Proxy-Server': '1.2.3.4,5.6.7.8',
-                'Netman-Max-Version': 2,
+                'Netman-Max-Version': "2",
                 'Netman-Session-Id': '0123456789'
             },
             data=JsonData(hostname="toto")
@@ -463,7 +463,7 @@ class RemoteSwitchTest(unittest.TestCase):
         self.requests_mock.should_receive("delete").once().with_args(
             url=self.netman_url+'/switches-sessions/0123456789',
             headers={'Netman-Verbose-Errors': "yes",
-                     'Netman-Max-Version': 2,
+                     'Netman-Max-Version': "2",
                      'Netman-Session-Id': '0123456789'}
         ).and_return(
             Reply(

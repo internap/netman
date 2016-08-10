@@ -84,7 +84,7 @@ class NetmanClient(object):
             'Netman-Model': self.switch.model,
             'Netman-Username': self.switch.username,
             'Netman-Password': self.switch.password,
-            "Netman-Port": self.switch.port,
+            "Netman-Port": str(self.switch.port),
         }
 
         def invocation(url, *args, **kwargs):
