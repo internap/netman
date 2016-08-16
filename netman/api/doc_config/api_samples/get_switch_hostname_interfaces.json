@@ -7,7 +7,8 @@
       "access_vlan": null,
       "trunk_native_vlan": 2999,
       "trunk_vlans": [3000, 3001, 3002],
-      "auto_negotiation": null
+      "auto_negotiation": null,
+      "mtu": 1500
    },
    {
       "name": "FastEthernet0/3",
@@ -17,7 +18,8 @@
       "access_vlan": 1999,
       "trunk_native_vlan": null,
       "trunk_vlans": [],
-      "auto_negotiation": null
+      "auto_negotiation": null,
+      "mtu": null
    },
    {
       "name": "GigabitEthernet0/6",
@@ -27,7 +29,8 @@
       "access_vlan": 1999,
       "trunk_native_vlan": 2999,
       "trunk_vlans": [3000, 3001, 3002],
-      "auto_negotiation": true
+      "auto_negotiation": true,
+      "mtu": null
    },
    {
       "name": "GigabitEthernet0/8",
@@ -37,6 +40,7 @@
       "access_vlan": null,
       "trunk_native_vlan": null,
       "trunk_vlans": [],
-      "auto_negotiation": false
+      "auto_negotiation": false,
+      "mtu": null
    }
 ]

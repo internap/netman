@@ -11,7 +11,8 @@
       "access_vlan": 1999,
       "trunk_native_vlan": null,
       "trunk_vlans": [],
-      "auto_negotiation": null
+      "auto_negotiation": null,
+      "mtu": 1500
     }
   },
   {
@@ -33,7 +34,8 @@
         3001,
         3002
       ],
-      "auto_negotiation": null
+      "auto_negotiation": null,
+      "mtu": null
     }
   },
   {
@@ -52,7 +54,8 @@
         3001,
         3002
       ],
-      "auto_negotiation": null
+      "auto_negotiation": null,
+      "mtu": null
     }
   }
 ]
