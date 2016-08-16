@@ -21,7 +21,7 @@ from netman import regex
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted
+    BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted, InvalidMtuSize
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
@@ -463,6 +463,33 @@ class Juniper(SwitchBase):
             if e.severity != "warning":
                 raise UnknownInterface(interface_id)
 
+    def set_interface_mtu(self, interface_id, size):
+        update = Update()
+        update.add_interface(interface_main_update(interface_id, [
+            to_ele("<mtu>{}</mtu>".format(size))
+        ]))
+
+        try:
+            self._push(update)
+        except RPCError as e:
+            self.logger.info("actual setting error was {}".format(e))
+            if "Value {} is not within range".format(size) in str(e):
+                raise InvalidMtuSize(str(e))
+
+            raise UnknownInterface(interface_id)
+
+    def unset_interface_mtu(self, interface_id):
+        update = Update()
+        update.add_interface(interface_main_update(interface_id, [
+            to_ele("<mtu operation=\"delete\" />")
+        ]))
+
+        try:
+            self._push(update)
+        except RPCError as e:
+            if e.severity != "warning":
+                raise UnknownInterface(interface_id)
+
     def edit_interface_spanning_tree(self, interface_id, edge=None):
         config = self.query(one_interface(interface_id), one_protocol_interface("rstp", interface_id))
 
@@ -607,6 +634,12 @@ class Juniper(SwitchBase):
 
     def unset_bond_description(self, number):
         return self.unset_interface_description(bond_name(number))
+
+    def set_bond_mtu(self, number, size):
+        return self.set_interface_mtu(bond_name(number), size)
+
+    def unset_bond_mtu(self, number):
+        return self.unset_interface_mtu(bond_name(number))
 
     def set_bond_trunk_mode(self, number):
         return self.set_trunk_mode(bond_name(number))

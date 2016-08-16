@@ -24,14 +24,14 @@ from hamcrest import assert_that, has_length, equal_to, contains_string, has_key
 from ncclient.devices.junos import JunosDeviceHandler
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import NCElement, to_ele, to_xml
-from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
 
 from netman.adapters.switches import juniper
 from netman.adapters.switches.juniper import Juniper
+from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
-    BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted
+    BadBondNumber, UnknownBond, InterfaceNotInBond, BondAlreadyExist, OperationNotCompleted, InvalidMtuSize
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -6231,6 +6231,109 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.set_interface_lldp_state('ge-0/0/6', False)
 
+    def test_set_interface_mtu_success(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <mtu>5000</mtu>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_interface_mtu('ge-0/0/6', 5000)
+
+    def test_set_interface_mtu_wrong_value_raises(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <mtu>100</mtu>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            Value 100 is not within range (256..9216)
+            </error-message>
+            </rpc-error>"""))))
+
+        with self.assertRaises(InvalidMtuSize) as expect:
+            self.switch.set_interface_mtu('ge-0/0/6', 100)
+
+        assert_that(str(expect.exception), contains_string("Value 100 is not within range (256..9216)"))
+
+    def test_set_interface_mtu_unknown_interface_raises(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <mtu>5000</mtu>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..63 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.set_interface_mtu('ge-0/0/99', 5000)
+
+    def test_unset_interface_mtu_success(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <mtu operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.unset_interface_mtu('ge-0/0/6')
+
+    def test_unset_interface_mtu_unknown_intercace_raises(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/99</name>
+                    <mtu operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>error</error-severity>
+            <error-message>
+            port value outside range 0..63 for '99' in 'ge-0/0/99'
+            </error-message>
+            </rpc-error>"""))))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.unset_interface_mtu('ge-0/0/99')
+
     def test_bond_port_mode_access(self):
         switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
         switch.set_access_mode = mock.Mock()
@@ -6254,6 +6357,18 @@ class JuniperTest(unittest.TestCase):
         switch.unset_interface_description = mock.Mock()
         switch.unset_bond_description(6)
         switch.unset_interface_description.assert_called_with('ae6')
+
+    def test_set_bond_mtu_succeeds(self):
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
+        switch.set_interface_mtu = mock.Mock()
+        switch.set_bond_mtu(6, 5000)
+        switch.set_interface_mtu.assert_called_with('ae6', 5000)
+
+    def test_unset_bond_mtu_succeeds(self):
+        switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
+        switch.unset_interface_mtu = mock.Mock()
+        switch.unset_bond_mtu(6)
+        switch.unset_interface_mtu.assert_called_with('ae6')
 
     def test_add_bond_trunk_vlan(self):
         switch = juniper.standard.netconf(SwitchDescriptor(model='', hostname=''))
