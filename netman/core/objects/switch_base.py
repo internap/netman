@@ -198,6 +198,18 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def get_versions(self):
         raise NotImplementedError()
 
+    def set_interface_mtu(self, interface_id, size):
+        raise NotImplementedError()
+
+    def unset_interface_mtu(self, interface_id):
+        raise NotImplementedError()
+
+    def set_bond_mtu(self, number, size):
+        raise NotImplementedError()
+
+    def unset_bond_mtu(self, number):
+        raise NotImplementedError()
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):
