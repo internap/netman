@@ -730,6 +730,60 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
+    def test_set_interface_mtu(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_interface_mtu').with_args('FastEthernet0/4', 5000).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/mtu",
+                                fixture="put_switch_hostname_interfaces_intname_mtu.txt")
+
+        assert_that(code, equal_to(204))
+
+    def test_set_interface_mtu_bad_content(self):
+        result, code = self.put("/switches/my.switch/interfaces/FastEthernet0/4/mtu", raw_data="ahahaha")
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Expected integer content, got "ahahaha"'}))
+
+    def test_unset_interface_mtu(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('unset_interface_mtu').with_args('FastEthernet0/4').once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/interfaces/FastEthernet0/4/mtu")
+
+        assert_that(code, equal_to(204))
+
+    def test_set_bond_mtu(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_bond_mtu').with_args(123, 5000).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/bonds/123/mtu",
+                                fixture="put_switch_hostname_interfaces_intname_mtu.txt")
+
+        assert_that(code, equal_to(204))
+
+    def test_set_bond_mtu_bad_content(self):
+        result, code = self.put("/switches/my.switch/bonds/123/mtu", raw_data="ahahaha")
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Expected integer content, got "ahahaha"'}))
+
+    def test_unset_bond_mtu(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('unset_bond_mtu').with_args(123).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/bonds/123/mtu")
+
+        assert_that(code, equal_to(204))
+
     def test_add_ip_json(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()

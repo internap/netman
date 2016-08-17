@@ -1157,6 +1157,52 @@ class RemoteSwitchTest(unittest.TestCase):
 
         self.switch.unset_bond_description(123)
 
+    def test_set_interface_mtu(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/mtu',
+            headers=self.headers,
+            data='5000'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_interface_mtu("ge-0/0/6", 5000)
+
+    def test_unset_interface_mtu(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/mtu',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.unset_interface_mtu("ge-0/0/6")
+
+    def test_set_bond_mtu(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url+'/switches/toto/bonds/123/mtu',
+            headers=self.headers,
+            data='5000'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_bond_mtu(123, 5000)
+
+    def test_unset_bond_mtu(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/bonds/123/mtu',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.unset_bond_mtu(123)
+
     def test_edit_interface_spanning_tree_succeeds(self):
         self.requests_mock.should_receive("put").once().with_args(
             url=self.netman_url+'/switches/toto/interfaces/ge-0/0/6/spanning-tree',

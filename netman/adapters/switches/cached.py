@@ -380,4 +380,20 @@ class CachedSwitch(SwitchBase):
     def get_versions(self):
         if self.versions_cache.refresh_items:
             self.versions_cache = Cache([(0, self.real_switch.get_versions())])
-        return copy.deepcopy(self.versions_cache[0])        
+        return copy.deepcopy(self.versions_cache[0])
+
+    def set_interface_mtu(self, interface_id, size):
+        self.real_switch.set_interface_mtu(interface_id, size)
+        self.interfaces_cache[interface_id].mtu = size
+
+    def unset_interface_mtu(self, interface_id):
+        self.real_switch.unset_interface_mtu(interface_id)
+        self.interfaces_cache[interface_id].mtu = None
+
+    def set_bond_mtu(self, bond_number, size):
+        self.real_switch.set_bond_mtu(bond_number, size)
+        self.bonds_cache[bond_number].mtu = size
+
+    def unset_bond_mtu(self, bond_number):
+        self.real_switch.unset_bond_mtu(bond_number)
+        self.bonds_cache[bond_number].mtu = None

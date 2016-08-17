@@ -226,6 +226,18 @@ class RemoteSwitch(SwitchBase):
     def unset_bond_description(self, bond_number):
         self.delete("/bonds/" + str(bond_number) + '/description')
 
+    def set_interface_mtu(self, interface_id, size):
+        self.put("/interfaces/" + interface_id + '/mtu', raw_data=str(size))
+
+    def unset_interface_mtu(self, interface_id):
+        self.delete("/interfaces/" + interface_id + '/mtu')
+
+    def set_bond_mtu(self, bond_number, size):
+        self.put("/bonds/" + str(bond_number) + '/mtu', raw_data=str(size))
+
+    def unset_bond_mtu(self, bond_number):
+        self.delete("/bonds/" + str(bond_number) + '/mtu')
+
     def edit_interface_spanning_tree(self, interface_id, edge=None):
         data = {}
         if edge is not None:
