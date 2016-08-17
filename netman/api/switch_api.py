@@ -20,7 +20,7 @@ from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
-    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type
+    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int
 from netman.core.objects.interface_states import OFF, ON
 
 
@@ -64,6 +64,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.set_interface_lldp_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.set_interface_auto_negotiation_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.unset_interface_auto_negotiation_state, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.set_interface_mtu, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.unset_interface_mtu, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>', view_func=self.get_bond, methods=['GET'])
@@ -79,6 +81,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.set_bond_description, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/description', view_func=self.unset_bond_description, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.edit_bond_spanning_tree, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/mtu', view_func=self.set_bond_mtu, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/mtu', view_func=self.unset_bond_mtu, methods=['DELETE'])
         return self
 
     @to_response
@@ -400,6 +404,66 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.unset_interface_auto_negotiation_state(interface_id)
+        return 204, None
+
+    @to_response
+    @content(is_int)
+    @resource(Switch, Interface)
+    def set_interface_mtu(self, switch, interface_id, value):
+        """
+        Sets the mtu of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        :body:
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_mtu.txt
+        """
+
+        switch.set_interface_mtu(interface_id, value)
+
+        return 204, None
+
+    @to_response
+    @resource(Switch, Interface)
+    def unset_interface_mtu(self, switch, interface_id):
+        """
+        Unsets the mtu of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        """
+
+        switch.unset_interface_mtu(interface_id)
+        return 204, None
+
+    @to_response
+    @content(is_int)
+    @resource(Switch, Bond)
+    def set_bond_mtu(self, switch, bond_number, value):
+        """
+        Sets the mtu of a bond
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int bond_number: Bond number
+        :body:
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_interfaces_intname_mtu.txt
+        """
+
+        switch.set_bond_mtu(bond_number, value)
+
+        return 204, None
+
+    @to_response
+    @resource(Switch, Bond)
+    def unset_bond_mtu(self, switch, bond_number):
+        """
+        Unsets the mtu of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int bond_number: Bond number
+        """
+
+        switch.unset_bond_mtu(bond_number)
         return 204, None
 
     @to_response

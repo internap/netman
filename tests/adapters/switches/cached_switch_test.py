@@ -862,3 +862,59 @@ class CacheSwitchTest(unittest.TestCase):
 
         assert_that(result1, is_({"v": "1.0"}))
         assert_that(result2, is_({"v": "1.0"}))
+
+    def test_set_interface_mtu(self):
+        self.real_switch_mock.should_receive("get_interfaces").once() \
+            .and_return([Interface('xe-1/0/2')])
+        self.switch.get_interfaces()
+
+        self.real_switch_mock.should_receive("set_interface_mtu").once() \
+            .with_args('xe-1/0/2', 5000)
+
+        self.switch.set_interface_mtu('xe-1/0/2', 5000)
+
+        assert_that(
+            self.switch.get_interfaces(),
+            is_([Interface('xe-1/0/2', mtu=5000)]))
+
+    def test_unset_interface_mtu(self):
+        self.real_switch_mock.should_receive("get_interfaces").once() \
+            .and_return([Interface('xe-1/0/2', mtu=5000)])
+        self.switch.get_interfaces()
+
+        self.real_switch_mock.should_receive("unset_interface_mtu").once() \
+            .with_args('xe-1/0/2')
+
+        self.switch.unset_interface_mtu('xe-1/0/2')
+
+        assert_that(
+            self.switch.get_interfaces(),
+            is_([Interface('xe-1/0/2', mtu=None)]))
+
+    def test_set_bond_mtu(self):
+        self.real_switch_mock.should_receive("get_bonds").once() \
+            .and_return([Bond('xe-1/0/2')])
+        self.switch.get_bonds()
+
+        self.real_switch_mock.should_receive("set_bond_mtu").once() \
+            .with_args('xe-1/0/2', 5000)
+
+        self.switch.set_bond_mtu('xe-1/0/2', 5000)
+
+        assert_that(
+            self.switch.get_bonds(),
+            is_([Bond('xe-1/0/2', mtu=5000)]))
+
+    def test_unset_bond_mtu(self):
+        self.real_switch_mock.should_receive("get_bonds").once() \
+            .and_return([Bond('xe-1/0/2', mtu=5000)])
+        self.switch.get_bonds()
+
+        self.real_switch_mock.should_receive("unset_bond_mtu").once() \
+            .with_args('xe-1/0/2')
+
+        self.switch.unset_bond_mtu('xe-1/0/2')
+
+        assert_that(
+            self.switch.get_bonds(),
+            is_([Bond('xe-1/0/2', mtu=None)]))

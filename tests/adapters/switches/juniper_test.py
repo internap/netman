@@ -825,6 +825,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(interface.trunk_native_vlan, equal_to(None))
         assert_that(interface.trunk_vlans, equal_to([]))
         assert_that(interface.auto_negotiation, equal_to(None))
+        assert_that(interface.mtu, equal_to(None))
 
     def test_get_unconfigured_but_existing_interface_returns_an_empty_interface(self):
         self.switch.in_transaction = False
@@ -1111,6 +1112,7 @@ class JuniperTest(unittest.TestCase):
                 <name>ge-0/0/2</name>
                 <disable />
                 <description>Howdy</description>
+                <mtu>5000</mtu>
                 <unit>
                   <name>0</name>
                   <family>
@@ -1200,6 +1202,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if1.trunk_native_vlan, equal_to(None))
         assert_that(if1.trunk_vlans, equal_to([]))
         assert_that(if1.auto_negotiation, equal_to(None))
+        assert_that(if1.mtu, equal_to(None))
 
         assert_that(if2.name, equal_to("ge-0/0/2"))
         assert_that(if2.shutdown, equal_to(True))
@@ -1207,6 +1210,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if2.access_vlan, equal_to(1000))
         assert_that(if2.trunk_native_vlan, equal_to(None))
         assert_that(if2.trunk_vlans, equal_to([]))
+        assert_that(if2.mtu, equal_to(5000))
 
         assert_that(if3.name, equal_to("ge-0/0/3"))
         assert_that(if3.port_mode, equal_to(TRUNK))
@@ -5878,6 +5882,7 @@ class JuniperTest(unittest.TestCase):
                 <name>ae2</name>
                 <disable />
                 <description>Howdy</description>
+                <mtu>5000</mtu>
                 <aggregated-ether-options>
                   <link-speed>10g</link-speed>
                   <lacp>
@@ -5959,6 +5964,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if1.access_vlan, equal_to(None))
         assert_that(if1.trunk_native_vlan, equal_to(None))
         assert_that(if1.trunk_vlans, equal_to([]))
+        assert_that(if1.mtu, equal_to(None))
         assert_that(if1.members, equal_to([]))
 
         assert_that(if2.number, equal_to(2))
@@ -5968,6 +5974,7 @@ class JuniperTest(unittest.TestCase):
         assert_that(if2.access_vlan, equal_to(1000))
         assert_that(if2.trunk_native_vlan, equal_to(None))
         assert_that(if2.trunk_vlans, equal_to([]))
+        assert_that(if2.mtu, equal_to(5000))
         assert_that(if2.members, equal_to([]))
 
         assert_that(if3.number, equal_to(3))

@@ -288,6 +288,15 @@ def is_vrrp_group(data, **_):
     )
 
 
+def is_int(number, **_):
+    try:
+        value = int(number)
+    except ValueError:
+        raise BadRequest('Expected integer content, got "{}"'.format(number))
+
+    return {'value': value}
+
+
 def is_boolean(option, **_):
     option = option.lower()
     if option not in ['true', 'false']:

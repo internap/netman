@@ -746,6 +746,7 @@ class Juniper(SwitchBase):
                 interface.trunk_vlans = vlans
             interface.trunk_native_vlan = value_of(self.custom_strategies.get_interface_trunk_native_vlan_id_node(interface_node), transformer=int)
             interface.shutdown = first(interface_node.xpath("disable")) is not None
+            interface.mtu = value_of(interface_node.xpath("mtu"), transformer=int)
             if first(interface_node.xpath('ether-options/auto-negotiation')) is not None:
                 interface.auto_negotiation = True
             elif first(interface_node.xpath('ether-options/no-auto-negotiation')) is not None:
