@@ -208,6 +208,18 @@ class Dell10G(Dell):
 
         return interfaces
 
+    def set_interface_mtu(self, interface_id, size):
+        raise NotImplementedError()
+
+    def unset_interface_mtu(self, interface_id):
+        raise NotImplementedError()
+
+    def set_bond_mtu(self, number, size):
+        raise NotImplementedError()
+
+    def unset_bond_mtu(self, number):
+        raise NotImplementedError()
+
 
 def has_trunk_vlans(interface_data):
     for line in interface_data:
