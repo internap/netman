@@ -262,3 +262,8 @@ class CouldNotConnect(Exception):
 class InvalidAccessGroupName(InvalidValue):
     def __init__(self, name=None):
         super(InvalidAccessGroupName, self).__init__("Access Group Name is invalid: {}".format(name))
+
+
+class InvalidMtuSize(InvalidValue):
+    def __init__(self, err_msg=None):
+        super(InvalidMtuSize, self).__init__("MTU value is invalid : {}".format(err_msg))
