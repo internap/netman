@@ -53,6 +53,7 @@ class V1(Serializer):
                 access_vlan=bond.access_vlan,
                 trunk_native_vlan=bond.trunk_native_vlan,
                 trunk_vlans=bond.trunk_vlans,
+                mtu=bond.mtu
             ))
         )
 

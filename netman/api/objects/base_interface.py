@@ -33,7 +33,7 @@ class V1(Serializer):
     def to_core(self, serialized):
         return BaseInterface(
             port_mode=dict((v, k) for k, v in serialized_port_mode.iteritems())[serialized.pop('port_mode')],
-            **sub_dict(serialized, 'shutdown', 'access_vlan', 'trunk_native_vlan', 'trunk_vlans')
+            **sub_dict(serialized, 'shutdown', 'access_vlan', 'trunk_native_vlan', 'trunk_vlans', 'mtu')
         )
 
     def to_api(self, base_interface):
@@ -42,7 +42,8 @@ class V1(Serializer):
             port_mode=serialized_port_mode[base_interface.port_mode],
             access_vlan=base_interface.access_vlan,
             trunk_native_vlan=base_interface.trunk_native_vlan,
-            trunk_vlans=sorted(base_interface.trunk_vlans)
+            trunk_vlans=sorted(base_interface.trunk_vlans),
+            mtu=base_interface.mtu
         )
 
 

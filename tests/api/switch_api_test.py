@@ -135,7 +135,8 @@ class SwitchApiTest(BaseApiTest):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_interface').with_args('ethernet 1/4').and_return(
-            Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002]),
+            Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999,
+                      trunk_vlans=[3001, 3000, 3002], mtu=1500),
         ).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -163,7 +164,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('get_interfaces').and_return([
             Interface(name="FastEthernet0/3", shutdown=True, port_mode=ACCESS, access_vlan=1999),
             Interface(name="GigabitEthernet0/6", shutdown=False, port_mode=DYNAMIC, access_vlan=1999, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], auto_negotiation=True),
-            Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002]),
+            Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], mtu=1500),
             Interface(name="GigabitEthernet0/8", shutdown=False, bond_master=12, port_mode=BOND_MEMBER, trunk_native_vlan=None, trunk_vlans=[], auto_negotiation=False),
             ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
@@ -1126,7 +1127,8 @@ class SwitchApiTest(BaseApiTest):
                 link_speed='1g',
                 shutdown=True,
                 port_mode=ACCESS,
-                access_vlan=1999),
+                access_vlan=1999,
+                mtu=1500),
             Bond(
                 number=6,
                 link_speed='10g',
@@ -1159,7 +1161,8 @@ class SwitchApiTest(BaseApiTest):
                 link_speed='1g',
                 shutdown=True,
                 port_mode=ACCESS,
-                access_vlan=1999)
+                access_vlan=1999,
+                mtu=1500)
         )
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -1177,7 +1180,8 @@ class SwitchApiTest(BaseApiTest):
                 link_speed='1g',
                 shutdown=True,
                 port_mode=ACCESS,
-                access_vlan=1999),
+                access_vlan=1999,
+                mtu=1500),
             Bond(
                 number=6,
                 link_speed='10g',
@@ -1211,7 +1215,8 @@ class SwitchApiTest(BaseApiTest):
                 link_speed='1g',
                 shutdown=True,
                 port_mode=ACCESS,
-                access_vlan=1999)
+                access_vlan=1999,
+                mtu=1500)
         )
         self.switch_mock.should_receive('disconnect').once().ordered()
 
