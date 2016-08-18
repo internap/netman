@@ -28,7 +28,7 @@ from netman.adapters.switches.dell import Dell
 from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond
+    VlanAlreadyExist, UnknownBond, InvalidMtuSize
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from tests import ignore_deprecation_warnings
 
@@ -431,6 +431,7 @@ class DellTest(unittest.TestCase):
             "switchport mode general",
             "switchport general allowed vlan add 900,1000-1001,1003-1005",
             "switchport general pvid 1500",
+            "mtu 5000"
         ])
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 1").and_return([])
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([])
@@ -457,11 +458,13 @@ class DellTest(unittest.TestCase):
         assert_that(i2_x1.access_vlan, is_(none()))
         assert_that(i2_x1.trunk_native_vlan, is_(none()))
         assert_that(i2_x1.trunk_vlans, is_([900, 1000, 1001, 1003, 1004, 1005]))
+        assert_that(i2_x1.mtu, is_(None))
 
         assert_that(i2_x2.name, is_("ethernet 2/xg2"))
         assert_that(i2_x2.port_mode, is_(TRUNK))
         assert_that(i2_x2.trunk_native_vlan, is_(1500))
         assert_that(i2_x2.trunk_vlans, is_([900, 1000, 1001, 1003, 1004, 1005]))
+        assert_that(i2_x2.mtu, is_(5000))
 
         assert_that(ch1.name, is_("port-channel 1"))
         assert_that(ch10.name, is_("port-channel 10"))
@@ -987,7 +990,7 @@ class DellTest(unittest.TestCase):
     def test_unset_bond_native_vlan_inknown_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
             "ERROR: Invalid input!",
-            ])
+        ])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
@@ -1528,6 +1531,66 @@ class DellTest(unittest.TestCase):
             self.switch.set_bond_description(10, 'Hey "you"')
 
         assert_that(str(expect.exception), equal_to("Invalid description : Hey \"you\""))
+
+    def test_set_interface_mtu(self):
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("mtu 1520").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.set_interface_mtu("ethernet 1/g10", 1520)
+
+    def test_unset_interface_mtu(self):
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no mtu").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.unset_interface_mtu("ethernet 1/g10")
+
+    def test_set_interface_mtu_with_out_of_range_value_raises(self):
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("mtu 9999").once().ordered().and_return([
+                "                            ^",
+                "Value is out of range. The valid range is 1518 to 9216."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        with self.assertRaises(InvalidMtuSize) as expect:
+            self.switch.set_interface_mtu("ethernet 1/g10", 9999)
+
+        assert_that(str(expect.exception), equal_to("MTU value is invalid : 9999"))
+
+    def test_set_bond_mtu(self):
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("mtu 1520").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.set_bond_mtu(10, 1520)
+
+    def test_set_bond_mtu_with_out_of_range_value_raises(self):
+        with self.configuring():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("mtu 9999").once().ordered().and_return([
+                "                            ^",
+                "Value is out of range. The valid range is 1518 to 9216."
+            ])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        with self.assertRaises(InvalidMtuSize) as expect:
+            self.switch.set_bond_mtu(10, 9999)
+
+        assert_that(str(expect.exception), equal_to("MTU value is invalid : 9999"))
+
+    def test_unset_bond_mtu(self):
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no mtu").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.switch.unset_bond_mtu(10)
 
     def test_commit(self):
         self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])

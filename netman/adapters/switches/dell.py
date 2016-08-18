@@ -26,7 +26,7 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond
+    VlanAlreadyExist, UnknownBond, InvalidMtuSize
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -176,6 +176,23 @@ class Dell(SwitchBase):
                 .on_result_matching(".*VLAN ID not found.*", UnknownVlan, vlan)\
                 .on_result_matching(".*Interface not in Access Mode.*", InterfaceInWrongPortMode, "trunk")
 
+    def set_interface_mtu(self, interface_id, size):
+        with self.config(), self.interface(interface_id):
+            self.set("mtu {}", size)\
+                .on_result_matching(".*Value is out of range.*", InvalidMtuSize, size)
+
+    def unset_interface_mtu(self, interface_id):
+        with self.config(), self.interface(interface_id):
+            self.set("no mtu")
+
+    def set_bond_mtu(self, number, size):
+        with NamedBond(number) as bond:
+            self.set_interface_mtu(bond.name, size)
+
+    def unset_bond_mtu(self, number):
+        with NamedBond(number) as bond:
+            self.unset_interface_mtu(bond.name)
+
     def unset_interface_access_vlan(self, interface_id):
         with self.config(), self.interface(interface_id):
             self.shell.do("no switchport access vlan")
@@ -324,6 +341,8 @@ class Dell(SwitchBase):
                 interface.trunk_native_vlan = int(regex[0])
             if regex.match("switchport \S+ allowed vlan add (\S+)", line):
                 interface.trunk_vlans += parse_vlan_ranges(regex[0])
+            if regex.match("mtu (\d+)", line):
+                interface.mtu = int(regex[0])
 
         return interface
 
