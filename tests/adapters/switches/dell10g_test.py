@@ -327,6 +327,16 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Unknown interface tengigabitethernet 0/0/9999"))
 
+    def test_get_malformed_interface_raises(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface patate").once().ordered().and_return([
+            "                                      ^",
+            "% Invalid input detected at '^' marker."])
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('patate')
+
+        assert_that(str(expect.exception), equal_to("Unknown interface patate"))
+
     def test_get_interfaces(self):
         self.mocked_ssh_client.should_receive("do").with_args("show interfaces status").and_return([
             "Port      Description               Vlan  Duplex Speed   Neg  Link   Flow Ctrl",
