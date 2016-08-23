@@ -159,8 +159,8 @@ class Dell10G(Dell):
 
     def get_interface_data(self, interface_id):
         interface_data = self.shell.do("show running-config interface {}".format(interface_id))
-        if len(interface_data) > 0 and regex.match(".*invalid interface.*", interface_data[0]):
-            raise UnknownInterface(interface_id)
+        if any(["Invalid input" in line or regex.match(".*invalid interface.*", line) for line in interface_data]):
+                raise UnknownInterface(interface_id)
         return interface_data
 
     def read_interface(self, interface_name):

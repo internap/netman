@@ -307,7 +307,7 @@ class Dell(SwitchBase):
 
     def get_interface_data(self, interface_id):
         interface_data = self.shell.do("show running-config interface {}".format(interface_id))
-        if len(interface_data) > 0 and regex.match("ERROR.*", interface_data[0]):
+        if any(["Invalid input" in line or regex.match("ERROR.*", line) for line in interface_data]):
             raise UnknownInterface(interface_id)
         return interface_data
 
