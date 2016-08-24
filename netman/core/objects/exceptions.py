@@ -49,6 +49,11 @@ class OperationNotCompleted(NetmanException):
         super(OperationNotCompleted, self).__init__("An error occured while completing operation, no modifications have been applied : {0}".format(problem))
 
 
+class InterfaceResetIncomplete(NetmanException):
+    def __init__(self, interface_data=None):
+        super(InterfaceResetIncomplete, self).__init__("The interface reset has failed to remove these properties: {0}".format(interface_data))
+
+
 class UnknownVlan(UnknownResource):
     def __init__(self, vlan_number=None):
         super(UnknownVlan, self).__init__("Vlan {} not found".format(vlan_number))

@@ -26,7 +26,7 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond, InvalidMtuSize
+    VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -345,6 +345,15 @@ class Dell(SwitchBase):
                 interface.mtu = int(regex[0])
 
         return interface
+
+    def reset_interface(self, interface_id):
+        with self.config(), self.interface(interface_id):
+            self.shell.do("no switchport access vlan")
+            self.shell.do("no switchport mode")
+            self.shell.do("no mtu")
+        data = "\n".join(self.get_interface_data(interface_id))
+        if len(data) > 0:
+            raise InterfaceResetIncomplete("{}".format(data))
 
     def parse_interface_from_vlan_list(self, vlan_number, result):
         vlan_interfaces = []
