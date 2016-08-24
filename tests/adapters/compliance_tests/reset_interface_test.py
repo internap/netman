@@ -69,6 +69,13 @@ class ResetInterfaceTest(ComplianceTestCase):
 
         assert_that(self.client.get_interface(self.test_port).shutdown, is_(self.interface_before.shutdown))
 
+    def test_reset_interface_mtu(self):
+        self.try_to.set_interface_mtu(self.test_port, 4000)
+
+        self.client.reset_interface(self.test_port)
+
+        assert_that(self.client.get_interface(self.test_port).mtu, is_(self.interface_before.mtu))
+
     def test_raises_on_unknown_interface(self):
         with self.assertRaises(UnknownInterface):
             self.client.reset_interface('nonexistent 2/99')

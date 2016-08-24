@@ -28,7 +28,7 @@ from netman.adapters.switches.dell import Dell
 from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond, InvalidMtuSize
+    VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from tests import ignore_deprecation_warnings
 
@@ -627,6 +627,40 @@ class DellTest(unittest.TestCase):
             self.switch.remove_vlan(1000)
 
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
+
+    def test_reset_interface(self):
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no switchport mode").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no mtu").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+            ""
+        ])
+
+        self.switch.reset_interface("ethernet 1/g10")
+
+    def test_reset_interface_raises_when_data_is_left(self):
+        with self.configuring_and_committing():
+            self.mocked_ssh_client.should_receive("do").with_args("interface ethernet 1/g10").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no switchport access vlan").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no switchport mode").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("no mtu").once().ordered().and_return([])
+            self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+            "shutdown",
+            "description 'Configured by Netman'",
+            "no lldp transmit",
+        ])
+
+        with self.assertRaises(InterfaceResetIncomplete) as ex:
+            self.switch.reset_interface("ethernet 1/g10")
+
+        self.assertEqual(str(ex.exception), "The interface reset has failed to remove these properties: " +
+                                            "shutdown\ndescription 'Configured by Netman'\nno lldp transmit")
 
     def test_set_access_mode(self):
         with self.configuring_and_committing():
