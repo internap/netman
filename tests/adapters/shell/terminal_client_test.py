@@ -227,7 +227,7 @@ class TelnetClientTest(TerminalClientTest):
     client = TelnetClient
     port = 10011
 
-    @patch('netman.adapters.shell.telnet._connect')
+    @patch('netman.adapters.shell.telnet.telnetlib.Telnet')
     @patch('netman.adapters.shell.telnet.TelnetClient._login', Mock())
     def test_changing_default_connect_timeout(self, connect_method_mock):
         shell.default_connect_timeout = 60
@@ -240,7 +240,7 @@ class TelnetClientTest(TerminalClientTest):
         TelnetClient(**self._get_some_credentials())
         self.assertEqual(120, connect_method_mock.call_args[0][2])
 
-    @patch('netman.adapters.shell.telnet._connect', Mock())
+    @patch('netman.adapters.shell.telnet.telnetlib.Telnet', Mock())
     @patch('netman.adapters.shell.telnet.TelnetClient._login', Mock())
     def test_changing_default_command_timeout(self):
         shell.default_command_timeout = 300
