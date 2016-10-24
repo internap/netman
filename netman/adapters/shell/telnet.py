@@ -26,11 +26,13 @@ class TelnetClient(TerminalClient):
     def __init__(self, host, username, password, port=23, prompt=('>', '#'),
                  connect_timeout=None, command_timeout=None, **_):
         self.prompt = prompt
+        self.host = host
+        self.port = port
         self.command_timeout = command_timeout or shell.default_command_timeout
-        connect_timeout = connect_timeout or shell.default_connect_timeout
+        self.connect_timeout = connect_timeout or shell.default_connect_timeout
         self.full_log = ""
 
-        self.telnet = _connect(host, port, connect_timeout)
+        self.telnet = self._connect()
         self._login(username, password)
 
     def do(self, command, wait_for=None, include_last_line=False):
@@ -57,7 +59,7 @@ class TelnetClient(TerminalClient):
         self.telnet.read_until(":", self.command_timeout)
         self.telnet.write(str(password) + "\r\n")
 
-        result = self._wait_for(list(self.prompt))
+        result = self._wait_for_successful_login()
         self.full_log += result[len(password):].lstrip()
 
     def _read_until(self, wait_for):
@@ -77,17 +79,22 @@ class TelnetClient(TerminalClient):
             raise CommandTimeout(expect)
         return result[2]
 
+    def _wait_for_successful_login(self):
+        result = self.telnet.expect(list(self.prompt), timeout=self.connect_timeout)
+        if result[0] == -1:
+            raise ConnectTimeout(self.host, self.port)
+        return result[2]
 
-def _connect(host, port, connect_timeout):
-    try:
-        telnet = telnetlib.Telnet(host, port, connect_timeout)
-    except timeout:
-        raise ConnectTimeout(host, port)
-    except gaierror:
-        raise CouldNotConnect(host, port)
+    def _connect(self):
+        try:
+            telnet = telnetlib.Telnet(self.host, self.port, self.connect_timeout)
+        except timeout:
+            raise ConnectTimeout(self.host, self.port)
+        except gaierror:
+            raise CouldNotConnect(self.host, self.port)
 
-    telnet.set_option_negotiation_callback(_accept_all)
-    return telnet
+        telnet.set_option_negotiation_callback(_accept_all)
+        return telnet
 
 
 def _accept_all(sock, cmd, opt):

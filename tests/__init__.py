@@ -20,11 +20,16 @@ from netaddr import IPNetwork
 
 from global_reactor import ThreadedReactor
 from tests.adapters.model_list import available_models
+from tests.adapters.shell.telnet_login_special_cases_test import hanging_password_telnet_hook
 from tests.adapters.shell.terminal_client_test import telnet_hook_to_reactor, ssh_hook_to_reactor
 
 
 def setup():
-    ThreadedReactor.start_reactor(available_models, reactor_hook_callbacks=[telnet_hook_to_reactor, ssh_hook_to_reactor])
+    ThreadedReactor.start_reactor(available_models, reactor_hook_callbacks=[
+        hanging_password_telnet_hook,
+        telnet_hook_to_reactor,
+        ssh_hook_to_reactor
+    ])
 
 
 def tearDown():
