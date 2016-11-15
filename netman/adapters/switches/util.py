@@ -86,3 +86,22 @@ class ResultChecker(object):
         if regex.match(matcher, "\n".join(self.result), flags=re.DOTALL):
             raise exception(*args, **kwargs)
         return self
+
+
+class PageReader(object):
+    def __init__(self, read_while, and_press, unless_prompt):
+        self.next_page_indicator = read_while
+        self.continue_key = and_press
+        self.prompt = unless_prompt
+
+    def do(self, shell, command):
+        result = shell.do(command,
+                          wait_for=(self.next_page_indicator, self.prompt),
+                          include_last_line=True)
+
+        while len(result) > 0 and self.next_page_indicator in result[-1]:
+            result = result[:-1] + shell.send_key(self.continue_key,
+                                                  wait_for=(self.next_page_indicator, self.prompt),
+                                                  include_last_line=True)
+
+        return result[:-1]
