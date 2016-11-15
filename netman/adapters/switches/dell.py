@@ -15,7 +15,7 @@ import warnings
 
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
-from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.interface import Interface
@@ -23,7 +23,7 @@ from netman.adapters.switches.cisco import parse_vlan_ranges
 from netman.core.objects.vlan import Vlan
 from netman import regex
 from netman.core.objects.switch_transactional import FlowControlSwitch
-from netman.adapters.switches.util import SubShell, no_output, ResultChecker
+from netman.adapters.switches.util import SubShell, no_output, ResultChecker, PageReader
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
     VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete
@@ -54,6 +54,12 @@ class Dell(SwitchBase):
         super(Dell, self).__init__(switch_descriptor)
         self.shell = None
         self.shell_factory = shell_factory
+
+        self.page_reader = PageReader(
+            read_while="--More-- or (q)uit",
+            and_press="m",
+            unless_prompt="#"
+        )
 
     def _connect(self):
         params = dict(
@@ -92,17 +98,13 @@ class Dell(SwitchBase):
             self.shell.do('shutdown' if state is OFF else 'no shutdown')
 
     def get_vlans(self):
-        result = self.shell.do('show vlan', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-        while len(result) > 0 and "--More--" in result[-1]:
-            result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-
+        result = self.page_reader.do(self.shell, "show vlan")
         vlans = parse_vlan_list(result)
         return vlans
 
     def get_vlan(self, vlan_number):
-        result = self.shell.do("show vlan id {}".format(vlan_number), wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-        while len(result) > 0 and "--More--" in result[-1]:
-            result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        result = self.page_reader.do(self.shell, "show vlan id {}".format(vlan_number))
+
         if regex.match(".*\^.*", result[0]):
             raise BadVlanNumber()
         elif regex.match("^ERROR", result[0]):
@@ -111,9 +113,8 @@ class Dell(SwitchBase):
         return vlan
 
     def get_vlan_interfaces(self, vlan_number):
-        result = self.shell.do("show vlan id {}".format(vlan_number), wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-        while len(result) > 0 and "--More--" in result[-1]:
-            result += self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
+        result = self.page_reader.do(self.shell, "show vlan id {}".format(vlan_number))
+
         if regex.match(".*\^.*", result[0]):
             raise BadVlanNumber()
         elif regex.match("^ERROR", result[0]):
@@ -125,17 +126,12 @@ class Dell(SwitchBase):
         return self.read_interface(interface_id)
 
     def get_interfaces(self):
-        result = self.shell.do('show interfaces status', wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-        name_list = self.parse_interface_names(result)
+        result = self.page_reader.do(self.shell, 'show interfaces status')
 
-        while len(result) > 0 and "--More--" in result[-1]:
-            result = self.shell.send_key("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True)
-            name_list += self.parse_interface_names(result)
-
-        return [self.read_interface(name) for name in name_list]
+        return [self.read_interface(name) for name in self.parse_interface_names(result)]
 
     def add_vlan(self, number, name=None):
-        result = self.shell.do("show vlan id {}".format(number))
+        result = self.page_reader.do(self.shell, "show vlan id {}".format(number))
         if regex.match(".*\^.*", result[0]):
             raise BadVlanNumber()
         elif regex.match("^VLAN", result[0]):
@@ -306,7 +302,7 @@ class Dell(SwitchBase):
         return ResultChecker(result)
 
     def get_interface_data(self, interface_id):
-        interface_data = self.shell.do("show running-config interface {}".format(interface_id))
+        interface_data = self.page_reader.do(self.shell, "show running-config interface {}".format(interface_id))
         if any(["Invalid input" in line or regex.match("ERROR.*", line) for line in interface_data]):
             raise UnknownInterface(interface_id)
         return interface_data

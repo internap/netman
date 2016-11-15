@@ -167,7 +167,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 99/g99"))
 
     def test_get_vlans(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan").once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1      Default                          ch2-3,ch5-6,   Default   Required",
@@ -200,43 +200,8 @@ class DellTest(unittest.TestCase):
         assert_that(vlan4000.name, equal_to(None))
         assert_that(len(vlan4000.ips), equal_to(0))
 
-    def test_get_vlans_multipage(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "VLAN       Name                         Ports          Type      Authorization",
-            "-----  ---------------                  -------------  -----     -------------",
-            "1      Default                          ch2-3,ch5-6,   Default   Required",
-            "                                        ch8-10,",
-            "                                        1/g2-1/g3,",
-            "2                                       ch1            Static    Required",
-            "3                                       ch1            Static    Required",
-            "4                                       ch1            Static    Required",
-            "--More-- or (q)uit"
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "VLAN       Name                         Ports          Type      Authorization",
-            "-----  ---------------                  -------------  -----     -------------",
-            "5                                       ch1            Static    Required",
-            "6                                       ch1            Static    Required",
-            "7                                       ch1            Static    Required",
-            "--More-- or (q)uit"
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "VLAN       Name                         Ports          Type      Authorization",
-            "-----  ---------------                  -------------  -----     -------------",
-            "8                                       ch1            Static    Required",
-            "9                                       ch1            Static    Required",
-            "                                                                         ",
-            "10                                      ch1            Static    Required",
-        ])
-
-        vlans = self.switch.get_vlans()
-
-        assert_that(vlans, has_length(10))
-
     def test_get_vlan_standard_no_name(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1000                                    ch2-3,ch5-6,   Static    Required",
@@ -251,7 +216,7 @@ class DellTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_with_name(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1000   shizzle                          ch2-3,ch5-6,   Static    Required",
@@ -266,7 +231,7 @@ class DellTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_default(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1").once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1      Default                          ch2-3,ch5-6,   Default   Required",
@@ -289,7 +254,7 @@ class DellTest(unittest.TestCase):
         assert_that(len(vlan.ips), equal_to(0))
 
     def test_get_vlan_with_bad_number(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 5000").once().ordered().and_return([
             "                     ^",
             "Invalid input. Please specify an integer in the range 1 to 4093."
         ])
@@ -300,7 +265,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_get_vlan_with_unknown_number(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 2019").once().ordered().and_return([
             "ERROR: This VLAN does not exist."
         ])
 
@@ -309,69 +274,20 @@ class DellTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan 2019 not found"))
 
-    def test_get_vlan_multipage(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "VLAN       Name                         Ports          Type      Authorization",
-            "-----  ---------------                  -------------  -----     -------------",
-            "1000   MyVlanName                       ch2-3,ch5-6,   Static    Required",
-            "                                        ch8-48,1/g2,",
-            "                                        1/g4,1/g7,",
-            "                                        1/g13,",
-            "--More-- or (q)uit"
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "                                        1/g17-1/g20,",
-            "                                        1/xg4,2/g2,",
-            "                                        2/g4,2/g7,",
-            "                                        2/g9,",
-            "                                        2/g12-2/g20,",
-            "                                        2/g23-2/g24,",
-            "                                        2/xg3-2/xg4"
-        ])
-
-        vlan = self.switch.get_vlan(1000)
-
-        assert_that(vlan.number, equal_to(1000))
-        assert_that(vlan.name, equal_to("MyVlanName"))
-        assert_that(len(vlan.ips), equal_to(0))
-
-
     def test_get_vlan_interfaces(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").once().ordered().and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1000   MyVlanName                       ch2-3,ch5-6,   Static    Required",
-            "                                        1/g4,1/g7,"
+            "                                        1/g4,1/g7,",
         ])
 
         vlan_interfaces = self.switch.get_vlan_interfaces(1000)
 
         assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'ethernet 1/g4', 'ethernet 1/g7']))
 
-    def test_get_vlan_interfaces_multipage(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "VLAN       Name                         Ports          Type      Authorization",
-            "-----  ---------------                  -------------  -----     -------------",
-            "1000   MyVlanName                       ch2-3,ch5-7,   Static    Required",
-            "                                        1/g4,1/g7,",
-            "                                        1/g13,",
-            "--More-- or (q)uit"
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "                                        1/g17-1/g20,",
-            "                                        1/xg4,2/g2,"
-        ])
-
-        vlan_interfaces = self.switch.get_vlan_interfaces(1000)
-
-        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 7', 'ethernet 1/g4', 'ethernet 1/g7',
-                                              'ethernet 1/g13', 'ethernet 1/g17', 'ethernet 1/g18', 'ethernet 1/g19', 'ethernet 1/g20', 'ethernet 1/xg4',
-                                               'ethernet 2/g2']))
-
     def test_get_vlan_interfaces_with_unknown_vlan_raises(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 2019").once().ordered().and_return([
             "ERROR: This VLAN does not exist."
         ])
 
@@ -381,7 +297,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 2019 not found"))
 
     def test_get_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g1").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g1").and_return([
             "switchport access vlan 1234"
         ])
 
@@ -392,7 +308,7 @@ class DellTest(unittest.TestCase):
         assert_that(interface.access_vlan, is_(1234))
 
     def test_get_malformed_interface_raises(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface patate").once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface patate").once().ordered().and_return([
             "                                      ^",
             "% Invalid input detected at '^' marker."])
 
@@ -402,7 +318,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface patate"))
 
     def test_get_nonexistent_interface_raises(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g9999").once().ordered().and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g9999").once().ordered().and_return([
             "ERROR: Invalid input!"
         ])
 
@@ -412,7 +328,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g9999"))
 
     def test_get_interfaces(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show interfaces status", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show interfaces status").and_return([
             "Port   Type                            Duplex  Speed    Neg  Link  Flow Control",
             "                                                             State Status",
             "-----  ------------------------------  ------  -------  ---- --------- ------------",
@@ -427,24 +343,24 @@ class DellTest(unittest.TestCase):
             "ch10 Link Aggregate                  Down",
         ])
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g1").and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g12").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g1").and_return([])
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g12").and_return([
             "switchport access vlan 1234"
         ])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 2/xg1").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 2/xg1").and_return([
             "shutdown",
             "switchport mode trunk",
             "switchport trunk allowed vlan add 900,1000-1001",
             "switchport trunk allowed vlan add 1003-1005",
         ])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 2/xg2").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 2/xg2").and_return([
             "switchport mode general",
             "switchport general allowed vlan add 900,1000-1001,1003-1005",
             "switchport general pvid 1500",
             "mtu 5000"
         ])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 1").and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([])
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 1").and_return([])
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([])
 
         i1_1, i1_12, i2_x1, i2_x2, ch1, ch10 = self.switch.get_interfaces()
 
@@ -479,49 +395,8 @@ class DellTest(unittest.TestCase):
         assert_that(ch1.name, is_("port-channel 1"))
         assert_that(ch10.name, is_("port-channel 10"))
 
-    def test_get_interfaces_multipage(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show interfaces status", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "Port   Type                            Duplex  Speed    Neg  Link  Flow Control",
-            "                                                             State Status",
-            "-----  ------------------------------  ------  -------  ---- --------- ------------",
-            "1/g1   Gigabit - Level                 Full    1000     Auto Up        Inactive",
-            "1/g2   Gigabit - Level                 Full    1000     Auto Up        Inactive",
-            "--More-- or (q)uit",
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "1/g3   Gigabit - Level                 Full    1000     Auto Up        Inactive",
-            "1/g4   Gigabit - Level                 Full    1000     Auto Up        Inactive",
-            "--More-- or (q)uit",
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "1/g5   Gigabit - Level                 Full    1000     Auto Up        Inactive",
-            "Ch   Type                            Link",
-            "                                     State",
-            "---  ------------------------------  -----",
-            "ch1  Link Aggregate                  Up",
-            "ch2  Link Aggregate                  Down",
-            "--More-- or (q)uit",
-        ])
-
-        self.mocked_ssh_client.should_receive("send_key").with_args("m", wait_for=("--More-- or (q)uit", "#"), include_last_line=True).once().ordered().and_return([
-            "ch3  Link Aggregate                  Down",
-        ])
-
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g1").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g2").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g3").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g4").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g5").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 1").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 2").ordered().and_return([])
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 3").ordered().and_return([])
-
-        assert_that(self.switch.get_interfaces(), has_length(8))
-
     def test_add_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").and_return([
             "ERROR: This VLAN does not exist."
         ])
 
@@ -536,7 +411,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_vlan(1000)
 
     def test_add_vlan_and_name(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").and_return([
             "ERROR: This VLAN does not exist."
         ])
 
@@ -554,7 +429,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_vlan(1000, name="shizzle")
 
     def test_add_vlan_invalid_number(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 5000").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 5000").and_return([
             "                     ^",
             "Invalid input. Please specify an integer in the range 1 to 4093."
         ])
@@ -565,7 +440,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan number is invalid"))
 
     def test_add_vlan_and_bad_name(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").and_return([
             "ERROR: This VLAN does not exist."
         ])
 
@@ -589,7 +464,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
 
     def test_add_vlan_fails_when_already_exist(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show vlan id 1000").and_return([
             "VLAN       Name                         Ports          Type      Authorization",
             "-----  ---------------                  -------------  -----     -------------",
             "1000                                                   Static    Required     "
@@ -636,7 +511,7 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("no mtu").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             ""
         ])
 
@@ -650,7 +525,7 @@ class DellTest(unittest.TestCase):
             self.mocked_ssh_client.should_receive("do").with_args("no mtu").once().ordered().and_return([])
             self.mocked_ssh_client.should_receive("do").with_args("exit").once().ordered().and_return([])
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "shutdown",
             "description 'Configured by Netman'",
             "no lldp transmit",
@@ -701,7 +576,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
 
     def test_set_trunk_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
         ])
 
         with self.configuring_and_committing():
@@ -712,7 +587,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_trunk_mode("ethernet 1/g10")
 
     def test_set_trunk_mode_stays_in_trunk(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk"
         ])
 
@@ -721,7 +596,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_trunk_mode("ethernet 1/g10")
 
     def test_set_trunk_mode_stays_in_general(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general"
         ])
 
@@ -730,7 +605,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_trunk_mode("ethernet 1/g10")
 
     def test_configure_set_trunk_mode_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -742,7 +617,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
     def test_set_bond_trunk_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
         ])
 
         with self.configuring_and_committing():
@@ -753,7 +628,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_trunk_mode(10)
 
     def test_set_bond_trunk_mode_stays_in_bond_trunk(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk"
         ])
 
@@ -762,7 +637,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_trunk_mode(10)
 
     def test_set_bond_trunk_mode_stays_in_general(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general"
         ])
 
@@ -771,7 +646,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_trunk_mode(10)
 
     def test_configure_set_bond_trunk_mode_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 999999").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 999999").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -859,7 +734,7 @@ class DellTest(unittest.TestCase):
 
     def test_set_interface_native_vlan_on_a_general_interface(self):
 
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general"
         ])
 
@@ -871,7 +746,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
     def test_set_interface_native_vlan_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -883,7 +758,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
     def test_set_interface_native_vlan_unknown_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
         ])
 
@@ -900,7 +775,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_set_interface_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
         ])
 
         with self.configuring_and_committing():
@@ -912,7 +787,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
     def test_set_interface_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport access vlan 2000",
         ])
 
@@ -924,7 +799,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
     def test_set_interface_native_vlan_on_a_trunk_mode_swithes_to_general(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
         ])
 
@@ -937,7 +812,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
     def test_set_interface_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 1201-1203,1205",
         ])
@@ -952,7 +827,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_interface_native_vlan("ethernet 1/g10", 1000)
 
     def test_unset_interface_native_vlan_reverts_to_trunk_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
             "switchport general pvid 1000"
         ])
@@ -965,7 +840,7 @@ class DellTest(unittest.TestCase):
         self.switch.unset_interface_native_vlan("ethernet 1/g10")
 
     def test_unset_interface_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
             "switchport general pvid 1000",
             "switchport general allowed vlan add 1201-1203,1205",
@@ -980,7 +855,7 @@ class DellTest(unittest.TestCase):
         self.switch.unset_interface_native_vlan("ethernet 1/g10")
 
     def test_unset_interface_native_vlan_inknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -992,7 +867,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
     def test_unset_interface_native_vlan_not_set(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general"
         ])
 
@@ -1004,7 +879,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface ethernet 1/g10"))
 
     def test_unset_bond_native_vlan_reverts_to_trunk_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general",
             "switchport general pvid 1000"
         ])
@@ -1017,7 +892,7 @@ class DellTest(unittest.TestCase):
         self.switch.unset_bond_native_vlan(10)
 
     def test_unset_bond_native_vlan_reverts_to_trunk_mode_and_keeps_allowed_vlans_specs(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general",
             "switchport general pvid 1000",
             "switchport general allowed vlan add 1201-1203,1205",
@@ -1032,7 +907,7 @@ class DellTest(unittest.TestCase):
         self.switch.unset_bond_native_vlan(10)
 
     def test_unset_bond_native_vlan_inknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99999").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -1044,7 +919,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
 
     def test_unset_bond_native_vlan_not_set(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general"
         ])
 
@@ -1056,7 +931,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), is_("Trunk native Vlan is not set on interface port-channel 10"))
 
     def test_set_bond_native_vlan_on_a_general_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general"
         ])
 
@@ -1068,8 +943,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_native_vlan(10, 1000)
 
     def test_set_bond_native_vlan_unknown_interface(self):
-
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99999").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99999").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -1081,7 +955,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
 
     def test_set_bond_native_vlan_unknown_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general",
         ])
 
@@ -1098,7 +972,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_set_bond_native_vlan_on_an_unknown_mode_with_no_access_vlan_assume_not_set_and_set_port_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
         ])
 
         with self.configuring_and_committing():
@@ -1110,7 +984,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_native_vlan(10, 1000)
 
     def test_set_bond_native_vlan_on_an_unknown_mode_with_an_access_vlan_assume_access_mode_and_fails(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport access vlan 2000",
         ])
 
@@ -1122,7 +996,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
     def test_set_bond_native_vlan_on_a_trunk_mode_swithes_to_general(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1135,7 +1009,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_native_vlan(10, 1000)
 
     def test_set_bond_native_vlan_on_a_trunk_mode_swithes_to_general_and_copies_actual_allowed_vlans(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 1201-1203,1205",
         ])
@@ -1150,7 +1024,7 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_native_vlan(10, 1000)
 
     def test_add_trunk_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1165,7 +1039,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_trunk_vlan("ethernet 1/g10", 1000)
 
     def test_add_trunk_vlan_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -1177,7 +1051,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
     def test_add_trunk_vlan_unknown_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1202,7 +1076,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_add_trunk_vlan_to_general_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
         ])
 
@@ -1217,7 +1091,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_trunk_vlan("ethernet 1/g10", 1000)
 
     def test_add_trunk_vlan_without_mode_and_access_vlan_assume_no_mode_set_trunk_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
         ])
 
         with self.configuring_and_committing():
@@ -1232,7 +1106,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_trunk_vlan("ethernet 1/g10", 1000)
 
     def test_add_trunk_vlan_without_mode_with_access_vlan_assume_access_mode_and_fails(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport access vlan 2000",
         ])
 
@@ -1244,7 +1118,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
     def test_remove_trunk_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 1000",
         ])
@@ -1260,7 +1134,7 @@ class DellTest(unittest.TestCase):
         self.switch.remove_trunk_vlan("ethernet 1/g10", 1000)
 
     def test_remove_trunk_vlan_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -1272,7 +1146,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface ethernet 1/g99"))
 
     def test_remove_trunk_vlan_not_set_at_all(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1282,7 +1156,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface ethernet 1/g10"))
 
     def test_remove_trunk_vlan_not_set_in_ranges(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 999,1001",
         ])
@@ -1293,7 +1167,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface ethernet 1/g10"))
 
     def test_remove_trunk_vlan_general_mode_and_in_range(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface ethernet 1/g10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g10").and_return([
             "switchport mode general",
             "switchport general allowed vlan add 999-1001",
         ])
@@ -1309,7 +1183,7 @@ class DellTest(unittest.TestCase):
         self.switch.remove_trunk_vlan("ethernet 1/g10", 1000)
 
     def test_add_bond_trunk_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1324,7 +1198,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_bond_trunk_vlan(10, 1000)
 
     def test_add_bond_trunk_vlan_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -1336,7 +1210,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 99 not found"))
 
     def test_add_bond_trunk_vlan_unknown_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1361,7 +1235,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan 1000 not found"))
 
     def test_add_bond_trunk_vlan_to_general_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general",
         ])
 
@@ -1376,7 +1250,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_bond_trunk_vlan(10, 1000)
 
     def test_add_bond_trunk_vlan_without_mode_and_access_vlan_assume_no_mode_set_trunk_mode(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
         ])
 
         with self.configuring_and_committing():
@@ -1391,7 +1265,7 @@ class DellTest(unittest.TestCase):
         self.switch.add_bond_trunk_vlan(10, 1000)
 
     def test_add_bond_trunk_vlan_without_mode_with_access_vlan_assume_access_mode_and_fails(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport access vlan 2000",
         ])
 
@@ -1403,7 +1277,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Operation cannot be performed on a access mode interface"))
 
     def test_remove_bond_trunk_vlan(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 1000",
         ])
@@ -1419,7 +1293,7 @@ class DellTest(unittest.TestCase):
         self.switch.remove_bond_trunk_vlan(10, 1000)
 
     def test_remove_bond_trunk_vlan_unknown_interface(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 99").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99").and_return([
             "ERROR: Invalid input!",
         ])
 
@@ -1431,7 +1305,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 99 not found"))
 
     def test_remove_bond_trunk_vlan_not_set_at_all(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
         ])
 
@@ -1441,7 +1315,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface port-channel 10"))
 
     def test_remove_bond_trunk_vlan_not_set_in_ranges(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode trunk",
             "switchport trunk allowed vlan add 999,1001",
         ])
@@ -1452,7 +1326,7 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Trunk Vlan is not set on interface port-channel 10"))
 
     def test_remove_bond_trunk_vlan_general_mode_and_in_range(self):
-        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface port-channel 10").and_return([
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
             "switchport mode general",
             "switchport general allowed vlan add 999-1001",
         ])
