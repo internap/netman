@@ -12,24 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from contextlib import contextmanager
 import unittest
+from contextlib import contextmanager
 
-from hamcrest import assert_that, equal_to, is_, instance_of, has_length, none
 import mock
 from flexmock import flexmock, flexmock_teardown
-from netman.adapters.shell.telnet import TelnetClient
+from hamcrest import assert_that, equal_to, is_, instance_of, has_length, none
+
 from netman.adapters.shell.ssh import SshClient
-from netman.adapters.switches.util import SubShell
-from netman.core.objects.interface_states import OFF, ON
-from netman.core.objects.port_modes import ACCESS, TRUNK
+from netman.adapters.shell.telnet import TelnetClient
 from netman.adapters.switches import dell
 from netman.adapters.switches.dell import Dell
-from netman.core.objects.switch_transactional import FlowControlSwitch
+from netman.adapters.switches.util import SubShell
 from netman.core.objects.exceptions import UnknownInterface, BadVlanNumber, \
     BadVlanName, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete
+    VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete, \
+    PrivilegedAccessRefused
+from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.switch_transactional import FlowControlSwitch
 from tests import ignore_deprecation_warnings
 
 
@@ -82,7 +84,8 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=":").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password", use_connect_timeout=True)\
+            .and_return([]).once().ordered()
 
         self.switch.connect()
 
@@ -102,7 +105,8 @@ class DellTest(unittest.TestCase):
         self.mocked_ssh_client = flexmock()
         telnet_client_class_mock.return_value = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=":").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password", use_connect_timeout=True)\
+            .and_return([]).once().ordered()
 
         self.switch.connect()
 
@@ -111,6 +115,27 @@ class DellTest(unittest.TestCase):
             username="the_user",
             password="the_password"
         )
+
+    @mock.patch("netman.adapters.shell.telnet.TelnetClient")
+    def test_enable_with_wrong_password(self, telnet_client_class_mock):
+        self.switch = Dell(
+            SwitchDescriptor(hostname="my.hostname", username="the_user",
+                             password="the_password", model="dell"),
+            shell_factory=telnet_client_class_mock)
+
+        self.mocked_ssh_client = flexmock()
+        telnet_client_class_mock.return_value = self.mocked_ssh_client
+        self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=":")\
+            .and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password", use_connect_timeout=True)\
+            .and_return(['Incorrect Password!']).once().ordered()
+
+        with self.assertRaises(PrivilegedAccessRefused) as expect:
+            self.switch.connect()
+
+        assert_that(str(expect.exception),
+                    equal_to("Could not get PRIVILEGED exec mode. "
+                             "Current read buffer: ['Incorrect Password!']"))
 
     def test_disconnect(self):
         logger = flexmock()

@@ -259,6 +259,13 @@ class CommandTimeout(Exception):
                                              .format(repr(wait_for), buffer))
 
 
+class PrivilegedAccessRefused(Exception):
+    def __init__(self, buffer=None):
+        super(PrivilegedAccessRefused, self).__init__("Could not get PRIVILEGED exec mode. "
+                                                      "Current read buffer: {}".
+                                                      format(buffer))
+
+
 class CouldNotConnect(Exception):
     def __init__(self, host=None, port=None):
         super(CouldNotConnect, self).__init__("Could not connect to {} on port {}".format(host, port))
