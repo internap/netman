@@ -82,7 +82,7 @@ class Dell10GTest(unittest.TestCase):
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=":").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password", use_connect_timeout=True).and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("terminal length 0").and_return([]).once().ordered()
 
         self.switch.connect()
@@ -103,7 +103,7 @@ class Dell10GTest(unittest.TestCase):
         self.mocked_ssh_client = flexmock()
         ssh_client_class_mock.return_value = self.mocked_ssh_client
         self.mocked_ssh_client.should_receive("do").with_args("enable", wait_for=":").and_return([]).once().ordered()
-        self.mocked_ssh_client.should_receive("do").with_args("the_password").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("the_password", use_connect_timeout=True).and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("terminal length 0").and_return([]).once().ordered()
 
         self.switch.connect()

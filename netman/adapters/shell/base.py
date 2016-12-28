@@ -14,7 +14,7 @@
 
 
 class TerminalClient(object):
-    def do(self, command, wait_for=None, include_last_line=False):
+    def do(self, command, wait_for=None, include_last_line=False, use_connect_timeout=False):
         raise NotImplemented()
 
     def send_key(self, key, wait_for=None, include_last_line=False):

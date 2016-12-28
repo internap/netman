@@ -26,7 +26,8 @@ from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.adapters.switches.util import SubShell, no_output, ResultChecker, PageReader
 from netman.core.objects.exceptions import UnknownInterface, BadVlanName, \
     BadVlanNumber, UnknownVlan, InterfaceInWrongPortMode, NativeVlanNotSet, TrunkVlanNotSet, BadInterfaceDescription, \
-    VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete
+    VlanAlreadyExist, UnknownBond, InvalidMtuSize, InterfaceResetIncomplete, \
+    PrivilegedAccessRefused
 from netman.core.objects.switch_base import SwitchBase
 
 
@@ -74,7 +75,10 @@ class Dell(SwitchBase):
         self.shell = self.shell_factory(**params)
 
         self.shell.do("enable", wait_for=":")
-        self.shell.do(self.switch_descriptor.password)
+        password_return = self.shell.do(self.switch_descriptor.password,
+                                        use_connect_timeout=True)
+        if any(["Incorrect Password" in line for line in password_return]):
+            raise PrivilegedAccessRefused(password_return)
 
     def _disconnect(self):
         self.shell.quit("quit")
