@@ -75,8 +75,7 @@ class Dell(SwitchBase):
         self.shell = self.shell_factory(**params)
 
         self.shell.do("enable", wait_for=":")
-        password_return = self.shell.do(self.switch_descriptor.password,
-                                        use_connect_timeout=True)
+        password_return = self.shell.do(self.switch_descriptor.password)
         if any(["Incorrect Password" in line for line in password_return]):
             raise PrivilegedAccessRefused(password_return)
 

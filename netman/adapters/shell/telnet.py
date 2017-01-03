@@ -35,10 +35,9 @@ class TelnetClient(TerminalClient):
         self.telnet = self._connect()
         self._login(username, password)
 
-    def do(self, command, wait_for=None, include_last_line=False, use_connect_timeout=False):
+    def do(self, command, wait_for=None, include_last_line=False):
         self.telnet.write(str(command) + "\r\n")
-        timeout = self.connect_timeout if use_connect_timeout else None
-        result = self._read_until(wait_for, timeout)
+        result = self._read_until(wait_for)
 
         return _filter_input_and_empty_lines(command, include_last_line, result)
 
@@ -63,19 +62,19 @@ class TelnetClient(TerminalClient):
         result = self._wait_for_successful_login()
         self.full_log += result[len(password):].lstrip()
 
-    def _read_until(self, wait_for, timeout=None):
+    def _read_until(self, wait_for):
         expect = wait_for or self.prompt
         if isinstance(expect, basestring):
             expect = [expect]
         expect = ["{}$".format(re.escape(s)) for s in list(expect)]
 
-        result = self._wait_for(expect, timeout)
+        result = self._wait_for(expect)
         self.full_log += result
 
         return result
 
-    def _wait_for(self, expect, timeout=None):
-        result = self.telnet.expect(expect, timeout=timeout or self.command_timeout)
+    def _wait_for(self, expect):
+        result = self.telnet.expect(expect, timeout=self.command_timeout)
         if result[0] == -1:
             raise CommandTimeout(expect)
         return result[2]

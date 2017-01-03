@@ -34,7 +34,7 @@ class SshClient(TerminalClient):
         self.username = username
         self.prompt = prompt
         self.command_timeout = command_timeout or shell.default_command_timeout
-        self.connect_timeout = connect_timeout or shell.default_connect_timeout
+        connect_timeout = connect_timeout or shell.default_connect_timeout
         self.reading_interval = reading_interval
         self.reading_chunk_size = reading_chunk_size
 
@@ -43,15 +43,13 @@ class SshClient(TerminalClient):
         self.channel = None
         self.full_log = ""
 
-        self._open_channel(host, port, username, password, self.connect_timeout)
+        self._open_channel(host, port, username, password, connect_timeout)
 
-    def do(self, command, wait_for=None, include_last_line=False, use_connect_timeout=False):
+    def do(self, command, wait_for=None, include_last_line=False):
         self.logger.debug("[SSH][{}@{}:{}] Send >> {}".format(self.username, self.host, self.port, command))
 
         self.channel.send(command + '\n')
-
-        timeout = self.connect_timeout if use_connect_timeout else None
-        return self._read_until(wait_for, include_last_line, timeout)
+        return self._read_until(wait_for, include_last_line)
 
     def send_key(self, key, wait_for=None, include_last_line=False):
         self.logger.debug("[SSH][{}@{}:{}] Send KEY >> {}".format(self.username, self.host, self.port, key))
@@ -87,8 +85,8 @@ class SshClient(TerminalClient):
 
         self._wait_for(self.prompt)
 
-    def _read_until(self, wait_for, include_last_line, timeout=None):
-        self._wait_for(wait_for or self.prompt, timeout)
+    def _read_until(self, wait_for, include_last_line):
+        self._wait_for(wait_for or self.prompt)
 
         lines = self.current_buffer.splitlines()[1:]
         if not include_last_line:
@@ -96,13 +94,13 @@ class SshClient(TerminalClient):
 
         return filter(None, lines)
 
-    def _wait_for(self, wait_for, timeout=None):
+    def _wait_for(self, wait_for):
         self.current_buffer = ''
 
         started_at = time.time()
         while not self.current_buffer.endswith(wait_for):
             while not self.channel.recv_ready():
-                if time.time() - started_at > (timeout or self.command_timeout):
+                if time.time() - started_at > self.command_timeout:
                     raise CommandTimeout(wait_for, self.current_buffer)
                 time.sleep(self.reading_interval)
 
