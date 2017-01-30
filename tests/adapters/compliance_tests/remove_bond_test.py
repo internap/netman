@@ -19,7 +19,7 @@ class RemoveBondTest(ComplianceTestCase):
         self.client.remove_bond(42)
 
         with self.assertRaises(UnknownBond):
-            assert_that(self.client.get_bond(42))
+            self.client.get_bond(42)
 
     def test_removes_bond_from_get_bonds(self):
         self.client.remove_bond(42)

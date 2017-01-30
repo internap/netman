@@ -11,7 +11,7 @@ class ResetInterfaceTest(ComplianceTestCase):
 
     def setUp(self):
         super(ResetInterfaceTest, self).setUp()
-        self.interface_before = self.try_to.get_interface(self.test_port)
+        self.interface_before = self.client.get_interface(self.test_port)
 
     def tearDown(self):
         self.janitor.remove_vlan(90)
