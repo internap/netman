@@ -48,3 +48,6 @@ class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
 
     def set_native_vlan_id_node(self, interface_node, native_vlan_id_node):
         return interface_node.xpath("//interface")[0].append(native_vlan_id_node)
+
+    def get_protocols_interface_name(self, interface_name):
+        return interface_name

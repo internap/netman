@@ -4578,7 +4578,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4593,7 +4593,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                 </interface>
               </rstp>
             </protocols>
@@ -4629,7 +4629,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4644,7 +4644,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <edge/>
                   <no-root-port/>
                 </interface>
@@ -4668,7 +4668,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4683,7 +4683,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <edge/>
                 </interface>
               </rstp>
@@ -4719,7 +4719,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4734,7 +4734,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <no-root-port />
                 </interface>
               </rstp>
@@ -4770,7 +4770,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4785,7 +4785,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <edge/>
                   <no-root-port/>
                 </interface>
@@ -4823,7 +4823,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4838,7 +4838,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <edge/>
                 </interface>
               </rstp>
@@ -4874,7 +4874,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4889,7 +4889,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <no-root-port />
                 </interface>
               </rstp>
@@ -4925,7 +4925,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -4940,7 +4940,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                 </interface>
               </rstp>
             </protocols>
@@ -4962,7 +4962,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ge-0/0/99</name>
+                      <name>ge-0/0/99.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -5252,7 +5252,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ae10</name>
+                      <name>ae10.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -5291,7 +5291,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ae10</name>
+                      <name>ae10.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -5309,7 +5309,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ae10</name>
+                  <name>ae10.0</name>
                   <edge/>
                   <no-root-port/>
                 </interface>
@@ -5346,7 +5346,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ae7</name>
+                      <name>ae7.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -5367,7 +5367,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <rstp>
                     <interface>
-                      <name>ae10</name>
+                      <name>ae10.0</name>
                     </interface>
                   </rstp>
                 </protocols>
@@ -5483,7 +5483,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <rstp>
                 <interface>
-                  <name>ge-0/0/1</name>
+                  <name>ge-0/0/1.0</name>
                   <edge />
                 </interface>
               </rstp>
@@ -5590,6 +5590,74 @@ class JuniperTest(unittest.TestCase):
 
         with self.assertRaises(UnknownInterface):
             self.switch.add_interface_to_bond('ge-0/0/99', 10)
+
+    def test_add_interface_to_bond_removing_protocols_avoid_deleting_other_interfaces(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <vlans/>
+                <protocols>
+                  <rstp>
+                    <interface />
+                  </rstp>
+                </protocols>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>ae10</name>
+                <aggregated-ether-options>
+                  <link-speed>1g</link-speed>
+                </aggregated-ether-options>
+              </interface>
+              <interface>
+                <name>ge-0/0/1</name>
+              </interface>
+            </interfaces>
+            <vlans/>
+            <protocols>
+              <rstp>
+                <interface>
+                  <name>ge-0/0/1.0</name>
+                  <edge />
+                </interface>
+                <interface>
+                  <name>ge-0/0/10.0</name>
+                  <edge />
+                </interface>
+              </rstp>
+            </protocols>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface operation="replace">
+                    <name>ge-0/0/1</name>
+                    <ether-options>
+                      <ieee-802.3ad>
+                        <bundle>ae10</bundle>
+                      </ieee-802.3ad>
+                      <speed>
+                        <ethernet-1g/>
+                      </speed>
+                    </ether-options>
+                  </interface>
+                </interfaces>
+                <protocols>
+                  <rstp>
+                    <interface operation="delete">
+                      <name>ge-0/0/1</name>
+                    </interface>
+                  </rstp>
+                </protocols>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.add_interface_to_bond('ge-0/0/1', 10)
 
     def test_remove_interface_from_bond(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
@@ -5997,7 +6065,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <lldp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </lldp>
                 </protocols>
@@ -6039,7 +6107,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <lldp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </lldp>
                 </protocols>
@@ -6077,7 +6145,7 @@ class JuniperTest(unittest.TestCase):
                     <protocols>
                       <lldp>
                         <interface>
-                          <name>ge-0/0/99</name>
+                          <name>ge-0/0/99.0</name>
                         </interface>
                       </lldp>
                     </protocols>
@@ -6118,7 +6186,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <lldp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </lldp>
                 </protocols>
@@ -6133,7 +6201,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <lldp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <disable/>
                 </interface>
               </lldp>
@@ -6169,7 +6237,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <lldp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </lldp>
                 </protocols>
@@ -6184,7 +6252,7 @@ class JuniperTest(unittest.TestCase):
             <protocols>
               <lldp>
                 <interface>
-                  <name>ge-0/0/6</name>
+                  <name>ge-0/0/6.0</name>
                   <disable/>
                 </interface>
               </lldp>
@@ -6207,7 +6275,7 @@ class JuniperTest(unittest.TestCase):
                 <protocols>
                   <lldp>
                     <interface>
-                      <name>ge-0/0/6</name>
+                      <name>ge-0/0/6.0</name>
                     </interface>
                   </lldp>
                 </protocols>

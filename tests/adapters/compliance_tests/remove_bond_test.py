@@ -46,6 +46,3 @@ class RemoveBondTest(ComplianceTestCase):
     def test_raises_on_out_of_range_bond_number(self):
         with self.assertRaises(UnknownBond):
             self.client.remove_bond(999)
-
-
-
