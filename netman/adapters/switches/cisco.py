@@ -23,12 +23,13 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, UnknownVrf, VlanVrfNotSet, IPAlreadySet, VrrpAlreadyExistsForVlan, BadVrrpGroupNumber, \
     BadVrrpPriorityNumber, VrrpDoesNotExistForVlan, BadVrrpTimers, BadVrrpTracking, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, UnknownBond, InvalidAccessGroupName
+    VlanAlreadyExist, UnknownBond, InvalidAccessGroupName, InvalidUnicastRPFMode, UnsupportedOperation
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import DYNAMIC, ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from netman.core.objects.unicast_rpf_modes import STRICT
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
 
@@ -455,6 +456,28 @@ class Cisco(SwitchBase):
 
         return versions
 
+    def set_vlan_unicast_rpf_mode(self, vlan_number, mode):
+        operations = {STRICT: self._set_unicast_rpf_strict}
+
+        if mode not in operations:
+            raise InvalidUnicastRPFMode(mode)
+
+        self.get_vlan_interface_data(vlan_number)
+
+        with self.config(), self.interface_vlan(vlan_number):
+            operations[mode]()
+
+    def unset_vlan_unicast_rpf_mode(self, vlan_number):
+        self.get_vlan_interface_data(vlan_number)
+
+        with self.config(), self.interface_vlan(vlan_number):
+            self.ssh.do('no ip verify unicast')
+
+    def _set_unicast_rpf_strict(self):
+        result = self.ssh.do('ip verify unicast source reachable-via rx')
+        if len(result) > 0:
+            raise UnsupportedOperation("Unicast RPF Mode Strict", "\n".join(result))
+
 
 def parse_interface(data):
     if data and (regex.match("interface (\w*Ethernet[^\s]*)", data[0])
@@ -530,6 +553,9 @@ def apply_interface_running_config_data(vlan, data):
 
         elif regex.match("^ no ip redirects", line):
             vlan.icmp_redirects = False
+
+        elif regex.match("^ ip verify unicast source reachable-via rx", line):
+            vlan.unicast_rpf_mode = STRICT
 
 
 def apply_vlan_running_config_data(vlan, data):

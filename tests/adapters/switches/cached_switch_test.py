@@ -25,6 +25,7 @@ from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.unicast_rpf_modes import STRICT
 from netman.core.objects.vlan import Vlan
 from netman.core.objects.vrrp_group import VrrpGroup
 
@@ -867,6 +868,34 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(
             self.switch.get_vlans(),
             is_([Vlan(2, icmp_redirects=False)]))
+
+    def test_set_vlan_unicast_rpf_mode(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(2)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive('set_vlan_unicast_rpf_mode').once() \
+            .with_args(2, STRICT)
+
+        self.switch.set_vlan_unicast_rpf_mode(2, STRICT)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(2, unicast_rpf_mode=STRICT)]))
+
+    def test_unset_vlan_unicast_rpf_mode(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(2, unicast_rpf_mode=STRICT)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive('unset_vlan_unicast_rpf_mode').once() \
+            .with_args(2)
+
+        self.switch.unset_vlan_unicast_rpf_mode(2)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(2, unicast_rpf_mode=None)]))
 
     def test_get_versions(self):
         self.real_switch_mock.should_receive("get_versions").once().and_return({"v": "1.0"})

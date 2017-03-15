@@ -14,6 +14,7 @@
 
 from fake_switches.brocade.brocade_core import BrocadeSwitchCore
 from fake_switches.cisco.cisco_core import CiscoSwitchCore
+from fake_switches.cisco6500.cisco_core import Cisco6500SwitchCore
 from fake_switches.dell.dell_core import DellSwitchCore
 from fake_switches.dell10g.dell_core import Dell10GSwitchCore
 from fake_switches.juniper.juniper_core import JuniperSwitchCore
@@ -35,6 +36,25 @@ available_models = [
         "test_port_name": "FastEthernet0/3",
         "test_vrrp_track_id": "101",
         "core_class": CiscoSwitchCore,
+        "service_class": SwitchSshService,
+        "ports": [
+            Port("FastEthernet0/1"),
+            Port("FastEthernet0/2"),
+            Port("FastEthernet0/3"),
+            Port("FastEthernet0/4"),
+        ]
+    },
+    {
+        "switch_descriptor": SwitchDescriptor(
+            model="cisco",
+            hostname="127.0.0.1",
+            port=11014,
+            username="root",
+            password="root",
+        ),
+        "test_port_name": "FastEthernet0/4",
+        "test_vrrp_track_id": "102",
+        "core_class": Cisco6500SwitchCore,
         "service_class": SwitchSshService,
         "ports": [
             Port("FastEthernet0/1"),

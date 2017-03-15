@@ -20,7 +20,7 @@ from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
-    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int
+    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode
 from netman.core.objects.interface_states import OFF, ON
 
 
@@ -45,6 +45,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/dhcp-relay-server/<ip_network>', view_func=self.remove_dhcp_relay_server, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/arp-routing', view_func=self.set_vlan_arp_routing_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/icmp-redirects', view_func=self.set_vlan_icmp_redirects_state, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/unicast-rpf-mode', view_func=self.set_vlan_unicast_rpf_mode, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/unicast-rpf-mode', view_func=self.unset_vlan_unicast_rpf_mode, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces', view_func=self.get_interfaces, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.reset_interface, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.get_interface, methods=['GET'])
@@ -1030,4 +1032,34 @@ class SwitchApi(SwitchApiBase):
 
         switch.set_vlan_icmp_redirects_state(vlan_number, state)
 
+        return 204, None
+
+    @to_response
+    @content(is_unincast_rpf_mode)
+    @resource(Switch, Vlan)
+    def set_vlan_unicast_rpf_mode(self, switch, vlan_number, mode):
+        """
+        Sets the Unicast RPF state of an interface *only strict is supported*
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        :body:
+            ``STRICT``
+        """
+
+        switch.set_vlan_unicast_rpf_mode(vlan_number, mode)
+
+        return 204, None
+
+    @to_response
+    @resource(Switch, Vlan)
+    def unset_vlan_unicast_rpf_mode(self, switch, vlan_number):
+        """
+        Remove Unicast RPF configuration of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        """
+
+        switch.unset_vlan_unicast_rpf_mode(vlan_number)
         return 204, None
