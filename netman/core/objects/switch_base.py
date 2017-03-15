@@ -198,6 +198,12 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         raise NotImplementedError()
 
+    def set_vlan_unicast_rpf_mode(self, vlan_number, mode):
+        raise NotImplementedError()
+
+    def unset_vlan_unicast_rpf_mode(self, vlan_number):
+        raise NotImplementedError()
+
     def get_versions(self):
         raise NotImplementedError()
 

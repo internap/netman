@@ -25,6 +25,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownResource, BadVlanNumber,\
     BadVlanName, BadBondNumber, BadBondLinkSpeed, MalformedSwitchSessionRequest, \
     BadVrrpGroupNumber
+from netman.core.objects.unicast_rpf_modes import STRICT
 
 
 def resource(*validators):
@@ -310,7 +311,6 @@ def is_access_group_name(data, **_):
 
     return {'access_group_name': data}
 
-
 def is_vrf_name(data, **_):
     if data == "" or " " in data:
         raise BadRequest('Malformed VRF name')
@@ -340,6 +340,13 @@ def is_bond(data, **_):
     return {
         'bond_number': is_bond_number(json_data["number"])['bond_number'],
     }
+
+
+def is_unincast_rpf_mode(data, **_):
+    if data not in [STRICT]:
+        raise BadRequest('Invalid unicast rpf mode')
+
+    return {'mode': data}
 
 
 def is_bond_link_speed(data, **_):

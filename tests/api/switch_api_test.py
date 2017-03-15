@@ -20,6 +20,7 @@ from netaddr.ip import IPAddress
 
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_descriptor import SwitchDescriptor
+from netman.core.objects.unicast_rpf_modes import STRICT
 from netman.core.objects.vrrp_group import VrrpGroup
 from tests import ExactIpNetwork
 from tests.api import matches_fixture, open_fixture
@@ -64,7 +65,8 @@ class SwitchApiTest(BaseApiTest):
                  ],
                  dhcp_relay_servers=[IPAddress("10.10.10.1")],
                  arp_routing=True,
-                 icmp_redirects=True),
+                 icmp_redirects=True,
+                 unicast_rpf_mode=STRICT),
             Vlan(1, "One", [IPNetwork('1.1.1.1/24')], vrf_forwarding="MY_VRF", access_group_in="Blah_blah",
                  vrrp_groups=[
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
@@ -72,7 +74,7 @@ class SwitchApiTest(BaseApiTest):
                  ],
                  arp_routing=None,
                  icmp_redirects=False),
-            ]).once().ordered()
+        ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/vlans")
@@ -152,7 +154,7 @@ class SwitchApiTest(BaseApiTest):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_interface').with_args('ethernet 1/INEXISTENT').and_raise(
-                UnknownInterface("ethernet 1/INEXISTENT")
+            UnknownInterface("ethernet 1/INEXISTENT")
         ).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -169,7 +171,7 @@ class SwitchApiTest(BaseApiTest):
             Interface(name="GigabitEthernet0/6", shutdown=False, port_mode=DYNAMIC, access_vlan=1999, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], auto_negotiation=True),
             Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], mtu=1500),
             Interface(name="GigabitEthernet0/8", shutdown=False, bond_master=12, port_mode=BOND_MEMBER, trunk_native_vlan=None, trunk_vlans=[], auto_negotiation=False),
-            ]).once().ordered()
+        ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/interfaces")
@@ -948,7 +950,7 @@ class SwitchApiTest(BaseApiTest):
                                      "id": 2,
                                      "ips": ["10.10.0.1", "10.10.0.2", "10.10.0.3"],
                                      "priority": 100,
-                                     })
+                                 })
 
         assert_that(code, equal_to(201))
 
@@ -1201,7 +1203,7 @@ class SwitchApiTest(BaseApiTest):
                 port_mode=TRUNK,
                 trunk_native_vlan=2999,
                 trunk_vlans=[3001, 3000, 3002]),
-            ])
+        ])
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/bonds")
@@ -1254,7 +1256,7 @@ class SwitchApiTest(BaseApiTest):
                 port_mode=TRUNK,
                 trunk_native_vlan=2999,
                 trunk_vlans=[3001, 3000, 3002]),
-            ])
+        ])
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/bonds",
@@ -1424,7 +1426,7 @@ class SwitchApiTest(BaseApiTest):
     def test_get_versions(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
-        self.switch_mock.should_receive('get_versions').once().ordered()\
+        self.switch_mock.should_receive('get_versions').once().ordered() \
             .and_return(json.load(open_fixture("get_switch_hostname_versions.json")))
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -1462,7 +1464,7 @@ class SwitchApiTest(BaseApiTest):
             "error": "Unknown interface SHIZZLE",
             "error-module": UnknownInterface.__module__,
             "error-class": UnknownInterface.__name__,
-            }))
+        }))
 
     def test_raised_base_exceptions_are_marshalled_correctly(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
@@ -1479,7 +1481,7 @@ class SwitchApiTest(BaseApiTest):
         assert_that(result, is_({
             "error": "ERMAHGERD",
             "error-class": "Exception",
-            }))
+        }))
 
     def test_raised_not_implemented_error_are_marshalled_correctly(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
@@ -1496,7 +1498,7 @@ class SwitchApiTest(BaseApiTest):
         assert_that(result, is_({
             "error": "",
             "error-class": "NotImplementedError",
-            }))
+        }))
 
     def test_open_session(self):
         session_id = 'patate'
@@ -1643,7 +1645,7 @@ class SwitchApiTest(BaseApiTest):
             'error': 'Vlan 2500 not found',
             "error-module": UnknownVlan.__module__,
             "error-class": UnknownVlan.__name__,
-            }))
+        }))
 
     def test_an_error_without_a_message_is_given_one_containing_the_error_name_and_module(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()

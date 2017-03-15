@@ -33,6 +33,7 @@ from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.switch_transactional import FlowControlSwitch
+from netman.core.objects.unicast_rpf_modes import STRICT
 from tests import ignore_deprecation_warnings
 
 
@@ -119,6 +120,7 @@ class CiscoTest(unittest.TestCase):
             " ip address 2.1.1.1 255.255.255.0 secondary",
             " ip address 3.1.1.1 255.255.255.0 secondary",
             " ip access-group GAGA out",
+            " ip verify unicast source reachable-via rx",
             " no ip proxy-arp",
             " standby 1 ip 1.1.1.2",
             " standby 1 ip 2.1.1.2 secondary",
@@ -147,6 +149,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan_list[1].access_groups[IN], equal_to(None))
         assert_that(vlan_list[1].access_groups[OUT], equal_to(None))
         assert_that(len(vlan_list[1].ips), equal_to(0))
+        assert_that(vlan_list[1].unicast_rpf_mode, equal_to(None))
 
         assert_that(vlan_list[2].vrf_forwarding, equal_to("BLAH"))
         assert_that(vlan_list[2].access_groups[IN], equal_to("SHIZZLE"))
@@ -161,6 +164,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(len(v3.ips), equal_to(3))
         assert_that(v3.arp_routing, equal_to(False))
         assert_that(v3.icmp_redirects, equal_to(True))
+        assert_that(v3.unicast_rpf_mode, equal_to(STRICT))
 
         v3.ips = sorted(v3.ips, key=lambda ip: (ip.value, ip.prefixlen))
         assert_that(str(v3.ips[0].ip), equal_to('1.1.1.1'))
@@ -239,6 +243,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.ips, is_(empty()))
         assert_that(vlan.vrrp_groups, is_(empty()))
         assert_that(vlan.dhcp_relay_servers, is_(empty()))
+        assert_that(vlan.unicast_rpf_mode, is_(None))
         assert_that(vlan.arp_routing, is_(True))
 
     def test_get_vlan_with_a_full_interface(self):
@@ -256,6 +261,7 @@ class CiscoTest(unittest.TestCase):
             " ip address 3.1.1.1 255.255.255.0 secondary",
             " ip access-group ACL-IN in",
             " ip access-group ACL-OUT out",
+            " ip verify unicast source reachable-via rx",
             " no ip proxy-arp",
             " standby 1 ip 1.1.1.2",
             " standby 1 ip 2.1.1.2 secondary",
@@ -281,6 +287,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.ips, has_length(3))
         assert_that(vlan.arp_routing, is_(False))
         assert_that(vlan.icmp_redirects, is_(False))
+        assert_that(vlan.unicast_rpf_mode, is_(STRICT))
 
         vrrp_group = vlan.vrrp_groups[0]
         assert_that(len(vrrp_group.ips), equal_to(3))

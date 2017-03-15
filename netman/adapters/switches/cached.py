@@ -377,6 +377,14 @@ class CachedSwitch(SwitchBase):
         self.real_switch.set_vlan_icmp_redirects_state(vlan_number, state)
         self.vlans_cache[vlan_number].icmp_redirects = state
 
+    def set_vlan_unicast_rpf_mode(self, vlan_number, mode):
+        self.real_switch.set_vlan_unicast_rpf_mode(vlan_number, mode)
+        self.vlans_cache[vlan_number].unicast_rpf_mode = mode
+
+    def unset_vlan_unicast_rpf_mode(self, vlan_number):
+        self.real_switch.unset_vlan_unicast_rpf_mode(vlan_number)
+        self.vlans_cache[vlan_number].unicast_rpf_mode = None
+
     def get_versions(self):
         if self.versions_cache.refresh_items:
             self.versions_cache = Cache([(0, self.real_switch.get_versions())])

@@ -309,6 +309,13 @@ class RemoteSwitch(SwitchBase):
         self.put('/vlans/{}/icmp-redirects'.format(vlan_number),
                  raw_data=_get_json_boolean(state))
 
+    def set_vlan_unicast_rpf_mode(self, vlan_number, mode):
+        self.put('/vlans/{}/unicast-rpf-mode'.format(vlan_number),
+                 raw_data=str(mode))
+
+    def unset_vlan_unicast_rpf_mode(self, vlan_number):
+        self.delete('/vlans/{}/unicast-rpf-mode'.format(vlan_number))
+
     def get_versions(self):
         return self.get("/versions").json()
 

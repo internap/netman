@@ -279,3 +279,13 @@ class InvalidAccessGroupName(InvalidValue):
 class InvalidMtuSize(InvalidValue):
     def __init__(self, err_msg=None):
         super(InvalidMtuSize, self).__init__("MTU value is invalid : {}".format(err_msg))
+
+
+class InvalidUnicastRPFMode(InvalidValue):
+    def __init__(self, mode=None):
+        super(InvalidUnicastRPFMode, self).__init__("Unknown Unicast RPF mode: \"{}\"".format(mode))
+
+
+class UnsupportedOperation(NotImplementedError):
+    def __init__(self, operation=None, message=None):
+        super(UnsupportedOperation, self).__init__("Operation \"{}\" is not supported on this equipment: {}".format(operation, message))
