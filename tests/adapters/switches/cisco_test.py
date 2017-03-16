@@ -119,6 +119,7 @@ class CiscoTest(unittest.TestCase):
             " ip address 2.1.1.1 255.255.255.0 secondary",
             " ip address 3.1.1.1 255.255.255.0 secondary",
             " ip access-group GAGA out",
+            " no ip proxy-arp",
             " standby 1 ip 1.1.1.2",
             " standby 1 ip 2.1.1.2 secondary",
             " standby 1 ip 3.1.1.2 secondary",
@@ -158,6 +159,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(v3.access_groups[IN], equal_to(None))
         assert_that(v3.access_groups[OUT], equal_to("GAGA"))
         assert_that(len(v3.ips), equal_to(3))
+        assert_that(v3.arp_routing, equal_to(False))
         assert_that(v3.icmp_redirects, equal_to(True))
 
         v3.ips = sorted(v3.ips, key=lambda ip: (ip.value, ip.prefixlen))
@@ -237,6 +239,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.ips, is_(empty()))
         assert_that(vlan.vrrp_groups, is_(empty()))
         assert_that(vlan.dhcp_relay_servers, is_(empty()))
+        assert_that(vlan.arp_routing, is_(True))
 
     def test_get_vlan_with_a_full_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1750 | begin vlan").and_return([
@@ -253,6 +256,7 @@ class CiscoTest(unittest.TestCase):
             " ip address 3.1.1.1 255.255.255.0 secondary",
             " ip access-group ACL-IN in",
             " ip access-group ACL-OUT out",
+            " no ip proxy-arp",
             " standby 1 ip 1.1.1.2",
             " standby 1 ip 2.1.1.2 secondary",
             " standby 1 ip 3.1.1.2 secondary",
@@ -275,6 +279,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.access_groups[OUT], is_("ACL-OUT"))
         assert_that(vlan.vrf_forwarding, is_("SHIZZLE"))
         assert_that(vlan.ips, has_length(3))
+        assert_that(vlan.arp_routing, is_(False))
         assert_that(vlan.icmp_redirects, is_(False))
 
         vrrp_group = vlan.vrrp_groups[0]

@@ -192,6 +192,9 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_interface_lldp_state(self, interface_id, enabled):
         raise NotImplementedError()
 
+    def set_vlan_arp_routing_state(self, vlan_number, state):
+        raise NotImplementedError()
+
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         raise NotImplementedError()
 

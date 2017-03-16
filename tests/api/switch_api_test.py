@@ -63,12 +63,14 @@ class SwitchApiTest(BaseApiTest):
                      VrrpGroup(id=2, ips=[IPAddress('3.3.3.1')], priority=100)
                  ],
                  dhcp_relay_servers=[IPAddress("10.10.10.1")],
+                 arp_routing=True,
                  icmp_redirects=True),
             Vlan(1, "One", [IPNetwork('1.1.1.1/24')], vrf_forwarding="MY_VRF", access_group_in="Blah_blah",
                  vrrp_groups=[
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
                                track_id='101', track_decrement=50)
                  ],
+                 arp_routing=None,
                  icmp_redirects=False),
             ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
@@ -87,6 +89,7 @@ class SwitchApiTest(BaseApiTest):
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
                                track_id='101', track_decrement=50)
                  ],
+                 arp_routing=True,
                  icmp_redirects=False),
         ).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
