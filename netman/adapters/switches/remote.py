@@ -12,23 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import __builtin__
 import importlib
 import json
-import __builtin__
 import uuid
 import warnings
 
 import requests
+
 from netman import raw_or_json
 from netman.api import NETMAN_API_VERSION
-
-from netman.core.objects.exceptions import NetmanException, UnknownSession
+from netman.api.objects import bond
+from netman.api.objects import interface
+from netman.api.objects import vlan
 from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.exceptions import NetmanException, UnknownSession
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.switch_base import SwitchBase
-from netman.api.objects import vlan
-from netman.api.objects import interface
-from netman.api.objects import bond
 
 
 def factory(switch_descriptor):
@@ -300,6 +300,10 @@ class RemoteSwitch(SwitchBase):
     def set_interface_lldp_state(self, interface_id, enabled):
         self.put("/interfaces/{}/lldp".format(interface_id),
                  raw_data=_get_json_boolean(enabled))
+
+    def set_vlan_arp_routing_state(self, vlan_number, state):
+        self.put('/vlans/{}/arp-routing'.format(vlan_number),
+                 raw_data='true' if state is ON else 'false')
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
         self.put('/vlans/{}/icmp-redirects'.format(vlan_number),

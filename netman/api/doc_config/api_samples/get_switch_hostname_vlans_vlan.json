@@ -21,5 +21,6 @@
       }
    ],
    "dhcp_relay_servers": [],
+   "arp_routing": true,
    "icmp_redirects": false
 }

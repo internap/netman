@@ -31,6 +31,7 @@ def to_api(vlan):
             "out": vlan.access_groups[OUT]
         },
         dhcp_relay_servers=[str(server) for server in vlan.dhcp_relay_servers],
+        arp_routing=vlan.arp_routing,
         icmp_redirects=vlan.icmp_redirects,
     )
 

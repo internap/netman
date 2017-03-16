@@ -840,6 +840,20 @@ class CacheSwitchTest(unittest.TestCase):
 
         self.switch.set_interface_lldp_state('xe-1/0/2', True)
 
+    def test_set_vlan_arp_routing_state(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(2)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive('set_vlan_arp_routing_state').once() \
+            .with_args(2, OFF)
+
+        self.switch.set_vlan_arp_routing_state(2, OFF)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(2, arp_routing=False)]))
+
     def test_set_vlan_icmp_redirects_state(self):
         self.real_switch_mock.should_receive("get_vlans").once() \
             .and_return([Vlan(2)])

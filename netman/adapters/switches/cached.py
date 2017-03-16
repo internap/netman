@@ -397,3 +397,7 @@ class CachedSwitch(SwitchBase):
     def unset_bond_mtu(self, bond_number):
         self.real_switch.unset_bond_mtu(bond_number)
         self.bonds_cache[bond_number].mtu = None
+
+    def set_vlan_arp_routing_state(self, vlan_number, state):
+        self.real_switch.set_vlan_arp_routing_state(vlan_number, state)
+        self.vlans_cache[vlan_number].arp_routing = (state == ON)

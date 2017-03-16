@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from functools import wraps
 import json
 import logging
-from os.path import join
 import re
+from functools import wraps
 
-from netaddr import IPNetwork, AddrFormatError, IPAddress
 from flask import request
+from netaddr import IPNetwork, AddrFormatError, IPAddress
 
 from netman.api.api_utils import BadRequest, MultiContext
 from netman.core.objects.access_groups import IN, OUT
