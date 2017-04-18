@@ -166,7 +166,6 @@ class VlanManagementTest(ConfiguredTestCase):
         with self.assertRaises(UnknownResource):
             self.client.remove_trunk_vlan(self.test_port, vlan=2999)
 
-
     @skip_on_switches("juniper", "juniper_qfx_copper")
     def test_invalid_interface_parameter_fails(self):
         with self.assertRaises(UnknownInterface):
@@ -236,5 +235,3 @@ class VlanManagementTest(ConfiguredTestCase):
         self.janitor.remove_vlan(2999)
         self.janitor.set_access_mode(self.test_port)
         super(VlanManagementTest, self).tearDown()
-
-

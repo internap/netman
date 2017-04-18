@@ -15,7 +15,6 @@ from unittest import TestCase
 
 from flexmock import flexmock
 from hamcrest import assert_that, is_
-from mock import patch, Mock
 
 from netman.core.objects.exceptions import NetmanException
 from netman.core.objects.switch_base import SwitchBase
@@ -102,6 +101,3 @@ class SwitchTransactionalTest(TestCase):
                 raise AssertionError("I'm not in a transaction")
             return "Good"
         return transactional_method
-
-
-

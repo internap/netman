@@ -311,6 +311,7 @@ def is_access_group_name(data, **_):
 
     return {'access_group_name': data}
 
+
 def is_vrf_name(data, **_):
     if data == "" or " " in data:
         raise BadRequest('Malformed VRF name')

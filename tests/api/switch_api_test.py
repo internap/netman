@@ -168,9 +168,11 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('connect').once().ordered()
         self.switch_mock.should_receive('get_interfaces').and_return([
             Interface(name="FastEthernet0/3", shutdown=True, port_mode=ACCESS, access_vlan=1999),
-            Interface(name="GigabitEthernet0/6", shutdown=False, port_mode=DYNAMIC, access_vlan=1999, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], auto_negotiation=True),
+            Interface(name="GigabitEthernet0/6", shutdown=False, port_mode=DYNAMIC, access_vlan=1999, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002],
+                      auto_negotiation=True),
             Interface(name="ethernet 1/4", shutdown=False, port_mode=TRUNK, trunk_native_vlan=2999, trunk_vlans=[3001, 3000, 3002], mtu=1500),
-            Interface(name="GigabitEthernet0/8", shutdown=False, bond_master=12, port_mode=BOND_MEMBER, trunk_native_vlan=None, trunk_vlans=[], auto_negotiation=False),
+            Interface(name="GigabitEthernet0/8", shutdown=False, bond_master=12, port_mode=BOND_MEMBER, trunk_native_vlan=None, trunk_vlans=[],
+                      auto_negotiation=False),
         ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -354,20 +356,20 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('get_vlans').once().ordered().and_return([Vlan(1, "One"), Vlan(2, "Two")])
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model':'cisco', 'Netman-Username':'root',
-                                                                      'Netman-Password':'password'})
+        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model': 'cisco', 'Netman-Username': 'root',
+                                                                      'Netman-Password': 'password'})
         assert_that(code, equal_to(200))
 
     def test_anonymous_switch_all_headers_set(self):
-        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model':'cisco'})
+        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model': 'cisco'})
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'For anonymous switch usage, please specify headers: Netman-Model, Netman-Username and Netman-Password.'}))
 
-        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Username':'root'})
+        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Username': 'root'})
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'For anonymous switch usage, please specify headers: Netman-Model, Netman-Username and Netman-Password.'}))
 
-        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Password':'password'})
+        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Password': 'password'})
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'For anonymous switch usage, please specify headers: Netman-Model, Netman-Username and Netman-Password.'}))
 
@@ -383,13 +385,13 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('get_vlans').and_return([Vlan(1, "One"), Vlan(2, "Two")]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
-        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model':'cisco', 'Netman-Username':'root',
-                                                                      'Netman-Password':'password', 'Netman-Port':'830'})
+        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model': 'cisco', 'Netman-Username': 'root',
+                                                                      'Netman-Password': 'password', 'Netman-Port': '830'})
         assert_that(code, equal_to(200))
 
     def test_anonymous_switch_port_has_to_be_integer(self):
-        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model':'cisco', 'Netman-Username':'root',
-                                                                      'Netman-Password':'password', 'Netman-Port':'bleh'})
+        result, code = self.get("/switches/my.switch/vlans", headers={'Netman-Model': 'cisco', 'Netman-Username': 'root',
+                                                                      'Netman-Password': 'password', 'Netman-Port': 'bleh'})
         assert_that(code, equal_to(400))
 
     def test_anonymous_switch_can_be_netman_proxied(self):
@@ -405,10 +407,10 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/vlans", headers={
-            'Netman-Model':'cisco',
-            'Netman-Username':'root',
-            'Netman-Password':'password',
-            'Netman-Proxy-Server':'1.2.3.4'
+            'Netman-Model': 'cisco',
+            'Netman-Username': 'root',
+            'Netman-Password': 'password',
+            'Netman-Proxy-Server': '1.2.3.4'
         })
         assert_that(code, equal_to(200))
 
@@ -425,10 +427,10 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.get("/switches/my.switch/vlans", headers={
-            'Netman-Model':'cisco',
-            'Netman-Username':'root',
-            'Netman-Password':'password',
-            'Netman-Proxy-Server':' 1.2.3.4 , 5.6.7.8 '
+            'Netman-Model': 'cisco',
+            'Netman-Username': 'root',
+            'Netman-Password': 'password',
+            'Netman-Proxy-Server': ' 1.2.3.4 , 5.6.7.8 '
         })
         assert_that(code, equal_to(200))
 
@@ -626,7 +628,6 @@ class SwitchApiTest(BaseApiTest):
         result, code = self.delete("/switches/my.switch/bonds/4/access-vlan")
 
         assert_that(code, equal_to(204))
-
 
     def test_invalid_set_access_vlan(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).never()
@@ -1125,7 +1126,6 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(204))
 
-
     def test_delete_access_groups_vlan_not_found(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
         self.switch_mock.should_receive('connect').once().ordered()
@@ -1137,7 +1137,6 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(404))
         assert_that(result, equal_to({'error': 'Vlan 2500 not found'}))
-
 
     def test_delete_access_groups_not_found(self):
         self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
@@ -1617,7 +1616,7 @@ class SwitchApiTest(BaseApiTest):
                                 fixture="put_switch_hostname_vlans_vlanid_accessgroups_in.txt")
 
         assert_that(code, equal_to(404))
-        assert_that(result, equal_to({'error': 'Vlan 2500 not found',}))
+        assert_that(result, equal_to({'error': 'Vlan 2500 not found'}))
 
     def test_an_error_inside_a_session_call_is_properly_relayed_with_exception_marshalling_when_requested(self):
         session_uuid = 'patate'

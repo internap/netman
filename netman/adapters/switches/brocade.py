@@ -27,10 +27,10 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVlan, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
-    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, NetmanException, \
+    BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, \
     InvalidAccessGroupName
 from netman.core.objects.interface import Interface
-from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
@@ -165,7 +165,7 @@ class Brocade(SwitchBase):
 
     def reset_interface(self, interface_id):
         result = self.shell.do("show vlan {}".format(interface_id))
-        if result and ('Invalid input' in result[0] or 'Error' in result[0]) :
+        if result and ('Invalid input' in result[0] or 'Error' in result[0]):
             raise UnknownInterface(interface_id)
 
         operations = self._get_vlan_association_removal_operations(result)
@@ -185,8 +185,7 @@ class Brocade(SwitchBase):
             self.shell.do("disable" if state is OFF else "enable")
 
     def unset_interface_access_vlan(self, interface_id):
-        content = self.shell.do("show vlan brief | include {}"
-                              .format(_to_short_name(interface_id)))
+        content = self.shell.do("show vlan brief | include {}".format(_to_short_name(interface_id)))
         if len(content) == 0:
             raise UnknownInterface(interface_id)
 
@@ -397,7 +396,6 @@ class Brocade(SwitchBase):
                 if current_vlan:
                     add_interface_vlan_data(current_vlan, int_vlan_data)
 
-
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         vlan = self._get_vlan(vlan_number, include_vif_data=True)
 
@@ -456,6 +454,7 @@ class Brocade(SwitchBase):
                 if int(vlan) > 1:
                     operations.append((vlan, state.lower()))
         return operations
+
 
 def parse_vlan(vlan_data):
     regex.match("^vlan (\d+).*", vlan_data[0])
@@ -575,9 +574,9 @@ def parse_interface(if_data):
     if regex.match("^\w*Ethernet([^\s]*) is (\w*).*", if_data[0]):
         i = Interface(name="ethernet {}".format(regex[0]), port_mode=ACCESS, shutdown=regex[1] == "disabled")
         for line in if_data:
-            if regex.match("Port name is (.*)", line): i.description = regex[0]
+            if regex.match("Port name is (.*)", line):
+                i.description = regex[0]
         return i
-
 
 
 class VlanBrocade(Vlan):

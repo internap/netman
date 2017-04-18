@@ -35,15 +35,15 @@ class CiscoArpRoutingTest(unittest.TestCase):
         flexmock_teardown()
 
     def test_set_vlan_arp_routing_state_disable(self):
-        self.mocked_ssh_client.should_receive("do").with_args(
-            "show running-config interface vlan 1234").once().ordered().and_return([
-            "Building configuration...",
-            "Current configuration : 41 bytes",
-            "!",
-            "interface Vlan1234",
-            " no ip address",
-            "end"
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234")\
+            .once()\
+            .ordered()\
+            .and_return(["Building configuration...",
+                         "Current configuration : 41 bytes",
+                         "!",
+                         "interface Vlan1234",
+                         " no ip address",
+                         "end"])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -56,15 +56,14 @@ class CiscoArpRoutingTest(unittest.TestCase):
         self.switch.set_vlan_arp_routing_state(1234, OFF)
 
     def test_set_vlan_arp_routing_state_enable(self):
-        self.mocked_ssh_client.should_receive("do").with_args(
-            "show running-config interface vlan 1234").once().ordered().and_return([
-            "Building configuration...",
-            "Current configuration : 41 bytes",
-            "!",
-            "interface Vlan1234",
-            " no ip address",
-            "end"
-        ])
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered()\
+            .and_return([
+                "Building configuration...",
+                "Current configuration : 41 bytes",
+                "!",
+                "interface Vlan1234",
+                " no ip address",
+                "end"])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -79,15 +78,12 @@ class CiscoArpRoutingTest(unittest.TestCase):
     def test_set_vlan_arp_routing_state_without_interface_creates_it(self):
         self.mocked_ssh_client.should_receive("do").with_args(
             "show running-config interface vlan 1234").once().ordered().and_return([
-            "                                  ^",
-            "% Invalid input detected at '^' marker.",
-        ])
+                "                                  ^",
+                "% Invalid input detected at '^' marker."])
 
         self.mocked_ssh_client.should_receive("do").with_args(
-            "show running-config vlan 1234 | begin vlan").once().ordered().and_return([
-            "vlan 1234",
-            "end",
-        ])
+            "show running-config vlan 1234 | begin vlan")\
+            .once().ordered().and_return(["vlan 1234", "end"])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
             "Enter configuration commands, one per line.  End with CNTL/Z."
@@ -100,14 +96,12 @@ class CiscoArpRoutingTest(unittest.TestCase):
 
     def test_set_vlan_arp_routing_state_unknown_vlan(self):
         self.mocked_ssh_client.should_receive("do").with_args(
-            "show running-config interface vlan 1234").once().ordered().and_return([
-            "                                  ^",
-            "% Invalid input detected at '^' marker.",
-        ])
+            "show running-config interface vlan 1234")\
+            .once().ordered().and_return(["                                  ^",
+                                          "% Invalid input detected at '^' marker."])
 
         self.mocked_ssh_client.should_receive("do").with_args(
-            "show running-config vlan 1234 | begin vlan").once().ordered().and_return([
-        ])
+            "show running-config vlan 1234 | begin vlan").once().ordered().and_return([])
 
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.set_vlan_arp_routing_state(1234, OFF)

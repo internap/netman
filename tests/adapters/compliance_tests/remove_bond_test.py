@@ -39,7 +39,7 @@ class RemoveBondTest(ComplianceTestCase):
         self.try_to.add_interface_to_bond(self.test_port, 42)
 
         self.client.remove_bond(42)
-        
+
         interface = self.client.get_interface(self.test_port)
         assert_that(interface.bond_master, is_(None))
 

@@ -16,7 +16,7 @@
 from hamcrest import assert_that, is_
 
 from netman.core.objects.exceptions import UnknownInterface
-from netman.core.objects.interface_states import ON, OFF
+from netman.core.objects.interface_states import ON
 from tests import has_message
 from tests.adapters.compliance_test_case import ComplianceTestCase
 

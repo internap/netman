@@ -520,7 +520,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(vlan1.access_groups[IN], is_("Blah_blah"))
         assert_that(vlan1.access_groups[OUT], is_(None))
         assert_that(vlan1.dhcp_relay_servers, is_([]))
-        vrrp_group = vlan1.vrrp_groups[0]        
+        vrrp_group = vlan1.vrrp_groups[0]
         assert_that(vrrp_group.id, is_(1))
         assert_that(vrrp_group.ips, is_([IPAddress("1.1.1.2")]))
         assert_that(vrrp_group.priority, is_(90))

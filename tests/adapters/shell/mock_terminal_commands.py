@@ -32,6 +32,7 @@ class HangingCommand(SSHCommand):
         self.write("Done!\n")
         self.exit()
 
+
 class AmbiguousCommand(SSHCommand):
     def __init__(self, name, *args):
         self.name = name
@@ -91,6 +92,7 @@ def passwd_change_protocol_prompt(instance):
     instance.protocol.prompt = "hostname#"
     instance.protocol.password_input = False
 
+
 def passwd_write_password_to_transport(instance):
     instance.writeln("MockSSH: password is %s" % instance.valid_password)
 
@@ -116,7 +118,3 @@ class KeystrokeAnsweredCommand(SSHCommand):
             this.protocol.keyHandlers.pop("k")
 
         self.protocol.keyHandlers.update({"k": finish})
-
-
-
-

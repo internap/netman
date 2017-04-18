@@ -52,5 +52,3 @@ class RemoteSwitchUnicastRpfTest(unittest.TestCase):
                 status_code=204))
 
         self.switch.unset_vlan_unicast_rpf_mode(2000)
-
-

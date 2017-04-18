@@ -468,7 +468,6 @@ class JuniperTest(unittest.TestCase):
             """)).and_return(a_configuration("""
             """))
 
-
         with self.assertRaises(UnknownVlan) as expect:
             self.switch.get_vlan(10)
 
@@ -5917,7 +5916,6 @@ class JuniperTest(unittest.TestCase):
         with self.assertRaises(UnknownBond):
             self.switch.get_bond(3)
 
-
     def test_get_bonds(self):
         self.switch.in_transaction = False
 
@@ -6491,7 +6489,7 @@ class JuniperTest(unittest.TestCase):
             username="tutu",
             password="titi",
             hostkey_verify=False,
-            device_params={'name':'junos'},
+            device_params={'name': 'junos'},
             port=8000,
             timeout=120
         )
@@ -6512,7 +6510,7 @@ class JuniperTest(unittest.TestCase):
             username="tutu",
             password="titi",
             hostkey_verify=False,
-            device_params={'name':'junos'},
+            device_params={'name': 'junos'},
             timeout=120
         )
 

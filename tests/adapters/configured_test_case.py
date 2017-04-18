@@ -109,7 +109,7 @@ def skip_on_switches(*to_skip):
     def resource_decorator(fn):
         @wraps(fn)
         def wrapper(self, *args, **kwargs):
-            if not self.switch_descriptor.model in to_skip:
+            if self.switch_descriptor.model not in to_skip:
                 return fn(self, *args, **kwargs)
 
             else:

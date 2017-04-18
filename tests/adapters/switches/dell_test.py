@@ -331,9 +331,10 @@ class DellTest(unittest.TestCase):
         assert_that(interface.access_vlan, is_(1234))
 
     def test_get_malformed_interface_raises(self):
-        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface patate").once().ordered().and_return([
-            "                                      ^",
-            "% Invalid input detected at '^' marker."])
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface patate")\
+            .once()\
+            .ordered()\
+            .and_return(["                                      ^", "% Invalid input detected at '^' marker."])
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.get_interface('patate')
@@ -341,9 +342,8 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Unknown interface patate"))
 
     def test_get_nonexistent_interface_raises(self):
-        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g9999").once().ordered().and_return([
-            "ERROR: Invalid input!"
-        ])
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface ethernet 1/g9999").once()\
+            .ordered().and_return(["ERROR: Invalid input!"])
 
         with self.assertRaises(UnknownInterface) as expect:
             self.switch.get_interface('ethernet 1/g9999')
@@ -669,9 +669,9 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_trunk_mode(10)
 
     def test_configure_set_bond_trunk_mode_unknown_interface(self):
-        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 999999").and_return([
-            "ERROR: Invalid input!",
-        ])
+        flexmock(self.switch.page_reader).should_receive("do")\
+            .with_args(self.mocked_ssh_client, "show running-config interface port-channel 999999")\
+            .and_return(["ERROR: Invalid input!"])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
@@ -930,9 +930,9 @@ class DellTest(unittest.TestCase):
         self.switch.unset_bond_native_vlan(10)
 
     def test_unset_bond_native_vlan_inknown_interface(self):
-        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99999").and_return([
-            "ERROR: Invalid input!",
-        ])
+        flexmock(self.switch.page_reader).should_receive("do")\
+            .with_args(self.mocked_ssh_client, "show running-config interface port-channel 99999")\
+            .and_return(["ERROR: Invalid input!"])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
@@ -966,9 +966,8 @@ class DellTest(unittest.TestCase):
         self.switch.set_bond_native_vlan(10, 1000)
 
     def test_set_bond_native_vlan_unknown_interface(self):
-        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99999").and_return([
-            "ERROR: Invalid input!",
-        ])
+        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 99999")\
+            .and_return(["ERROR: Invalid input!"])
 
         self.mocked_ssh_client.should_receive("do").with_args("configure").never()
 
@@ -978,9 +977,9 @@ class DellTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Bond 99999 not found"))
 
     def test_set_bond_native_vlan_unknown_vlan(self):
-        flexmock(self.switch.page_reader).should_receive("do").with_args(self.mocked_ssh_client, "show running-config interface port-channel 10").and_return([
-            "switchport mode general",
-        ])
+        flexmock(self.switch.page_reader).should_receive("do")\
+            .with_args(self.mocked_ssh_client, "show running-config interface port-channel 10")\
+            .and_return(["switchport mode general"])
 
         with self.configuring():
             self.mocked_ssh_client.should_receive("do").with_args("interface port-channel 10").once().ordered().and_return([])

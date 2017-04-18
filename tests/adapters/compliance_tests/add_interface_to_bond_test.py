@@ -71,6 +71,3 @@ class AddInterfaceToBondTest(ComplianceTestCase):
 
         assert_that(interface.access_vlan, is_(none()))
         self.janitor.remove_vlan(90)
-
-
-

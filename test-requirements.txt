@@ -8,4 +8,4 @@ Sphinx
 sphinxcontrib-httpdomain
 gunicorn>=19.4.5
 futures>=3.0.4
-
+flake8

@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/env python
 import argparse
 from logging import DEBUG, getLogger
 
@@ -31,6 +30,7 @@ from netman.core.switch_sessions import SwitchSessionManager
 app = Flask('netman')
 app.url_map.converters['regex'] = RegexConverter
 
+
 @app.before_request
 def log_request():
     logger = getLogger("netman.api")
@@ -38,6 +38,7 @@ def log_request():
     if logger.isEnabledFor(DEBUG):
         logger.debug("body : {}".format(repr(request.data) if request.data else "<<empty>>"))
         logger.debug("Headers : " + ", ".join(["{0}={1}".format(h[0], h[1]) for h in request.headers]))
+
 
 lock_factory = ThreadingLockFactory()
 switch_factory = FlowControlSwitchFactory(MemoryStorage(), lock_factory)
@@ -52,7 +53,6 @@ SwitchSessionApi(real_switch_factory, switch_session_manager).hook_to(app)
 def load_app(session_inactivity_timeout=None):
     if session_inactivity_timeout:
         switch_session_manager.session_inactivity_timeout = session_inactivity_timeout
-    
     return app
 
 
@@ -61,7 +61,7 @@ if __name__ == '__main__':
     parser.add_argument('--host', nargs='?', default="127.0.0.1")
     parser.add_argument('--port', type=int, nargs='?', default=5000)
     parser.add_argument('--session-inactivity-timeout', type=int, nargs='?')
-    
+
     args = parser.parse_args()
 
     params = {}
@@ -69,4 +69,3 @@ if __name__ == '__main__':
         params["session_inactivity_timeout"] = args.session_inactivity_timeout
 
     load_app(**params).run(host=args.host, port=args.port, threaded=True)
-

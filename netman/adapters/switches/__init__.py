@@ -24,6 +24,7 @@ def brocade_factory_ssh(switch_descriptor, lock):
         lock=lock
     )
 
+
 def brocade_factory_telnet(switch_descriptor, lock):
     warnings.warn("Use SwitchFactory.get_switch_by_descriptor directly to instantiate a switch", DeprecationWarning)
     return FlowControlSwitch(

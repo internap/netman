@@ -19,6 +19,7 @@ from netman.core.objects.flow_control_switch import FlowControlSwitch
 
 def transactional(fn):
     warnings.warn("Deprecated, make your own annotation this one will disappear", DeprecationWarning)
+
     @wraps(fn)
     def wrapper(self, *args, **kwargs):
         if self.in_transaction:

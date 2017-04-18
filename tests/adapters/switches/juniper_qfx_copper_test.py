@@ -548,7 +548,6 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.add_interface_to_bond('ge-0/0/1', 10)
 
-
     def test_add_interface_to_bond_gets_up_to_speed_and_removes_existing_rstp_protocol(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>

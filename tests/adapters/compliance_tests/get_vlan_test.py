@@ -17,7 +17,6 @@ from netaddr import IPNetwork, IPAddress
 
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownVlan
-from netman.core.objects.interface_states import OFF
 from tests import has_message
 from tests.adapters.compliance_test_case import ComplianceTestCase
 

@@ -69,7 +69,7 @@ class IpManagementTest(ConfiguredTestCase):
 
         # TODO(jprovost) Unify switch adapters to raise the same exception
         # multiple exceptions: IPNotAvailable, IPAlreadySet
-        with self.assertRaises(Conflict): 
+        with self.assertRaises(Conflict):
             self.client.add_ip_to_vlan(2345, ip_network=IPNetwork("1.1.1.1/24"))
 
         self.client.add_vlan(2999)
