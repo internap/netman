@@ -19,7 +19,7 @@ from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, equal_to, is_, instance_of
 
 from netman.adapters.switches import juniper
-from netman.adapters.switches.juniper import Juniper
+from netman.adapters.switches.juniper.base import Juniper
 from netman.core.objects.exceptions import UnknownInterface
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_descriptor import SwitchDescriptor
