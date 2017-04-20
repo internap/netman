@@ -26,7 +26,7 @@ from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import NCElement, to_ele, to_xml
 
 from netman.adapters.switches import juniper
-from netman.adapters.switches.juniper import Juniper
+from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
 from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \

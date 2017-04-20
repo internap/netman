@@ -16,7 +16,6 @@ import warnings
 from netman.adapters.switches.juniper import standard
 from netman.adapters.switches.juniper import qfx_copper
 
-from netman.adapters.switches.juniper.base import Juniper
 from netman.core.objects.switch_transactional import FlowControlSwitch
 
 
