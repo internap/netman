@@ -61,4 +61,3 @@ class ThreadedReactor(threading.Thread):
 
     def stop(self):
         self.reactor.callFromThread(self.reactor.stop)
-

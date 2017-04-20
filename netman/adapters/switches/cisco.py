@@ -210,7 +210,7 @@ class Cisco(SwitchBase):
                 if has_ips:
                     self.ssh.do('no ip redirects')
                 result = self.ssh.do('ip address {} {}{}'.format(ip_network.ip, ip_network.netmask,
-                                                             " secondary" if has_ips else ""))
+                                     " secondary" if has_ips else ""))
                 if len(result) > 0:
                     raise IPNotAvailable(ip_network, reason="; ".join(result))
         else:
@@ -480,16 +480,20 @@ class Cisco(SwitchBase):
 
 
 def parse_interface(data):
-    if data and (regex.match("interface (\w*Ethernet[^\s]*)", data[0])
-                 or regex.match("interface (Port-channel[^\s]*)", data[0])):
+    if data and (regex.match("interface (\w*Ethernet[^\s]*)", data[0]) or regex.match("interface (Port-channel[^\s]*)", data[0])):
         i = Interface(name=regex[0], shutdown=False)
         port_mode = access_vlan = native_vlan = trunk_vlans = None
         for line in data:
-            if regex.match(" switchport mode (.*)", line): port_mode = regex[0]
-            if regex.match(" switchport access vlan (\d*)", line): access_vlan = int(regex[0])
-            if regex.match(" switchport trunk native vlan (\d*)", line): native_vlan = int(regex[0])
-            if regex.match(" switchport trunk allowed vlan (.*)", line): trunk_vlans = regex[0]
-            if regex.match(" shutdown", line): i.shutdown = True
+            if regex.match(" switchport mode (.*)", line):
+                port_mode = regex[0]
+            if regex.match(" switchport access vlan (\d*)", line):
+                access_vlan = int(regex[0])
+            if regex.match(" switchport trunk native vlan (\d*)", line):
+                native_vlan = int(regex[0])
+            if regex.match(" switchport trunk allowed vlan (.*)", line):
+                trunk_vlans = regex[0]
+            if regex.match(" shutdown", line):
+                i.shutdown = True
 
         if not port_mode:
             i.port_mode = DYNAMIC

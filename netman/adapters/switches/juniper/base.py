@@ -123,7 +123,7 @@ class Juniper(SwitchBase):
             l3_if_type, l3_if_name = get_l3_interface(vlan_node)
             if l3_if_name is not None:
                 interface_vlan_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
-                                                    "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
+                                                         "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
                 if interface_vlan_node is not None:
                     vlan.ips = parse_ips(interface_vlan_node)
                     vlan.access_groups[IN] = parse_inet_filter(interface_vlan_node, "input")
@@ -1191,12 +1191,14 @@ def interface_speed_update(interface_name, speed):
         </interface>
     """.format(interface_name, speed))
 
+
 def protocol_interface_update(name):
     return to_ele("""
         <interface>
           <name>{}</name>
         </interface>
     """.format(name))
+
 
 def list_vlan_members(interface_node, config):
     vlans = set()
@@ -1269,4 +1271,3 @@ class _PhysicalInterface(object):
 
     def to_interface(self):
         return Interface(name=self.name, shutdown=self.shutdown, port_mode=ACCESS)
-

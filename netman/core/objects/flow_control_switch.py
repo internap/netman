@@ -57,7 +57,6 @@ class FlowControlSwitch(SwitchOperations):
 
         return obj
 
-
     @do_not_wrap_with_flow_control
     @contextmanager
     def transaction(self):
@@ -72,8 +71,8 @@ class FlowControlSwitch(SwitchOperations):
         self.lock.acquire()
         try:
             if not self.wrapped_switch.connected:
-               self.wrapped_switch.connect()
-               self._has_auto_connected = True
+                self.wrapped_switch.connect()
+                self._has_auto_connected = True
 
             self.wrapped_switch.start_transaction()
         except Exception:

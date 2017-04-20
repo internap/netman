@@ -151,7 +151,7 @@ class CachedSwitch(SwitchBase):
         if self.interfaces_cache.refresh_items:
             self.interfaces_cache = InterfaceCache(
                 (interface.name, interface)
-                 for interface in self.real_switch.get_interfaces())
+                for interface in self.real_switch.get_interfaces())
         return copy.deepcopy(self.interfaces_cache.values())
 
     def get_bond(self, number):
@@ -339,7 +339,7 @@ class CachedSwitch(SwitchBase):
         self.real_switch.edit_bond_spanning_tree(number, edge=edge)
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None,
-                       hello_interval=None, dead_interval=None ,track_id=None,
+                       hello_interval=None, dead_interval=None, track_id=None,
                        track_decrement=None):
         self.real_switch.add_vrrp_group(vlan_number, group_id, ips=ips,
                                         priority=priority,

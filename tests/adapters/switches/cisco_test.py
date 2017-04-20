@@ -432,7 +432,6 @@ class CiscoTest(unittest.TestCase):
 
         assert_that(str(expect.exception), equal_to("Vlan 2999 already exists"))
 
-
     def test_remove_vlan_also_removes_associated_vlan_interface(self):
         self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 2999 | begin vlan").and_return([
             "vlan 2999",
@@ -2497,7 +2496,7 @@ class CiscoTest(unittest.TestCase):
         versions = self.switch.get_versions()
 
         assert_that(versions, equal_to({
-            "units" : {
+            "units": {
                 "1": {
                     "Ports": "28",
                     "Model": "WS-C3750G-24TS-1U",
@@ -2524,7 +2523,7 @@ class CiscoTest(unittest.TestCase):
             "Top Assembly Revision Number": "C0",
             "Version ID": "V05",
             "CLEI Code Number": "COMB600BRA",
-            "Hardware Board Revision Number": "0x09",            
+            "Hardware Board Revision Number": "0x09",
         }))
 
     def test_reset_interface(self):

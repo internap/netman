@@ -38,11 +38,11 @@ class DecoratorTests(unittest.TestCase):
         process1.should_receive('__exit__').once()
         process2.should_receive('__exit__').once()
 
-        with MultiContext('arg1','arg2', process1, process2):
+        with MultiContext('arg1', 'arg2', process1, process2):
             pass
 
     def test_content_vlan(self):
-        self.assertEquals(is_vlan_number('28'), {'vlan_number':28})
+        self.assertEquals(is_vlan_number('28'), {'vlan_number': 28})
 
     def test_content_vlan_invalid(self):
         self.assertRaises(BadVlanNumber, is_vlan_number, 'patate')
@@ -51,10 +51,10 @@ class DecoratorTests(unittest.TestCase):
         self.assertRaises(BadVlanNumber, is_vlan_number, 2888888)
 
     def test_content_shutdown_options_true(self):
-        self.assertEquals(is_boolean('true'), {'state':True})
+        self.assertEquals(is_boolean('true'), {'state': True})
 
     def test_content_shutdown_options_false(self):
-        self.assertEquals(is_boolean('false'), {'state':False})
+        self.assertEquals(is_boolean('false'), {'state': False})
 
     def test_content_shutdown_options_invalid(self):
         self.assertRaises(BadRequest, is_boolean, 'patate')

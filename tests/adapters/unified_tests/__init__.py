@@ -36,5 +36,3 @@ for specs in available_models:
     for test_class in test_classes:
         class_name = "{}{}".format(specs["switch_descriptor"].model.capitalize(), test_class.__name__)
         current_module[class_name] = type(class_name, (test_class,), {"__test__": True, "switch_specs": specs})
-
-

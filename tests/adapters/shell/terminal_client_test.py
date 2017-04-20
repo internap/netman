@@ -47,7 +47,7 @@ command_hang = HangingCommand(name='hang', hang_time=1.1)
 
 command_flush = MultiAsyncWriteCommand(name='flush', count=5, interval=0.1)
 
-command_skips= SkippingLineCommand(name='skips', lines=5)
+command_skips = SkippingLineCommand(name='skips', lines=5)
 
 command_exit = MockSSH.ArgumentValidatingCommand('exit',
                                                  [exit_command_success],

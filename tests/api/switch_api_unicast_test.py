@@ -65,4 +65,3 @@ class SwitchApiUnicastTest(BaseApiTest):
         result, code = self.delete("/switches/my.switch/vlans/2500/unicast-rpf-mode")
 
         assert_that(code, equal_to(204))
-

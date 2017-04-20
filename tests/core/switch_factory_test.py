@@ -107,4 +107,3 @@ class MockLockFactory(object):
 
 class _FakeSwitch(SwitchBase):
     pass
-

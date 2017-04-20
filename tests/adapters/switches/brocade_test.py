@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
     BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, InvalidAccessGroupName, InvalidValue
+    VlanAlreadyExist, InvalidAccessGroupName
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -166,9 +166,7 @@ class BrocadeTest(unittest.TestCase):
                 'interface ve 3993',
                 ' port-name Another-port-name',
                 ' ip address 4.4.4.0/27',
-                '!'
-        ])
-
+                '!'])
 
         vlan1, vlan201, vlan2222, vlan3333 = self.switch.get_vlans()
 
@@ -280,7 +278,7 @@ class BrocadeTest(unittest.TestCase):
             "  advertise backup",
             "  track-port ethernet 1/1",
             "  activate",
-            "!",        
+            "!",
         ])
 
         vlan = self.switch.get_vlan(1750)
@@ -364,33 +362,32 @@ class BrocadeTest(unittest.TestCase):
                 vlan_with_vif_display(1750, 1750, name="Shizzle")
         )
 
-        self.shell_mock.should_receive("do").with_args("show running-config interface ve 1750").once() \
+        self.shell_mock.should_receive("do").with_args("show running-config interface ve 1750").once()\
             .ordered().and_return([
-            'interface ve 1750',
-            'port-name vrrp-extended vrid 42',
-            ' ip address 10.241.0.33/27',
-            ' no ip redirect',
-            ' ip helper-address 10.10.10.1',
-            ' ip helper-address 10.10.10.2',
-            ' ipv6 address 2001:47c2:19:5::2/64',
-            ' ipv6 address 2001:47c2:19:5::3/64',
-            ' ipv6 nd suppress-ra',
-            ' ip vrrp-extended vrid 42',
-            '  backup priority 130 track-priority 20',
-            '  ip-address 1.1.1.2',
-            '  advertise backup',
-            '  hello-interval 4',
-            '  track-port ethernet 1/3',
-            '  activate',
-            ' ipv6 vrrp-extended vrid 43',
-            '  backup priority 110 track-priority 50',
-            '  ipv6-address 2001:47c2:19:5::1',
-            '  advertise backup',
-            '  hello-interval 5',
-            '  track-port ethernet 1/2',
-            ' activate',
-            '!',
-        ])
+                'interface ve 1750',
+                'port-name vrrp-extended vrid 42',
+                ' ip address 10.241.0.33/27',
+                ' no ip redirect',
+                ' ip helper-address 10.10.10.1',
+                ' ip helper-address 10.10.10.2',
+                ' ipv6 address 2001:47c2:19:5::2/64',
+                ' ipv6 address 2001:47c2:19:5::3/64',
+                ' ipv6 nd suppress-ra',
+                ' ip vrrp-extended vrid 42',
+                '  backup priority 130 track-priority 20',
+                '  ip-address 1.1.1.2',
+                '  advertise backup',
+                '  hello-interval 4',
+                '  track-port ethernet 1/3',
+                '  activate',
+                ' ipv6 vrrp-extended vrid 43',
+                '  backup priority 110 track-priority 50',
+                '  ipv6-address 2001:47c2:19:5::1',
+                '  advertise backup',
+                '  hello-interval 5',
+                '  track-port ethernet 1/2',
+                ' activate',
+                '!'])
 
         vlan = self.switch.get_vlan(1750)
 
@@ -417,32 +414,31 @@ class BrocadeTest(unittest.TestCase):
         )
 
         self.shell_mock.should_receive("do").with_args("show running-config interface ve 1750").once() \
-            .ordered().and_return([
-            'interface ve 1750',
-            'port-name vrrp-extended vrid 42',
-            ' ip address 10.241.0.33/27',
-            ' no ip redirect',
-            ' ip helper-address 10.10.10.1',
-            ' ip helper-address 10.10.10.2',
-            ' ipv6 address 2001:47c2:19:5::2/64',
-            ' ipv6 address 2001:47c2:19:5::3/64',
-            ' ipv6 nd suppress-ra',
-            ' ip vrrp-extended vrid 42',
-            '  backup priority 130 track-priority 20',
-            '  ip-address 1.1.1.2',
-            '  advertise backup',
-            '  hello-interval 4',
-            '  track-port ethernet 1/3',
-            '  activate',
-            ' ipv6 vrrp-extended vrid 42',
-            '  backup priority 170 track-priority 40',
-            '  ipv6-address 2001:47c2:19:5::1',
-            '  advertise backup',
-            '  hello-interval 400',
-            '  track-port ethernet 4/6',
-            ' activate',
-            '!',
-        ])
+            .ordered()\
+            .and_return(['interface ve 1750',
+                         'port-name vrrp-extended vrid 42',
+                         ' ip address 10.241.0.33/27',
+                         ' no ip redirect',
+                         ' ip helper-address 10.10.10.1',
+                         ' ip helper-address 10.10.10.2',
+                         ' ipv6 address 2001:47c2:19:5::2/64',
+                         ' ipv6 address 2001:47c2:19:5::3/64',
+                         ' ipv6 nd suppress-ra',
+                         ' ip vrrp-extended vrid 42',
+                         '  backup priority 130 track-priority 20',
+                         '  ip-address 1.1.1.2',
+                         '  advertise backup',
+                         '  hello-interval 4',
+                         '  track-port ethernet 1/3',
+                         '  activate',
+                         ' ipv6 vrrp-extended vrid 42',
+                         '  backup priority 170 track-priority 40',
+                         '  ipv6-address 2001:47c2:19:5::1',
+                         '  advertise backup',
+                         '  hello-interval 400',
+                         '  track-port ethernet 4/6',
+                         ' activate',
+                         '!'])
 
         vlan = self.switch.get_vlan(1750)
 
@@ -2104,7 +2100,6 @@ class BrocadeTest(unittest.TestCase):
         result = parse_if_ranges("shizzle 1/1 shizzle 1/3 to 1/5 shizzle 1/7")
         assert_that(list(result), equal_to(["shizzle 1/1", "shizzle 1/3", "shizzle 1/4", "shizzle 1/5", "shizzle 1/7"]))
 
-
     @mock.patch("netman.adapters.switches.brocade.SshClient")
     def test_connect(self, ssh_client_class_mock):
         self.switch = brocade_factory_ssh(SwitchDescriptor(
@@ -2169,7 +2164,6 @@ class BrocadeTest(unittest.TestCase):
         logger = flexmock()
         self.switch.logger = logger
         logger.should_receive("debug")
-
 
         self.shell_mock.should_receive("quit").with_args("exit").once().ordered()
 

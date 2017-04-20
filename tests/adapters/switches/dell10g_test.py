@@ -293,7 +293,9 @@ class Dell10GTest(unittest.TestCase):
 
         vlan_interfaces = self.switch.get_vlan_interfaces(1000)
 
-        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5', 'port-channel 6', 'port-channel 7', 'tengigabitethernet 0/0/1', 'tengigabitethernet 0/0/2']))
+        assert_that(vlan_interfaces, equal_to(['port-channel 2', 'port-channel 3', 'port-channel 5',
+                                               'port-channel 6', 'port-channel 7', 'tengigabitethernet 0/0/1',
+                                               'tengigabitethernet 0/0/2']))
 
     def test_get_vlan_interfaces_with_unknown_vlan_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 2019").once().ordered().and_return([
@@ -449,7 +451,6 @@ class Dell10GTest(unittest.TestCase):
             self.switch.add_vlan(1000, name="Gertr dude")
 
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
-
 
     def test_add_vlan_fails_when_already_exist(self):
         self.mocked_ssh_client.should_receive("do").with_args("show vlan id 1000").and_return([

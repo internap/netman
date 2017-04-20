@@ -72,7 +72,6 @@ def exception_to_response(exception, code):
             else:
                 data['error'] = "Unexpected error: {}".format(exception.__class__.__name__)
 
-
     response = json_response(data, code)
     response.status_code = code
 

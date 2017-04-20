@@ -39,6 +39,7 @@ class PasswordHangingMockTelnet(MockTelnet):
     def validate_password(self, _):
         pass
 
+
 class SwitchTelnetFactory(Factory):
     def __init__(self, prompt, commands):
         self.prompt = prompt

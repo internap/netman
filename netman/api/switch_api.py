@@ -1013,7 +1013,7 @@ class SwitchApi(SwitchApiBase):
             ``true`` or ``false``
         """
 
-        switch.set_vlan_arp_routing_state(vlan_number, ON if state == True else OFF)
+        switch.set_vlan_arp_routing_state(vlan_number, ON if state is True else OFF)
 
         return 204, None
 

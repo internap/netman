@@ -46,4 +46,3 @@ class GetInterfacesTest(ComplianceTestCase):
         self.janitor.remove_bond(1)
         self.janitor.remove_vlan(1000)
         super(GetInterfacesTest, self).tearDown()
-

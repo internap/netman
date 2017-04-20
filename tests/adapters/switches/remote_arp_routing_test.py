@@ -67,4 +67,3 @@ class RemoteSwitchARPRoutingTest(unittest.TestCase):
                 status_code=204))
 
         self.switch.set_vlan_arp_routing_state(2000, ON)
-

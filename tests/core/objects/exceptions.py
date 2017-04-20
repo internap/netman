@@ -29,4 +29,3 @@ class ExceptionsComplianceTest(unittest.TestCase):
                     exception_class()
                 except:
                     raise AssertionError("Class {0} should be instantiable with no params".format(attribute))
-
