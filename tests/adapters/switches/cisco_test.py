@@ -1965,6 +1965,7 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby version 2").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 timers 5 15").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 priority 110").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 preempt delay minimum 60").and_return([]).once().ordered()
@@ -1991,6 +1992,7 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby version 2").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 timers 5 15").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 priority 110").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 preempt delay minimum 60").and_return([]).once().ordered()
@@ -2025,6 +2027,7 @@ class CiscoTest(unittest.TestCase):
             "!",
             "interface Vlan1234",
             " no ip address",
+            " standby version 2",
             " standby 1 ip 5.6.7.8",
             " standby 1 priority 80",
             "end"
@@ -2042,6 +2045,7 @@ class CiscoTest(unittest.TestCase):
             "!",
             "interface Vlan1234",
             " no ip address",
+            " standby version 2",
             " standby 1 ip 5.6.7.8",
             " standby 1 priority 80",
             " standby 1 preempt delay minimum 60",
@@ -2082,6 +2086,7 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby version 2").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 priority 256").and_return(["                                               ^",
                                                                                                     "% Invalid input detected at '^' marker."
                                                                                                     ""]).once().ordered()
@@ -2107,6 +2112,7 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby version 2").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 timers -1 -1").and_return([
             "                                               ^",
             "% Invalid input detected at '^' marker.",
@@ -2134,6 +2140,7 @@ class CiscoTest(unittest.TestCase):
         ])
         self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby version 2").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 preempt delay minimum 60").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 authentication VLAN1234").and_return([]).once().ordered()
         self.mocked_ssh_client.should_receive("do").with_args("standby 1 track SOMETHING decrement VALUE").and_return([
@@ -2154,6 +2161,7 @@ class CiscoTest(unittest.TestCase):
             "Current configuration : 41 bytes",
             "!",
             "interface Vlan1234",
+            " standby version 2",
             " standby 1 ip 1.2.3.4",
             " standby 1 ip 5.6.7.8 secondary",
             " standby 1 timers 5 15",
@@ -2161,6 +2169,41 @@ class CiscoTest(unittest.TestCase):
             " standby 1 preempt delay minimum 60",
             " standby 1 authentication VLAN1234",
             " standby 1 track 101 decrement 50",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no standby 1").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no standby version").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+
+        self.switch.remove_vrrp_group(1234, 1)
+
+    def test_remove_vrrp_not_all_the_groups_leaves_standby_version(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "Building configuration...",
+            "Current configuration : 41 bytes",
+            "!",
+            "interface Vlan1234",
+            " standby version 2",
+            " standby 1 ip 1.2.3.4",
+            " standby 1 ip 5.6.7.8 secondary",
+            " standby 1 timers 5 15",
+            " standby 1 priority 110",
+            " standby 1 preempt delay minimum 60",
+            " standby 1 authentication VLAN1234",
+            " standby 1 track 101 decrement 50",
+            " standby 2 ip 11.2.3.4",
+            " standby 2 ip 15.6.7.8 secondary",
+            " standby 2 timers 5 15",
+            " standby 2 priority 110",
+            " standby 2 preempt delay minimum 60",
+            " standby 2 authentication VLAN1234",
+            " standby 2 track 101 decrement 50",
             "end"
         ])
 
@@ -2549,3 +2592,30 @@ class CiscoTest(unittest.TestCase):
             self.switch.reset_interface("WrongInterfaceName0/4")
 
         assert_that(str(expect.exception), equal_to("Unknown interface WrongInterfaceName0/4"))
+
+    def test_set_standby_version_2_by_default(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "Building configuration...",
+            "Current configuration : 41 bytes",
+            "!",
+            "interface Vlan1234",
+            " no ip address",
+            " standby 1 ip 5.6.7.8",
+            " standby 1 ip 5.6.7.8",
+            " standby 1 priority 80",
+            " standby 1 preempt delay minimum 60",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby 2 priority 90").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby 2 preempt delay minimum 60").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby 2 authentication VLAN1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("standby 2 ip 1.2.3.5").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+
+        self.switch.add_vrrp_group(1234, 2, ips=[IPAddress("1.2.3.5")], priority=90)
