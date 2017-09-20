@@ -369,6 +369,9 @@ class Cisco(SwitchBase):
             raise VrrpAlreadyExistsForVlan(vlan=vlan_number, vrrp_group_id=group_id)
 
         with self.config(), self.interface_vlan(vlan_number):
+            if len(vlan.vrrp_groups) == 0:
+                self.ssh.do('standby version 2')
+
             if hello_interval is not None and dead_interval is not None:
                 result = self.ssh.do('standby {group_id} timers {hello_interval} {dead_interval}'.format(
                     group_id=group_id, hello_interval=hello_interval, dead_interval=dead_interval))
@@ -406,6 +409,9 @@ class Cisco(SwitchBase):
             result = self.ssh.do('no standby {group_id}'.format(group_id=group_id))
             if len(result) > 0:
                 raise VrrpDoesNotExistForVlan(vlan=vlan_number, vrrp_group_id=group_id)
+
+            if len(vlan.vrrp_groups) == 1:
+                self.ssh.do('no standby version')
 
     def set_vlan_arp_routing_state(self, vlan_number, state):
         self.get_vlan_interface_data(vlan_number)
@@ -530,7 +536,7 @@ def apply_interface_running_config_data(vlan, data):
         elif regex.match("^ ip vrf forwarding ([^\s]*).*", line):
             vlan.vrf_forwarding = regex[0]
 
-        elif regex.match("^ standby ([^\s]*)(.*)", line):
+        elif regex.match("^ standby ([\d]+) (.*)", line):
             vrrp_group = next((group for group in vlan.vrrp_groups if str(group.id) == regex[0]), None)
             if vrrp_group is None:
                 vrrp_group = VrrpGroup(id=int(regex[0]))
