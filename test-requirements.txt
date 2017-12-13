@@ -3,9 +3,7 @@ mock>=1.0.1
 pyhamcrest>=1.6
 flexmock>=0.10.2
 fake-switches>=1.1.12
-MockSSH>=1.4.2
-Sphinx
-sphinxcontrib-httpdomain
+MockSSH>=1.4.2,!=1.4.5 # 1.4.5 has fixed dependency and freezes paramiko
 gunicorn>=19.4.5
-futures>=3.0.4
-flake8
+flake8==3.4.1
+futures; # Runtime dependency of gunicorn
