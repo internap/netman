@@ -1,4 +1,4 @@
-# Copyright 2015 Internap.
+# Copyright 2018 Internap.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,21 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from ncclient.xml_ import to_ele, new_ele
 
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
 
 
 class MxJuniper(Juniper):
-    def get_vlan(self, number):
-        raise NotImplementedError()
-
-    def get_vlans(self):
-        raise NotImplementedError()
-
-    def add_vlan(self, number, name=None):
-        raise NotImplementedError()
-
     def remove_vlan(self, number):
         raise NotImplementedError()
 
@@ -201,4 +194,53 @@ def netconf(switch_descriptor):
 
 
 class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
-    pass
+    def add_update_vlans(self, update, number, name):
+        update.add_vlan(self.vlan_update(number, name), "bridge-domains")
+
+    def all_vlans(self):
+        return new_ele("bridge-domains")
+
+    def one_vlan_by_vlan_id(self, vlan_id):
+        def m():
+            return to_ele("""
+                <bridge-domains>
+                    <domain>
+                        <vlan-id>{}</vlan-id>
+                    </domain>
+                </bridge-domains>
+            """.format(vlan_id))
+
+        return m
+
+    def vlan_update(self, number, description):
+        content = to_ele("""
+            <domain>
+                <name>VLAN{0}</name>
+                <vlan-id>{0}</vlan-id>
+            </domain>
+        """.format(number))
+
+        if description is not None:
+            content.append(to_ele("<description>{}</description>".format(description)))
+        return content
+
+    def get_vlans(self, config):
+        return config.xpath("data/configuration/bridge-domains/domain")
+
+    def get_vlan_config(self, number, config):
+        vlan_node = config.xpath("data/configuration/bridge-domains/domain/vlan-id[text()=\"{}\"]/..".format(number))
+
+        try:
+            return vlan_node[0]
+        except IndexError:
+            raise UnknownVlan(number)
+
+    def manage_update_vlan_exception(self, message, number):
+        if "being used by" in message:
+            raise VlanAlreadyExist(number)
+        elif "not within range" in message:
+            if message.startswith("Value"):
+                raise BadVlanNumber()
+        elif "Must be a string" in message:
+            raise BadVlanName()
+        raise
