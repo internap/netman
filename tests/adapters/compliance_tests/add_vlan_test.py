@@ -21,7 +21,7 @@ from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
 class AddVlanTest(ComplianceTestCase):
-    _dev_sample = "juniper_qfx_copper"
+    _dev_sample = "juniper_mx"
 
     def test_creates_an_empty_vlan(self):
         self.client.add_vlan(1000)
