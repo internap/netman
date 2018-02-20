@@ -140,6 +140,24 @@ available_models = [
     },
     {
         "switch_descriptor": SwitchDescriptor(
+            model="juniper_mx",
+            hostname="127.0.0.1",
+            port=11015,
+            username="root",
+            password="root",
+        ),
+        "test_port_name": "ge-0/0/3",
+        "core_class": JuniperMXSwitchCore,
+        "service_class": SwitchSshService,
+        "ports": [
+            Port("ge-0/0/1"),
+            Port("ge-0/0/2"),
+            Port("ge-0/0/3"),
+            Port("ge-0/0/4")
+        ]
+    },
+    {
+        "switch_descriptor": SwitchDescriptor(
             model="dell",
             hostname="127.0.0.1",
             port=11006,
