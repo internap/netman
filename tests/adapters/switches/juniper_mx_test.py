@@ -15,12 +15,13 @@ import textwrap
 import unittest
 
 from flexmock import flexmock, flexmock_teardown
-from hamcrest import assert_that, equal_to, instance_of, contains_string
+from hamcrest import assert_that, equal_to, instance_of, contains_string, has_length
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
 
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
+from netman.core.objects.access_groups import OUT, IN
 from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
@@ -244,3 +245,149 @@ class JuniperMXTest(unittest.TestCase):
             self.switch.add_vlan(1000, longString)
 
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
+
+    def test_get_vlan_with_no_interfaces(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <bridge-domains>
+                      <bridge>
+                        <vlan-id>10</vlan-id>
+                      </bridge>
+                    </bridge-domains>
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <bridge-domains>
+                  <domain>
+                    <name>STANDARD</name>
+                    <vlan-id>10</vlan-id>
+                    <description>my-description</description>
+                  </domain>
+                </bridge-domains>
+            """))
+
+        vlan = self.switch.get_vlan(10)
+
+        assert_that(vlan.number, equal_to(10))
+        assert_that(vlan.name, equal_to("my-description"))
+        assert_that(vlan.access_groups[IN], equal_to(None))
+        assert_that(vlan.access_groups[OUT], equal_to(None))
+        assert_that(vlan.ips, has_length(0))
+
+    def test_get_vlans(self):
+        self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <bridge-domains />
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <bridge-domains>
+                  <domain>
+                    <name>STANDARD</name>
+                    <vlan-id>10</vlan-id>
+                    <description>my-description</description>
+                  </domain>
+                  <domain>
+                    <name>NO-VLAN-ID</name>
+                    <description>shizzle</description>
+                  </domain>
+                  <domain>
+                    <name>WITH-IF</name>
+                    <vlan-id>20</vlan-id>
+                    <l3-interface>vlan.20</l3-interface>
+                  </domain>
+                  <domain>
+                    <name>WITH-IF-MULTI-IP</name>
+                    <vlan-id>40</vlan-id>
+                    <l3-interface>vlan.70</l3-interface>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/1</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <ethernet-switching>
+                        </ethernet-switching>
+                      </family>
+                    </unit>
+                  </interface>
+                  <interface>
+                    <name>vlan</name>
+                    <unit>
+                      <name>20</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>1.1.1.1/24</name>
+                          </address>
+                          <filter>
+                            <input>
+                              <filter-name>AC-IN</filter-name>
+                            </input>
+                            <output>
+                              <filter-name>AC-OUT</filter-name>
+                            </output>
+                          </filter>
+                        </inet>
+                      </family>
+                    </unit>
+                    <unit>
+                      <name>40</name>
+                    </unit>
+                    <unit>
+                      <name>70</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>2.1.1.1/24</name>
+                          </address>
+                          <address>
+                            <name>4.1.1.1/24</name>
+                          </address>
+                          <address>
+                            <name>3.1.1.1/24</name>
+                          </address>
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+            """))
+
+        vlan10, vlan20, vlan40 = self.switch.get_vlans()
+
+        assert_that(vlan10.number, equal_to(10))
+        assert_that(vlan10.name, equal_to("my-description"))
+        assert_that(vlan10.access_groups[IN], equal_to(None))
+        assert_that(vlan10.access_groups[OUT], equal_to(None))
+        assert_that(vlan10.ips, has_length(0))
+
+        assert_that(vlan20.number, equal_to(20))
+        assert_that(vlan20.name, equal_to(None))
+        assert_that(vlan20.access_groups[IN], equal_to("AC-IN"))
+        assert_that(vlan20.access_groups[OUT], equal_to("AC-OUT"))
+        assert_that(vlan20.ips, has_length(1))
+        vlan20ip1 = vlan20.ips[0]
+        assert_that(str(vlan20ip1.ip), equal_to("1.1.1.1"))
+        assert_that(vlan20ip1.prefixlen, equal_to(24))
+
+        assert_that(vlan40.number, equal_to(40))
+        assert_that(vlan40.name, equal_to(None))
+        assert_that(vlan40.access_groups[IN], equal_to(None))
+        assert_that(vlan40.access_groups[OUT], equal_to(None))
+        vlan40ip1, vlan40ip2, vlan40ip3 = vlan40.ips
+        assert_that(str(vlan40ip1.ip), equal_to("2.1.1.1"))
+        assert_that(vlan40ip1.prefixlen, equal_to(24))
+        assert_that(str(vlan40ip2.ip), equal_to("3.1.1.1"))
+        assert_that(vlan40ip2.prefixlen, equal_to(24))
+        assert_that(str(vlan40ip3.ip), equal_to("4.1.1.1"))
+        assert_that(vlan40ip3.prefixlen, equal_to(24))
