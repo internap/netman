@@ -28,7 +28,7 @@ from netman.core.objects.exceptions import IPNotAvailable, UnknownIP, UnknownVla
     BadVlanName, UnknownInterface, TrunkVlanNotSet, VlanVrfNotSet, UnknownVrf, BadVrrpTimers, BadVrrpPriorityNumber, \
     BadVrrpTracking, VrrpAlreadyExistsForVlan, VrrpDoesNotExistForVlan, NoIpOnVlanForVrrp, BadVrrpAuthentication, \
     BadVrrpGroupNumber, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, VlanAlreadyExist, \
-    InvalidAccessGroupName
+    InvalidAccessGroupName, IPAlreadySet
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -245,7 +245,7 @@ class Brocade(SwitchBase):
 
         ip_exists = next((ip for ip in vlan.ips if ip.ip == ip_network.ip), False)
         if ip_exists:
-            raise IPNotAvailable(ip_network)
+            raise IPAlreadySet(ip_network)
 
         with self.config(), self.interface_vlan(vlan):
             ip_is_in_an_existing_network = any(ip_network in existing_ip for existing_ip in vlan.ips)
