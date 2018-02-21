@@ -27,7 +27,7 @@ from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import IPNotAvailable, UnknownVlan, UnknownIP, UnknownAccessGroup, BadVlanNumber, \
     BadVlanName, UnknownInterface, TrunkVlanNotSet, UnknownVrf, VlanVrfNotSet, VrrpAlreadyExistsForVlan, BadVrrpPriorityNumber, BadVrrpGroupNumber, \
     BadVrrpTimers, BadVrrpTracking, NoIpOnVlanForVrrp, VrrpDoesNotExistForVlan, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    VlanAlreadyExist, InvalidAccessGroupName
+    VlanAlreadyExist, InvalidAccessGroupName, IPAlreadySet
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -1022,10 +1022,10 @@ class BrocadeTest(unittest.TestCase):
             "!",
         ])
 
-        with self.assertRaises(IPNotAvailable) as expect:
+        with self.assertRaises(IPAlreadySet) as expect:
             self.switch.add_ip_to_vlan(1234, IPNetwork("1.2.3.4/25"))
 
-        assert_that(str(expect.exception), equal_to("IP 1.2.3.4/25 is not available in this vlan"))
+        assert_that(str(expect.exception), equal_to("IP 1.2.3.4/25 is already present in this vlan as None"))
 
     def test_add_ip_already_in_this_interface_as_a_secondary(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return(
@@ -1039,10 +1039,10 @@ class BrocadeTest(unittest.TestCase):
             "!",
         ])
 
-        with self.assertRaises(IPNotAvailable) as expect:
+        with self.assertRaises(IPAlreadySet) as expect:
             self.switch.add_ip_to_vlan(1234, IPNetwork("1.2.3.5/25"))
 
-        assert_that(str(expect.exception), equal_to("IP 1.2.3.5/25 is not available in this vlan"))
+        assert_that(str(expect.exception), equal_to("IP 1.2.3.5/25 is already present in this vlan as None"))
 
     def test_add_ip_to_unknown_vlan(self):
         self.shell_mock.should_receive("do").with_args("show vlan 1234").once().ordered().and_return([
