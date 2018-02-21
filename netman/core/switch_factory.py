@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from netman.adapters.switches.juniper.mx import netconf as mx_netconf
 from netman.core.objects.flow_control_switch import FlowControlSwitch
 
 from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade
@@ -24,6 +26,7 @@ factories = {
     "brocade_telnet": brocade.telnet,
     "juniper": juniper.standard.netconf,
     "juniper_qfx_copper": juniper.qfx_copper.netconf,
+    "juniper_mx": mx_netconf,
     "dell": dell.ssh,
     "dell_ssh": dell.ssh,
     "dell_telnet": dell.telnet,
