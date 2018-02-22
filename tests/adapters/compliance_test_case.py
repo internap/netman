@@ -39,8 +39,10 @@ def _create_associated_test_classes(test_case_name, test_class):
 
 def _wrap_tests_with_not_implemented_tolerance(test_class):
     for method in dir(test_class):
-        if method.startswith("test_") or method == "setUp":
+        if method.startswith("test_"):
             _wrap_test_method(method, test_class)
+        elif method == "setUp":
+            _wrap_setup_method(method, test_class)
     return test_class
 
 
@@ -52,5 +54,19 @@ def _wrap_test_method(method, test_class):
             old_method(obj)
         except NotImplementedError:
             raise SkipTest("Method is not implemented")
+    wrapper.__name__ = method
+    setattr(test_class, method, wrapper)
+
+
+def _wrap_setup_method(method, test_class):
+    old_method = getattr(test_class, method)
+
+    def wrapper(obj):
+        try:
+            old_method(obj)
+        except NotImplementedError:
+            obj.tearDown()
+            raise SkipTest("Method is not implemented")
+
     wrapper.__name__ = method
     setattr(test_class, method, wrapper)

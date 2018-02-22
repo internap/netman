@@ -18,22 +18,22 @@ from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_swit
 class InterfaceManagementTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "juniper_mx")
     def test_set_interface_state_off(self):
         self.client.set_interface_state(self.test_port, OFF)
 
-    @skip_on_switches("juniper", "juniper_qfx_copper")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "juniper_mx")
     def test_set_interface_state_on(self):
         self.client.set_interface_state(self.test_port, ON)
 
-    @skip_on_switches("cisco", "brocade", "brocade_telnet")
+    @skip_on_switches("cisco", "brocade", "brocade_telnet", "juniper_mx")
     def test_edit_spanning_tree(self):
         self.client.edit_interface_spanning_tree(self.test_port, edge=True)
 
-    @skip_on_switches("cisco", "brocade", "brocade_telnet")
+    @skip_on_switches("cisco", "brocade", "brocade_telnet", "juniper_mx")
     def test_set_interface_lldp_state(self):
         self.client.set_interface_lldp_state(self.test_port, enabled=True)
 
-    @skip_on_switches("cisco", "brocade", "brocade_telnet")
+    @skip_on_switches("cisco", "brocade", "brocade_telnet", "juniper_mx")
     def test_disable_lldp(self):
         self.client.set_interface_lldp_state(self.test_port, enabled=False)

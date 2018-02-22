@@ -18,9 +18,10 @@ from fake_switches.cisco6500.cisco_core import Cisco6500SwitchCore
 from fake_switches.dell.dell_core import DellSwitchCore
 from fake_switches.dell10g.dell_core import Dell10GSwitchCore
 from fake_switches.juniper.juniper_core import JuniperSwitchCore
+from fake_switches.juniper_mx.juniper_mx_core import JuniperMXSwitchCore
 from fake_switches.juniper_qfx_copper.juniper_qfx_copper_core import JuniperQfxCopperSwitchCore
 from fake_switches.ssh_service import SwitchSshService
-from fake_switches.switch_configuration import Port
+from fake_switches.switch_configuration import Port, AggregatedPort
 from fake_switches.telnet_service import SwitchTelnetService
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -116,7 +117,12 @@ available_models = [
             Port("ge-0/0/1"),
             Port("ge-0/0/2"),
             Port("ge-0/0/3"),
-            Port("ge-0/0/4")
+            Port("ge-0/0/4"),
+            AggregatedPort("ae1"),
+            AggregatedPort("ae2"),
+            AggregatedPort("ae3"),
+            AggregatedPort("ae4"),
+            AggregatedPort("ae42")
         ]
     },
     {
@@ -134,7 +140,12 @@ available_models = [
             Port("ge-0/0/1"),
             Port("ge-0/0/2"),
             Port("ge-0/0/3"),
-            Port("ge-0/0/4")
+            Port("ge-0/0/4"),
+            AggregatedPort("ae1"),
+            AggregatedPort("ae2"),
+            AggregatedPort("ae3"),
+            AggregatedPort("ae4"),
+            AggregatedPort("ae42")
         ]
     },
     {
@@ -211,6 +222,29 @@ available_models = [
             Port("tengigabitethernet 1/0/2"),
             Port("tengigabitethernet 2/0/1"),
             Port("tengigabitethernet 2/0/2"),
+        ]
+    },
+    {
+        "switch_descriptor": SwitchDescriptor(
+            model="juniper_mx",
+            hostname="127.0.0.1",
+            port=11010,
+            username="root",
+            password="root",
+        ),
+        "test_port_name": "xe-0/0/3",
+        "core_class": JuniperMXSwitchCore,
+        "service_class": SwitchSshService,
+        "ports": [
+            Port("xe-0/0/1"),
+            Port("xe-0/0/2"),
+            Port("xe-0/0/3"),
+            Port("xe-0/0/4"),
+            AggregatedPort("ae1"),
+            AggregatedPort("ae2"),
+            AggregatedPort("ae3"),
+            AggregatedPort("ae4"),
+            AggregatedPort("ae42")
         ]
     }
 ]

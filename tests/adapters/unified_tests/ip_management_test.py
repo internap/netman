@@ -25,7 +25,7 @@ from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_swit
 class IpManagementTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_adding_and_removing_ip_basic(self):
         self.client.add_vlan(2345)
 
@@ -58,7 +58,7 @@ class IpManagementTest(ConfiguredTestCase):
 
         self.client.remove_vlan(2345)
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_adding_unavailable_ips_and_various_errors(self):
         self.client.add_vlan(2345)
 
@@ -91,7 +91,7 @@ class IpManagementTest(ConfiguredTestCase):
 
         self.client.remove_vlan(2345)
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_handling_access_groups(self):
         self.client.add_vlan(2345)
 

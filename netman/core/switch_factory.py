@@ -14,6 +14,7 @@
 from netman.core.objects.flow_control_switch import FlowControlSwitch
 
 from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade
+from netman.adapters.switches.juniper.mx import netconf as mx_netconf
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -24,6 +25,7 @@ factories = {
     "brocade_telnet": brocade.telnet,
     "juniper": juniper.standard.netconf,
     "juniper_qfx_copper": juniper.qfx_copper.netconf,
+    "juniper_mx": mx_netconf,
     "dell": dell.ssh,
     "dell_ssh": dell.ssh,
     "dell_telnet": dell.telnet,

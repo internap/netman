@@ -4,7 +4,7 @@
 #
 #    pip-compile --no-index --no-emit-trusted-host --output-file constraints.txt requirements.txt
 #
-certifi==2017.11.5        # via requests
+certifi==2018.1.18        # via requests
 chardet==3.0.4            # via requests
 click==6.7                # via flask
 ecdsa==0.13               # via paramiko
@@ -22,4 +22,4 @@ pycrypto==2.6.1           # via paramiko
 requests==2.18.4
 six==1.11.0               # via ncclient
 urllib3==1.22             # via requests
-werkzeug==0.13            # via flask
+werkzeug==0.14.1          # via flask

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from fake_switches.switch_configuration import AggregatedPort
 from hamcrest import assert_that, is_
 from netaddr import IPNetwork
 
@@ -25,14 +25,17 @@ class GetInterfacesTest(ComplianceTestCase):
 
         interfaces = self.client.get_interfaces()
 
-        assert_that([i.name for i in interfaces], is_([p.name for p in self.test_ports]))
+        assert_that([i.name for i in interfaces], is_(self._all_physical_test_ports()))
 
     def test_does_not_list_bonds(self):
         self.try_to.add_bond(1)
 
         interfaces = self.client.get_interfaces()
 
-        assert_that([i.name for i in interfaces], is_([p.name for p in self.test_ports]))
+        assert_that([i.name for i in interfaces], is_(self._all_physical_test_ports()))
+
+    def _all_physical_test_ports(self):
+        return [p.name for p in self.test_ports if not isinstance(p, AggregatedPort)]
 
     def test_does_not_list_interface_vlans(self):
         self.client.add_vlan(1000)
@@ -40,7 +43,7 @@ class GetInterfacesTest(ComplianceTestCase):
 
         interfaces = self.client.get_interfaces()
 
-        assert_that([i.name for i in interfaces], is_([p.name for p in self.test_ports]))
+        assert_that([i.name for i in interfaces], is_(self._all_physical_test_ports()))
 
     def tearDown(self):
         self.janitor.remove_bond(1)
