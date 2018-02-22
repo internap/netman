@@ -21,7 +21,7 @@ from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_swit
 class VrrpTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_add_and_get_group(self):
         try:
             self.client.add_vlan(2999, name="my-test-vlan")

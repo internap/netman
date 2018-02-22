@@ -26,7 +26,7 @@ from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_swit
 class VlanManagementTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_get_vlan(self):
         self.client.add_vlan(2999, name="my-test-vlan")
         self.client.set_vlan_access_group(2999, IN, "ACL-IN")
@@ -43,7 +43,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         assert_that(single_vlan, equal_to(vlan_from_list))
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_get_vlan_defaults(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
@@ -52,11 +52,12 @@ class VlanManagementTest(ConfiguredTestCase):
 
         assert_that(single_vlan, equal_to(vlan_from_list))
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_get_vlan_fails(self):
         with self.assertRaises(UnknownVlan):
             self.client.get_vlan(4000)
 
+    @skip_on_switches("juniper_mx")
     def test_adding_and_removing_a_vlan(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
@@ -70,6 +71,7 @@ class VlanManagementTest(ConfiguredTestCase):
         vlan = next((vlan for vlan in vlans if vlan.number == 2999), None)
         assert_that(vlan is None)
 
+    @skip_on_switches("juniper_mx")
     def test_setting_a_vlan_on_an_interface(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
@@ -81,6 +83,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.remove_vlan(2999)
 
+    @skip_on_switches("juniper_mx")
     def test_port_mode_trunk(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
@@ -88,6 +91,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.remove_vlan(2999)
 
+    @skip_on_switches("juniper_mx")
     def test_port_mode_access(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
@@ -95,6 +99,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.remove_vlan(2999)
 
+    @skip_on_switches("juniper_mx")
     def test_native_trunk(self):
         self.client.add_vlan(2999, name="my-test-vlan")
 
@@ -108,6 +113,7 @@ class VlanManagementTest(ConfiguredTestCase):
 
         self.client.remove_vlan(2999)
 
+    @skip_on_switches("juniper_mx")
     def test_passing_from_trunk_mode_to_access_gets_rid_of_stuff_in_trunk_mode(self):
         self.client.add_vlan(1100)
         self.client.add_vlan(1200)
@@ -143,6 +149,7 @@ class VlanManagementTest(ConfiguredTestCase):
         self.client.remove_vlan(1300)
         self.client.remove_vlan(1400)
 
+    @skip_on_switches("juniper_mx")
     def test_invalid_vlan_parameter_fails(self):
         with self.assertRaises(UnknownVlan):
             self.client.remove_vlan(2999)
@@ -166,7 +173,7 @@ class VlanManagementTest(ConfiguredTestCase):
         with self.assertRaises(UnknownResource):
             self.client.remove_trunk_vlan(self.test_port, vlan=2999)
 
-    @skip_on_switches("juniper", "juniper_qfx_copper")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "juniper_mx")
     def test_invalid_interface_parameter_fails(self):
         with self.assertRaises(UnknownInterface):
             self.client.set_interface_state('42/9999', ON)
@@ -216,7 +223,7 @@ class VlanManagementTest(ConfiguredTestCase):
         with self.assertRaises(UnknownInterface):
             self.client.set_interface_native_vlan('42/9999', 2999)
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "juniper_mx")
     def test_vrf_management(self):
 
         self.client.add_vlan(2999, name="my-test-vlan")
