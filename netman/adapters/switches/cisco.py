@@ -204,17 +204,17 @@ class Cisco(SwitchBase):
         vlan = self.get_vlan_interface_data(vlan_number)
 
         ip_found = next((ip for ip in vlan.ips if ip.ip == ip_network.ip), False)
-        if not ip_found:
-            has_ips = len(vlan.ips) > 0
-            with self.config(), self.interface_vlan(vlan_number):
-                if has_ips:
-                    self.ssh.do('no ip redirects')
-                result = self.ssh.do('ip address {} {}{}'.format(ip_network.ip, ip_network.netmask,
-                                     " secondary" if has_ips else ""))
-                if len(result) > 0:
-                    raise IPNotAvailable(ip_network, reason="; ".join(result))
-        else:
+        if ip_found:
             raise IPAlreadySet(ip_network, ip_found)
+
+        has_ips = len(vlan.ips) > 0
+        with self.config(), self.interface_vlan(vlan_number):
+            if has_ips:
+                self.ssh.do('no ip redirects')
+            result = self.ssh.do('ip address {} {}{}'.format(ip_network.ip, ip_network.netmask,
+                                                             " secondary" if has_ips else ""))
+            if len(result) > 0:
+                raise IPNotAvailable(ip_network, reason="; ".join(result))
 
     def remove_ip_from_vlan(self, vlan_number, ip_network):
         vlan = self.get_vlan_interface_data(vlan_number)
