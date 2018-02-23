@@ -170,7 +170,7 @@ class Juniper(SwitchBase):
         vlan_name = first(vlan_node.xpath("name")).text
 
         update = Update()
-        update.add_vlan(vlan_removal(vlan_name), "vlans")
+        self.custom_strategies.remove_update_vlans(update, vlan_name)
 
         l3_if_type, l3_if_name = get_l3_interface(vlan_node)
         if l3_if_name is not None:
@@ -936,13 +936,6 @@ def interface_state_update(name, state):
             <name>{}</name>
             {}
         </interface>""".format(name, interface_state))
-
-
-def vlan_removal(name):
-    return to_ele("""
-        <vlan operation="delete">
-            <name>{}</name>
-        </vlan>""".format(name))
 
 
 def interface_unit_interface_removal(interface, unit):

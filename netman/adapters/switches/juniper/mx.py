@@ -19,9 +19,6 @@ from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlrea
 
 
 class MxJuniper(Juniper):
-    def remove_vlan(self, number):
-        raise NotImplementedError()
-
     def get_interface(self, interface_id):
         raise NotImplementedError()
 
@@ -197,6 +194,9 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
     def add_update_vlans(self, update, number, name):
         update.add_vlan(self.vlan_update(number, name), "bridge-domains")
 
+    def remove_update_vlans(self, update, vlan_name):
+        update.add_vlan(self.vlan_removal(vlan_name), "bridge-domains")
+
     def all_vlans(self):
         return new_ele("bridge-domains")
 
@@ -223,6 +223,12 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
         if description is not None:
             content.append(to_ele("<description>{}</description>".format(description)))
         return content
+
+    def vlan_removal(self, name):
+            return to_ele("""
+        <domain operation="delete">
+            <name>{}</name>
+        </domain>""".format(name))
 
     def get_vlans(self, config):
         return config.xpath("data/configuration/bridge-domains/domain")

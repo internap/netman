@@ -49,6 +49,9 @@ class JuniperCustomStrategies(object):
     def add_update_vlans(self, update, number, name):
         update.add_vlan(self.vlan_update(number, name), "vlans")
 
+    def remove_update_vlans(self, update, vlan_name):
+        update.add_vlan(self.vlan_removal(vlan_name), "vlans")
+
     def get_interface_trunk_native_vlan_id_node(self, interface):
         return interface.xpath("unit/family/ethernet-switching/native-vlan-id")
 
@@ -84,6 +87,12 @@ class JuniperCustomStrategies(object):
         if description is not None:
             content.append(to_ele("<description>{}</description>".format(description)))
         return content
+
+    def vlan_removal(self, name):
+        return to_ele("""
+        <vlan operation="delete">
+            <name>{}</name>
+        </vlan>""".format(name))
 
     def get_vlans(self, config):
         return config.xpath("data/configuration/vlans/vlan")
