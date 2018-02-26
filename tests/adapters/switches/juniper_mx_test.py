@@ -21,7 +21,7 @@ from ncclient.xml_ import to_ele
 
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
 from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
@@ -244,3 +244,56 @@ class JuniperMXTest(unittest.TestCase):
             self.switch.add_vlan(1000, longString)
 
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
+
+    def test_remove_vlan_ignores_removing_interface_not_created(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+              </domain>
+            </bridge-domains>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <bridge-domains>
+                  <domain operation="delete">
+                    <name>STANDARD</name>
+                  </domain>
+                </bridge-domains>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.remove_vlan(10)
+
+    def test_remove_vlan_invalid_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>ANOTHER</name>
+                <vlan-id>10</vlan-id>
+              </domain>
+            </bridge-domains>
+        """))
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.remove_vlan(20)
+
+        assert_that(str(expect.exception), equal_to("Vlan 20 not found"))
