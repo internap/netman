@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from netman.core.objects.flow_control_switch import FlowControlSwitch
 
 from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade
 from netman.adapters.switches.juniper.mx import netconf as mx_netconf
 from netman.adapters.switches.remote import RemoteSwitch
+from netman.core.objects.flow_control_switch import FlowControlSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 factories = {

@@ -14,7 +14,6 @@
 import signal
 import unittest
 
-from netman.adapters.switches.juniper.base import all_vlans
 from netman.adapters.switches.juniper.standard import netconf
 from tests import available_models
 
@@ -40,15 +39,15 @@ class JuniperIssue125Test(unittest.TestCase):
     def test_juniper_does_not_break_with_after_reading_a_4096_chunk(self):
         self._setup_vlan_list_to_be_the_exact_problematic_size(4097)
 
-        self.switch.query(all_vlans)
+        self.switch.query(self.switch.custom_strategies.all_vlans)
         with Timeout(seconds=1, error_message="ssh reading is stuck"):
-            self.switch.query(all_vlans)
+            self.switch.query(self.switch.custom_strategies.all_vlans)
 
     def _setup_vlan_list_to_be_the_exact_problematic_size(self, problematic_size):
         self.switch.add_vlan(1000, name="a")
-        result_with_one_vlan = self.switch.query(all_vlans).data_xml
+        result_with_one_vlan = self.switch.query(self.switch.custom_strategies.all_vlans).data_xml
         self.switch.add_vlan(1001, name="a")
-        result_with_two_vlan = self.switch.query(all_vlans).data_xml
+        result_with_two_vlan = self.switch.query(self.switch.custom_strategies.all_vlans).data_xml
 
         vlan_with_no_name_size = len(result_with_two_vlan) - len(result_with_one_vlan) - 1
 

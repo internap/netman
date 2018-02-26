@@ -19,7 +19,8 @@ from netaddr import IPNetwork
 
 from netman import regex
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
+from netman.core.objects.bond import Bond
+from netman.core.objects.exceptions import LockedSwitch, VlanAlreadyExist, UnknownVlan, \
     InterfaceInWrongPortMode, UnknownInterface, AccessVlanNotSet, NativeVlanNotSet, TrunkVlanNotSet, VlanAlreadyInTrunk, \
     BadBondNumber, BondAlreadyExist, UnknownBond, InterfaceNotInBond, OperationNotCompleted, InvalidMtuSize
 from netman.core.objects.interface import Interface
@@ -27,7 +28,6 @@ from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import ACCESS, TRUNK, BOND_MEMBER
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
-from netman.core.objects.bond import Bond
 
 
 class Juniper(SwitchBase):
@@ -90,10 +90,10 @@ class Juniper(SwitchBase):
             raise OperationNotCompleted(str(e).strip())
 
     def get_vlans(self):
-        config = self.query(all_vlans, all_interfaces)
+        config = self.query(self.custom_strategies.all_vlans, all_interfaces)
 
         vlan_list = []
-        for vlan_node in config.xpath("data/configuration/vlans/vlan"):
+        for vlan_node in self.custom_strategies.get_vlans(config):
             vlan = self.get_vlan_from_node(vlan_node, config)
             if vlan is not None:
                 vlan_list.append(vlan)
@@ -101,9 +101,9 @@ class Juniper(SwitchBase):
         return vlan_list
 
     def get_vlan(self, number):
-        config = self.query(one_vlan_by_vlan_id(number), all_interfaces)
-        if config.xpath("data/configuration/vlans/vlan"):
-            vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
+        config = self.query(self.custom_strategies.one_vlan_by_vlan_id(number), all_interfaces)
+        if self.custom_strategies.get_vlans(config):
+            vlan_node = self.custom_strategies.get_vlans(config)[0]
 
             return self.get_vlan_from_node(vlan_node, config)
         else:
@@ -132,7 +132,7 @@ class Juniper(SwitchBase):
 
     def get_interfaces(self):
         physical_interfaces = self._list_physical_interfaces()
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
         interface_list = []
         for phys_int in physical_interfaces:
@@ -147,38 +147,30 @@ class Juniper(SwitchBase):
         return interface_list
 
     def add_vlan(self, number, name=None):
-        config = self.query(all_vlans)
+        config = self.query(self.custom_strategies.all_vlans)
 
         try:
-            self.get_vlan_config(number, config)
+            self.custom_strategies.get_vlan_config(number, config)
             raise VlanAlreadyExist(number)
         except UnknownVlan:
             pass
 
         update = Update()
-        update.add_vlan(vlan_update(number, name))
+        self.custom_strategies.add_update_vlans(update, number, name)
 
         try:
             self._push(update)
         except RPCError as e:
-            if "being used by" in e.message:
-                raise VlanAlreadyExist(number)
-            elif "not within range" in e.message:
-                if e.message.startswith("Value"):
-                    raise BadVlanNumber()
-                elif e.message.startswith("Length"):
-                    raise BadVlanName()
-
-            raise
+            self.custom_strategies.manage_update_vlan_exception(e.message, number)
 
     def remove_vlan(self, number):
-        config = self.query(all_vlans, all_interfaces)
+        config = self.query(self.custom_strategies.all_vlans, all_interfaces)
 
-        vlan_node = self.get_vlan_config(number, config)
+        vlan_node = self.custom_strategies.get_vlan_config(number, config)
         vlan_name = first(vlan_node.xpath("name")).text
 
         update = Update()
-        update.add_vlan(vlan_removal(vlan_name))
+        update.add_vlan(vlan_removal(vlan_name), "vlans")
 
         l3_if_type, l3_if_name = get_l3_interface(vlan_node)
         if l3_if_name is not None:
@@ -199,7 +191,7 @@ class Juniper(SwitchBase):
     def set_access_mode(self, interface_id):
         update_attributes = []
 
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
         interface_node = self.get_interface_config(interface_id, config)
 
@@ -222,7 +214,7 @@ class Juniper(SwitchBase):
     def set_trunk_mode(self, interface_id):
         update_attributes = []
 
-        config = self.query(one_interface(interface_id), all_vlans)
+        config = self.query(one_interface(interface_id), self.custom_strategies.all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
         interface = self.node_to_interface(interface_node, config)
 
@@ -242,9 +234,9 @@ class Juniper(SwitchBase):
         update_attributes = []
         update_vlan_members = []
 
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
-        self.get_vlan_config(vlan, config)
+        self.custom_strategies.get_vlan_config(vlan, config)
 
         interface_node = self.get_interface_config(interface_id, config)
         interface = self.node_to_interface(interface_node, config)
@@ -272,7 +264,7 @@ class Juniper(SwitchBase):
                 raise
 
     def unset_interface_access_vlan(self, interface_id):
-        config = self.query(one_interface(interface_id), all_vlans)
+        config = self.query(one_interface(interface_id), self.custom_strategies.all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
         interface = self.node_to_interface(interface_node, config)
 
@@ -291,9 +283,9 @@ class Juniper(SwitchBase):
         port_mode_node = None
         native_vlan_id_node = None
 
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
-        self.get_vlan_config(vlan, config)
+        self.custom_strategies.get_vlan_config(vlan, config)
 
         interface_node = self.get_interface_config(interface_id, config)
 
@@ -380,7 +372,7 @@ class Juniper(SwitchBase):
         self._push_interface_update(interface_id, update)
 
     def unset_interface_native_vlan(self, interface_id):
-        config = self.query(one_interface(interface_id), all_vlans)
+        config = self.query(one_interface(interface_id), self.custom_strategies.all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
         interface = self.node_to_interface(interface_node, config)
 
@@ -393,9 +385,9 @@ class Juniper(SwitchBase):
         self._push(update)
 
     def add_trunk_vlan(self, interface_id, vlan):
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
-        self.get_vlan_config(vlan, config)
+        self.custom_strategies.get_vlan_config(vlan, config)
 
         interface_node = self.get_interface_config(interface_id, config)
 
@@ -417,7 +409,7 @@ class Juniper(SwitchBase):
             self._push_interface_update(interface_id, update)
 
     def remove_trunk_vlan(self, interface_id, vlan):
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
         if interface_node is None:
             raise UnknownInterface(interface_id)
@@ -427,7 +419,7 @@ class Juniper(SwitchBase):
         if interface.port_mode is ACCESS:
             raise InterfaceInWrongPortMode("access")
 
-        vlan_node = self.get_vlan_config(vlan, config)
+        vlan_node = self.custom_strategies.get_vlan_config(vlan, config)
         vlan_name = first(vlan_node.xpath("name")).text
 
         modifications = craft_members_modification_to_remove_vlan(interface_node, vlan_name, vlan)
@@ -581,7 +573,7 @@ class Juniper(SwitchBase):
         self._push(update)
 
     def add_interface_to_bond(self, interface, bond_id):
-        config = self.query(all_interfaces, all_vlans, rstp_protocol_interfaces)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans, rstp_protocol_interfaces)
         bond = self.node_to_bond(self.get_bond_config(bond_id, config), config)
 
         update = Update()
@@ -620,14 +612,14 @@ class Juniper(SwitchBase):
         self._push(update)
 
     def get_bond(self, number):
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
         bond_node = self.get_bond_config(number, config)
         return self.node_to_bond(bond_node, config, self.get_bond_slaves_config(
             value_of(bond_node.xpath("name"), transformer=bond_number), config))
 
     def get_bonds(self):
-        config = self.query(all_interfaces, all_vlans)
+        config = self.query(all_interfaces, self.custom_strategies.all_vlans)
         bond_nodes = config.xpath("data/configuration/interfaces/interface/aggregated-ether-options/..")
         return [
             self.node_to_bond(node, config, self.get_bond_slaves_config(
@@ -696,7 +688,7 @@ class Juniper(SwitchBase):
         return self.netconf.get_config(source="candidate" if self.in_transaction else "running", filter=filter_node)
 
     def get_interface(self, interface_id):
-        config = self.query(one_interface(interface_id), all_vlans)
+        config = self.query(one_interface(interface_id), self.custom_strategies.all_vlans)
         interface_node = self.get_interface_config(interface_id, config)
         if interface_node is not None:
             return self.node_to_interface(interface_node, config)
@@ -708,12 +700,6 @@ class Juniper(SwitchBase):
         interface_node = first(config.xpath(
             "data/configuration/interfaces/interface/name[text()=\"{0:s}\"]/..".format(interface_id)))
         return interface_node
-
-    def get_vlan_config(self, number, config):
-        vlan_node = first(config.xpath("data/configuration/vlans/vlan/vlan-id[text()=\"{}\"]/..".format(number)))
-        if vlan_node is None:
-            raise UnknownVlan(number)
-        return vlan_node
 
     def get_bond_config(self, number, config):
         interface_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/..".format(bond_name(number))))
@@ -777,7 +763,7 @@ class Juniper(SwitchBase):
         return bond
 
     def get_vlan_interfaces(self, vlan_number):
-        config = self.query(one_vlan_by_vlan_id(vlan_number), all_interfaces)
+        config = self.query(self.custom_strategies.one_vlan_by_vlan_id(vlan_number), all_interfaces)
 
         if not config.xpath("data/configuration/vlans/vlan"):
             raise UnknownVlan(vlan_number)
@@ -821,10 +807,6 @@ class Juniper(SwitchBase):
         return self.custom_strategies.get_protocols_interface_name(interface_name)
 
 
-def all_vlans():
-    return new_ele("vlans")
-
-
 def all_interfaces():
     return new_ele("interfaces")
 
@@ -838,32 +820,6 @@ def one_interface(interface_id):
                 </interface>
             </interfaces>
         """.format(interface_id))
-
-    return m
-
-
-def one_vlan(vlan_name):
-    def m():
-        return to_ele("""
-            <vlans>
-                <vlan>
-                    <name>{}</name>
-                </vlan>
-            </vlans>
-        """.format(vlan_name))
-
-    return m
-
-
-def one_vlan_by_vlan_id(vlan_id):
-    def m():
-        return to_ele("""
-            <vlans>
-                <vlan>
-                    <vlan-id>{}</vlan-id>
-                </vlan>
-            </vlans>
-        """.format(vlan_id))
 
     return m
 
@@ -901,9 +857,9 @@ class Update(object):
         self.protocols_root = None
         self.sub_protocol_roots = {}
 
-    def add_vlan(self, vlan):
+    def add_vlan(self, vlan, root_ele):
         if self.vlans_root is None:
-            self.vlans_root = sub_ele(self.root, "vlans")
+            self.vlans_root = sub_ele(self.root, root_ele)
         self.vlans_root.append(vlan)
 
     def add_interface(self, interface):
