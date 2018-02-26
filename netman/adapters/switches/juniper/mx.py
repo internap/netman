@@ -13,9 +13,15 @@
 # limitations under the License.
 from ncclient.xml_ import to_ele, new_ele
 from netaddr import IPNetwork
+
+from netman.adapters.switches.juniper.base import Juniper, first, Update
+from netaddr import IPNetwork
 from netman.adapters.switches.juniper.base import Juniper, Update
 from netman.adapters.switches.juniper.base import first
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownIP, UnknownVlan
+
+IRB = "irb"
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet, \
     UnknownIP
 
@@ -173,7 +179,66 @@ class MxJuniper(Juniper):
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
                        track_id=None, track_decrement=None):
-        raise NotImplementedError()
+        config = self.query(one_interface_vlan(vlan_number))
+
+        if len(config.xpath("data/configuration/interfaces/interface/unit")) < 1:
+            raise UnknownVlan(vlan_number)
+
+        for addr_node in config.xpath("data/configuration/interfaces/interface/unit/family/inet/address/name"):
+            address = IPNetwork(addr_node.text)
+            if all(ip in address for ip in ips):
+                break
+        else:
+            raise UnknownIP(",".join(map(str, ips)))
+
+        interface = to_ele("""
+            <interface>
+            <name>irb</name>
+                <unit>
+                  <name>{vlan_number}</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>{parent_address}</name>
+                        <vrrp-group>
+                          <name>{group_id}</name>
+                          <priority>{priority}</priority>
+                          <preempt>
+                            <hold-time>60</hold-time>
+                          </preempt>
+                          <accept-data/>
+                          <authentication-type>simple</authentication-type>
+                          <authentication-key>{auth}</authentication-key>
+                          <track>
+                            <route>
+                              <route_address>{tracking}</route_address>
+                              <routing-instance>default</routing-instance>
+                              <priority-cost>{tracking_decrement}</priority-cost>
+                            </route>
+                          </track>
+                        </vrrp-group>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+            </interface>""".format(vlan_number=vlan_number,
+                                   parent_address=address,
+                                   group_id=group_id,
+                                   vip=ips[0],
+                                   priority=priority,
+                                   auth="VLAN{}".format(vlan_number),
+                                   tracking=track_id,
+                                   tracking_decrement=track_decrement))
+
+        vrrp_node = first(interface.xpath("//vrrp-group"))
+
+        for ip in ips:
+            vrrp_node.append(to_ele("<virtual-address>{}</virtual-address>".format(ip)))
+
+        update = Update()
+        update.add_interface(interface)
+
+        self._push(update)
 
     def remove_vrrp_group(self, vlan_id, group_id):
         raise NotImplementedError()
@@ -286,7 +351,6 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
                 raise BadVlanNumber()
         elif "Must be a string" in message:
             raise BadVlanName()
-        raise
 
     def get_l3_interface(self, vlan_node):
         if_name_node = first(vlan_node.xpath("routing-interface"))
@@ -301,13 +365,13 @@ def one_interface_vlan(vlan_number):
         return to_ele("""
             <interfaces>
                 <interface>
-                    <name>irb</name>
+                    <name>{interface}</name>
                     <unit>
                         <name>{unit}</name>
                     </unit>
                 </interface>
             </interfaces>
-        """.format(unit=vlan_number))
+        """.format(interface=IRB, unit=vlan_number))
 
     return m
 
@@ -329,3 +393,5 @@ def ip_network_element(vlan_number, ip_network, operation=''):
         </interface>""".format(vlan_number=vlan_number,
                                ip_network=ip_network,
                                operation=operation))
+
+

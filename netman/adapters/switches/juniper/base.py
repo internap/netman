@@ -162,6 +162,7 @@ class Juniper(SwitchBase):
             self._push(update)
         except RPCError as e:
             self.custom_strategies.manage_update_vlan_exception(e.message, number)
+            raise
 
     def remove_vlan(self, number):
         config = self.query(self.custom_strategies.all_vlans, all_interfaces)
@@ -840,11 +841,11 @@ def one_protocol_interface(protocol, interface_name):
             <protocols>
               <{protocol}>
                 <interface>
-                    <name>{}</name>
+                    <name>{interface}</name>
                 </interface>
               </{protocol}>
             </protocols>
-        """.format(interface_name, protocol=protocol))
+        """.format(interface=interface_name, protocol=protocol))
 
     return m
 

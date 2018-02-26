@@ -18,10 +18,13 @@ from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, equal_to, instance_of, contains_string, has_length
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
+from netaddr import IPAddress
+
 from netaddr import IPNetwork
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, UnknownIP
 from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, IPAlreadySet, \
     UnknownIP
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -246,6 +249,45 @@ class JuniperMXTest(unittest.TestCase):
             self.switch.add_vlan(1000, longString)
 
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
+
+    def test_add_vlan_unknown_exception_lets_it_raise(self):
+        longString = 'a' * 256
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <bridge-domains />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration(""))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+                <config>
+                  <configuration>
+                    <bridge-domains>
+                      <domain>
+                        <name>VLAN1000</name>
+                        <vlan-id>1000</vlan-id>
+                        <description>{}</description>
+                      </domain>
+                    </bridge-domains>
+                  </configuration>
+                </config>
+            """.format(longString))).and_raise(RPCError(to_ele(textwrap.dedent("""
+                 <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"
+                 xmlns:junos="http://xml.juniper.net/junos/15.1R4/junos"
+                 xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+                    <error-type>protocol</error-type>
+                    <error-tag>operation-failed</error-tag>
+                    <error-severity>error</error-severity>
+                    <error-message>There's another problem</error-message>
+                    <error-info>
+                      <bad-element>domain</bad-element>
+                    </error-info>
+                  </rpc-error>
+            """.format(longString)))))
+
+        with self.assertRaises(RPCError):
+            self.switch.add_vlan(1000, longString)
 
     def test_remove_vlan_ignores_removing_interface_not_created(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -637,6 +679,327 @@ class JuniperMXTest(unittest.TestCase):
         vlan20ip1 = vlan.ips[0]
         assert_that(str(vlan20ip1.ip), equal_to("1.1.1.1"))
         assert_that(vlan20ip1.prefixlen, equal_to(24))
+
+    def test_add_vrrp_success(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                        <family>
+                          <inet>
+                            <address>
+                              <name>3.3.3.2/27</name>
+                              <vrrp-group>
+                                <name>1</name>
+                                <priority>110</priority>
+                                <preempt>
+                                  <hold-time>60</hold-time>
+                                </preempt>
+                                <accept-data/>
+                                <authentication-type>simple</authentication-type>
+                                <authentication-key>VLAN1234</authentication-key>
+                                <track>
+                                  <route>
+                                    <route_address>0.0.0.0/0</route_address>
+                                    <routing-instance>default</routing-instance>
+                                    <priority-cost>50</priority-cost>
+                                  </route>
+                                </track>
+                                <virtual-address>3.3.3.1</virtual-address>
+                              </vrrp-group>
+                            </address>
+                          </inet>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("3.3.3.1")], priority=110, track_id="0.0.0.0/0",
+                                   track_decrement=50)
+
+    def test_add_vrrp_multiple_ips(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                        <family>
+                          <inet>
+                            <address>
+                              <name>3.3.3.2/27</name>
+                              <vrrp-group>
+                                <name>1</name>
+                                <priority>110</priority>
+                                <preempt>
+                                  <hold-time>60</hold-time>
+                                </preempt>
+                                <accept-data/>
+                                <authentication-type>simple</authentication-type>
+                                <authentication-key>VLAN1234</authentication-key>
+                                <track>
+                                  <route>
+                                    <route_address>0.0.0.0/0</route_address>
+                                    <routing-instance>default</routing-instance>
+                                    <priority-cost>50</priority-cost>
+                                  </route>
+                                </track>
+                                <virtual-address>3.3.3.1</virtual-address>
+                                <virtual-address>3.3.3.3</virtual-address>
+                              </vrrp-group>
+                            </address>
+                          </inet>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("3.3.3.1"), IPAddress("3.3.3.3")], priority=110,
+                                   track_id="0.0.0.0/0", track_decrement=50)
+
+    def test_add_vrrp_fails_when_vlan_not_found(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("3.3.3.1")], priority=110, track_id="0.0.0.0/0",
+                                       track_decrement=50)
+
+    def test_add_vrrp_adds_it_to_the_good_address(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                        <address>
+                            <name>4.4.4.2/27</name>
+                        </address>
+                        <address>
+                            <name>5.5.5.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                        <family>
+                          <inet>
+                            <address>
+                              <name>4.4.4.2/27</name>
+                              <vrrp-group>
+                                <name>1</name>
+                                <priority>110</priority>
+                                <preempt>
+                                  <hold-time>60</hold-time>
+                                </preempt>
+                                <accept-data/>
+                                <authentication-type>simple</authentication-type>
+                                <authentication-key>VLAN1234</authentication-key>
+                                <track>
+                                  <route>
+                                    <route_address>0.0.0.0/0</route_address>
+                                    <routing-instance>default</routing-instance>
+                                    <priority-cost>50</priority-cost>
+                                  </route>
+                                </track>
+                                <virtual-address>4.4.4.1</virtual-address>
+                              </vrrp-group>
+                            </address>
+                          </inet>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("4.4.4.1")], priority=110, track_id="0.0.0.0/0",
+                                   track_decrement=50)
+
+    def test_add_vrrp_fails_when_the_ips_doesnt_belong_to_an_existing_address(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        with self.assertRaises(UnknownIP):
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("4.4.4.1")], priority=110, track_id="0.0.0.0/0",
+                                       track_decrement=50)
+
+    def test_add_vrrp_fails_when_any_of_the_ips_doesnt_belong_to_an_existing_address(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        with self.assertRaises(UnknownIP):
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("3.3.3.1"), IPAddress("4.4.4.1")], priority=110, track_id="0.0.0.0/0",
+                                       track_decrement=50)
 
     def test_add_ip_to_vlan(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""

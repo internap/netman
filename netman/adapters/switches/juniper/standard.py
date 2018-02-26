@@ -114,8 +114,6 @@ class JuniperCustomStrategies(object):
             elif message.startswith("Length"):
                 raise BadVlanName()
 
-        raise
-
     def get_l3_interface(self, vlan_node):
         if_name_node = first(vlan_node.xpath("l3-interface"))
         if if_name_node is not None:
