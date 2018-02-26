@@ -113,5 +113,3 @@ class JuniperCustomStrategies(object):
                 raise BadVlanNumber()
             elif message.startswith("Length"):
                 raise BadVlanName()
-
-        raise

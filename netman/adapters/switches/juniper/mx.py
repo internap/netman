@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ncclient.xml_ import to_ele, new_ele
+from netaddr import IPNetwork
 
-from netman.adapters.switches.juniper.base import Juniper
+from netman.adapters.switches.juniper.base import Juniper, first, Update
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownIP, UnknownVlan
+
+IRB = "irb"
 
 
 class MxJuniper(Juniper):
@@ -144,7 +147,66 @@ class MxJuniper(Juniper):
 
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
                        track_id=None, track_decrement=None):
-        raise NotImplementedError()
+        config = self.query(one_interface_vlan(vlan_number))
+
+        if len(config.xpath("data/configuration/interfaces/interface/unit")) < 1:
+            raise UnknownVlan(vlan_number)
+
+        for addr_node in config.xpath("data/configuration/interfaces/interface/unit/family/inet/address/name"):
+            address = IPNetwork(addr_node.text)
+            if all(ip in address for ip in ips):
+                break
+        else:
+            raise UnknownIP(",".join(map(str, ips)))
+
+        interface = to_ele("""
+            <interface>
+            <name>irb</name>
+                <unit>
+                  <name>{vlan_number}</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>{parent_address}</name>
+                        <vrrp-group>
+                          <name>{group_id}</name>
+                          <priority>{priority}</priority>
+                          <preempt>
+                            <hold-time>60</hold-time>
+                          </preempt>
+                          <accept-data/>
+                          <authentication-type>simple</authentication-type>
+                          <authentication-key>{auth}</authentication-key>
+                          <track>
+                            <route>
+                              <route_address>{tracking}</route_address>
+                              <routing-instance>default</routing-instance>
+                              <priority-cost>{tracking_decrement}</priority-cost>
+                            </route>
+                          </track>
+                        </vrrp-group>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+            </interface>""".format(vlan_number=vlan_number,
+                                   parent_address=address,
+                                   group_id=group_id,
+                                   vip=ips[0],
+                                   priority=priority,
+                                   auth="VLAN{}".format(vlan_number),
+                                   tracking=track_id,
+                                   tracking_decrement=track_decrement))
+
+        vrrp_node = first(interface.xpath("//vrrp-group"))
+
+        for ip in ips:
+            vrrp_node.append(to_ele("<virtual-address>{}</virtual-address>".format(ip)))
+
+        update = Update()
+        update.add_interface(interface)
+
+        self._push(update)
 
     def remove_vrrp_group(self, vlan_id, group_id):
         raise NotImplementedError()
@@ -225,7 +287,7 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
         return content
 
     def vlan_removal(self, name):
-            return to_ele("""
+        return to_ele("""
         <domain operation="delete">
             <name>{}</name>
         </domain>""".format(name))
@@ -249,4 +311,19 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
                 raise BadVlanNumber()
         elif "Must be a string" in message:
             raise BadVlanName()
-        raise
+
+
+def one_interface_vlan(vlan_number):
+    def m():
+        return to_ele("""
+            <interfaces>
+                <interface>
+                    <name>{interface}</name>
+                    <unit>
+                        <name>{unit}</name>
+                    </unit>
+                </interface>
+            </interfaces>
+        """.format(interface=IRB, unit=vlan_number))
+
+    return m
