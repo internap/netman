@@ -18,11 +18,11 @@ from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, equal_to, instance_of, contains_string, has_length
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
-
+from netaddr import IPNetwork
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, IPAlreadySet
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
 from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
@@ -636,3 +636,133 @@ class JuniperMXTest(unittest.TestCase):
         vlan20ip1 = vlan.ips[0]
         assert_that(str(vlan20ip1.ip), equal_to("1.1.1.1"))
         assert_that(vlan20ip1.prefixlen, equal_to(24))
+
+    def test_add_ip_to_vlan(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN1234</name>
+                <vlan-id>1234</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <name>VLAN1234</name>
+                    <vlan-id>1234</vlan-id>
+                    <routing-interface>irb.1234</routing-interface>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>3.3.3.2/27</name>
+                          </address>
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.add_ip_to_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_add_ip_to_vlan_unknown_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.add_ip_to_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_add_ip_to_vlan_ip_already_exists_in_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN1234</name>
+                <vlan-id>1234</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        with self.assertRaises(IPAlreadySet):
+            self.switch.add_ip_to_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
