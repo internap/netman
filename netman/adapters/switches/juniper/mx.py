@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele, new_ele
+from netaddr import IPNetwork
 
-from netman.adapters.switches.juniper.base import Juniper
+from netman.adapters.switches.juniper.base import Juniper, Update
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet, \
+    IPNotAvailable
 
 
 class MxJuniper(Juniper):
@@ -68,7 +71,26 @@ class MxJuniper(Juniper):
         raise NotImplementedError()
 
     def add_ip_to_vlan(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        config = self.query(one_interface_vlan(vlan_number))
+
+        if len(config.xpath("data/configuration/interfaces/interface/unit")) < 1:
+            raise UnknownVlan(vlan_number)
+
+        for addr_node in config.xpath("data/configuration/interfaces/interface/unit/family/inet/address/name"):
+            address = IPNetwork(addr_node.text)
+            if ip_network in address:
+                raise IPAlreadySet(ip_network)
+
+        update = Update()
+        update.add_interface(ip_network_element(vlan_number, ip_network))
+
+        try:
+            self._push(update)
+        except RPCError as e:
+            if "Overlapping subnet" in e.message:
+                self.logger.info("Error adding ip {} to vlan {}".format(ip_network, vlan_number))
+                self.logger.info("Actual error message is: {}".format(e.message))
+                raise IPNotAvailable(ip_network)
 
     def remove_ip_from_vlan(self, vlan_number, ip_network):
         raise NotImplementedError()
@@ -250,3 +272,36 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
         elif "Must be a string" in message:
             raise BadVlanName()
         raise
+
+
+def one_interface_vlan(vlan_number):
+    def m():
+        return to_ele("""
+            <interfaces>
+                <interface>
+                    <name>irb</name>
+                    <unit>
+                        <name>{unit}</name>
+                    </unit>
+                </interface>
+            </interfaces>
+        """.format(unit=vlan_number))
+
+    return m
+
+def ip_network_element(vlan_number, ip_network):
+    return to_ele("""
+        <interface>
+            <name>irb</name>
+            <unit>
+              <name>{vlan_number}</name>
+              <family>
+                <inet>
+                  <address>
+                    <name>{ip_network}</name>
+                  </address>
+                </inet>
+              </family>
+            </unit>
+        </interface>""".format(vlan_number=vlan_number,
+                               ip_network=ip_network))
