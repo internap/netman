@@ -42,9 +42,3 @@ class AddIpToVlanTest(ComplianceTestCase):
 
         with self.assertRaises(IPAlreadySet):
             self.client.add_ip_to_vlan(1000, IPNetwork("10.10.10.2/29"))
-
-    def test_raises_if_ip_is_already_assigned_to_another_vlan(self):
-        self.client.add_ip_to_vlan(2000, IPNetwork("10.10.10.2/29"))
-
-        with self.assertRaises(IPNotAvailable):
-            self.client.add_ip_to_vlan(1000, IPNetwork("10.10.10.2/29"))
