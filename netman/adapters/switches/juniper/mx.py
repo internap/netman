@@ -14,16 +14,15 @@
 from ncclient.xml_ import to_ele, new_ele
 from netaddr import IPNetwork
 
-from netman.adapters.switches.juniper.base import Juniper, first, Update
-from netaddr import IPNetwork
 from netman.adapters.switches.juniper.base import Juniper, Update
 from netman.adapters.switches.juniper.base import first
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownIP, UnknownVlan
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, \
+    UnknownVlan, IPAlreadySet, \
+    UnknownIP
 
 IRB = "irb"
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet, \
-    UnknownIP
+PREEMPT_HOLD_TIME = 60
 
 
 class MxJuniper(Juniper):
@@ -184,12 +183,10 @@ class MxJuniper(Juniper):
         if len(config.xpath("data/configuration/interfaces/interface/unit")) < 1:
             raise UnknownVlan(vlan_number)
 
-        for addr_node in config.xpath("data/configuration/interfaces/interface/unit/family/inet/address/name"):
-            address = IPNetwork(addr_node.text)
-            if all(ip in address for ip in ips):
-                break
-        else:
-            raise UnknownIP(",".join(map(str, ips)))
+        adresses = [IPNetwork(addr_node.text) for addr_node in config.xpath(
+            "data/configuration/interfaces/interface/unit/family/inet/address/name")]
+
+        parent_address = self._get_address_that_contains_all_ips(adresses, ips)
 
         interface = to_ele("""
             <interface>
@@ -204,7 +201,7 @@ class MxJuniper(Juniper):
                           <name>{group_id}</name>
                           <priority>{priority}</priority>
                           <preempt>
-                            <hold-time>60</hold-time>
+                            <hold-time>{preempt_hold_time}</hold-time>
                           </preempt>
                           <accept-data/>
                           <authentication-type>simple</authentication-type>
@@ -222,9 +219,10 @@ class MxJuniper(Juniper):
                   </family>
                 </unit>
             </interface>""".format(vlan_number=vlan_number,
-                                   parent_address=address,
+                                   parent_address=parent_address,
                                    group_id=group_id,
                                    vip=ips[0],
+                                   preempt_hold_time=PREEMPT_HOLD_TIME,
                                    priority=priority,
                                    auth="VLAN{}".format(vlan_number),
                                    tracking=track_id,
@@ -239,6 +237,20 @@ class MxJuniper(Juniper):
         update.add_interface(interface)
 
         self._push(update)
+
+    def _get_address_that_contains_all_ips(self, subnets, ips):
+        def subnet_contains_all_ips(ips, subnet):
+            return all(ip in subnet for ip in ips)
+
+        subnet_found = None
+        for subnet in subnets:
+            if subnet_contains_all_ips(ips, subnet):
+                subnet_found = subnet
+
+        if not subnet_found:
+            raise UnknownIP(",".join(map(str, ips)))
+
+        return subnet_found
 
     def remove_vrrp_group(self, vlan_id, group_id):
         raise NotImplementedError()
@@ -393,5 +405,3 @@ def ip_network_element(vlan_number, ip_network, operation=''):
         </interface>""".format(vlan_number=vlan_number,
                                ip_network=ip_network,
                                operation=operation))
-
-

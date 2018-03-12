@@ -19,13 +19,13 @@ from hamcrest import assert_that, equal_to, instance_of, contains_string, has_le
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
 from netaddr import IPAddress
-
 from netaddr import IPNetwork
+
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, UnknownIP
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, IPAlreadySet, \
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, \
+    UnknownVlan, IPAlreadySet, \
     UnknownIP
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
@@ -210,7 +210,7 @@ class JuniperMXTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
 
     def test_add_vlan_too_long_vlan_name(self):
-        longString = 'a' * 256
+        long_string = 'a' * 256
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
                 <filter>
                   <configuration>
@@ -231,7 +231,7 @@ class JuniperMXTest(unittest.TestCase):
                     </bridge-domains>
                   </configuration>
                 </config>
-            """.format(longString))).and_raise(RPCError(to_ele(textwrap.dedent("""
+            """.format(long_string))).and_raise(RPCError(to_ele(textwrap.dedent("""
                  <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"
                  xmlns:junos="http://xml.juniper.net/junos/15.1R4/junos"
                  xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
@@ -243,15 +243,14 @@ class JuniperMXTest(unittest.TestCase):
                       <bad-element>domain</bad-element>
                     </error-info>
                   </rpc-error>
-            """.format(longString)))))
+            """.format(long_string)))))
 
         with self.assertRaises(BadVlanName) as expect:
-            self.switch.add_vlan(1000, longString)
+            self.switch.add_vlan(1000, long_string)
 
         assert_that(str(expect.exception), equal_to("Vlan name is invalid"))
 
-    def test_add_vlan_unknown_exception_lets_it_raise(self):
-        longString = 'a' * 256
+    def test_add_vlan_raises_RPCError(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
                 <filter>
                   <configuration>
@@ -260,19 +259,7 @@ class JuniperMXTest(unittest.TestCase):
                 </filter>
             """)).and_return(a_configuration(""))
 
-        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
-                <config>
-                  <configuration>
-                    <bridge-domains>
-                      <domain>
-                        <name>VLAN1000</name>
-                        <vlan-id>1000</vlan-id>
-                        <description>{}</description>
-                      </domain>
-                    </bridge-domains>
-                  </configuration>
-                </config>
-            """.format(longString))).and_raise(RPCError(to_ele(textwrap.dedent("""
+        self.netconf_mock.should_receive("edit_config").once().and_raise(RPCError(to_ele(textwrap.dedent("""
                  <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0"
                  xmlns:junos="http://xml.juniper.net/junos/15.1R4/junos"
                  xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
@@ -284,10 +271,10 @@ class JuniperMXTest(unittest.TestCase):
                       <bad-element>domain</bad-element>
                     </error-info>
                   </rpc-error>
-            """.format(longString)))))
+            """))))
 
         with self.assertRaises(RPCError):
-            self.switch.add_vlan(1000, longString)
+            self.switch.add_vlan(1000, 'a' * 256)
 
     def test_remove_vlan_ignores_removing_interface_not_created(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -929,6 +916,29 @@ class JuniperMXTest(unittest.TestCase):
         self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("4.4.4.1")], priority=110, track_id="0.0.0.0/0",
                                    track_decrement=50)
 
+    def test_add_vrrp_adds_it_if_all_ips_are_within_a_single_address(self):
+        self.netconf_mock.should_receive("get_config").and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>1.1.1.1/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+        self.netconf_mock.should_receive("edit_config").once()
+        self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.1.1.2"), IPAddress("1.1.1.3")],
+                                   priority=110, track_id="0.0.0.0/0",
+                                   track_decrement=50)
+
     def test_add_vrrp_fails_when_the_ips_doesnt_belong_to_an_existing_address(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
@@ -963,6 +973,32 @@ class JuniperMXTest(unittest.TestCase):
 
         with self.assertRaises(UnknownIP):
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("4.4.4.1")], priority=110, track_id="0.0.0.0/0",
+                                       track_decrement=50)
+
+    def test_add_vrrp_fail_if_all_ips_are_not_in_the_same_address(self):
+        self.netconf_mock.should_receive("get_config").and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>1.1.1.1/27</name>
+                        </address>
+                        <address>
+                            <name>2.2.2.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+        with self.assertRaises(UnknownIP):
+            self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("1.1.1.2"), IPAddress("2.2.2.3")],
+                                       priority=110, track_id="0.0.0.0/0",
                                        track_decrement=50)
 
     def test_add_vrrp_fails_when_any_of_the_ips_doesnt_belong_to_an_existing_address(self):
