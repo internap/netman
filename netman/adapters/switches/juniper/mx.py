@@ -11,11 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele, new_ele
+from netaddr import IPNetwork
 
 from netman.adapters.switches.juniper.base import Juniper, first
+from netman.adapters.switches.juniper.base import Juniper, Update
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet, \
+    IPNotAvailable
 
 
 class MxJuniper(Juniper):
@@ -68,7 +72,20 @@ class MxJuniper(Juniper):
         raise NotImplementedError()
 
     def add_ip_to_vlan(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        config = self.query(self.custom_strategies.one_vlan_by_vlan_id(vlan_number), one_interface_vlan(vlan_number))
+        self.custom_strategies.get_vlan_config(vlan_number, config)
+
+        update = Update()
+        self.custom_strategies.add_update_vlan_interface(update, vlan_number, name=None)
+
+        for addr_node in config.xpath("data/configuration/interfaces/interface/unit/family/inet/address/name"):
+            address = IPNetwork(addr_node.text)
+            if ip_network in address:
+                raise IPAlreadySet(ip_network)
+
+        update.add_interface(ip_network_element(vlan_number, ip_network))
+
+        self._push(update)
 
     def remove_ip_from_vlan(self, vlan_number, ip_network):
         raise NotImplementedError()
@@ -194,6 +211,9 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
     def add_update_vlans(self, update, number, name):
         update.add_vlan(self.vlan_update(number, name), "bridge-domains")
 
+    def add_update_vlan_interface(self, update, number, name):
+        update.add_vlan(self.vlan_interface_update(number, name), "bridge-domains")
+
     def remove_update_vlans(self, update, vlan_name):
         update.add_vlan(self.vlan_removal(vlan_name), "bridge-domains")
 
@@ -223,6 +243,11 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
         if description is not None:
             content.append(to_ele("<description>{}</description>".format(description)))
         return content
+
+    def vlan_interface_update(self, vlan_id, description):
+        vlan_node = self.vlan_update(vlan_id, description)
+        vlan_node.append(to_ele("<routing-interface>irb.{}</routing-interface>".format(vlan_id)))
+        return vlan_node
 
     def vlan_removal(self, name):
             return to_ele("""
@@ -257,3 +282,36 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
             return if_name_node.text.split(".")
         else:
             return None, None
+
+
+def one_interface_vlan(vlan_number):
+    def m():
+        return to_ele("""
+            <interfaces>
+                <interface>
+                    <name>irb</name>
+                    <unit>
+                        <name>{unit}</name>
+                    </unit>
+                </interface>
+            </interfaces>
+        """.format(unit=vlan_number))
+
+    return m
+
+def ip_network_element(vlan_number, ip_network):
+    return to_ele("""
+        <interface>
+            <name>irb</name>
+            <unit>
+              <name>{vlan_number}</name>
+              <family>
+                <inet>
+                  <address>
+                    <name>{ip_network}</name>
+                  </address>
+                </inet>
+              </family>
+            </unit>
+        </interface>""".format(vlan_number=vlan_number,
+                               ip_network=ip_network))
