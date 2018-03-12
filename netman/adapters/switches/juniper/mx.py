@@ -13,7 +13,7 @@
 # limitations under the License.
 from ncclient.xml_ import to_ele, new_ele
 
-from netman.adapters.switches.juniper.base import Juniper
+from netman.adapters.switches.juniper.base import Juniper, first
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
 
@@ -250,3 +250,10 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
         elif "Must be a string" in message:
             raise BadVlanName()
         raise
+
+    def get_l3_interface(self, vlan_node):
+        if_name_node = first(vlan_node.xpath("routing-interface"))
+        if if_name_node is not None:
+            return if_name_node.text.split(".")
+        else:
+            return None, None

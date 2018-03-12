@@ -120,7 +120,7 @@ class Juniper(SwitchBase):
             if description_node is not None:
                 vlan.name = description_node.text
 
-            l3_if_type, l3_if_name = get_l3_interface(vlan_node)
+            l3_if_type, l3_if_name = self.custom_strategies.get_l3_interface(vlan_node)
             if l3_if_name is not None:
                 interface_vlan_node = first(config.xpath("data/configuration/interfaces/interface/name[text()=\"{}\"]/.."
                                                          "/unit/name[text()=\"{}\"]/..".format(l3_if_type, l3_if_name)))
@@ -172,7 +172,7 @@ class Juniper(SwitchBase):
         update = Update()
         self.custom_strategies.remove_update_vlans(update, vlan_name)
 
-        l3_if_type, l3_if_name = get_l3_interface(vlan_node)
+        l3_if_type, l3_if_name = self.custom_strategies.get_l3_interface(vlan_node)
         if l3_if_name is not None:
             update.add_interface(interface_unit_interface_removal(l3_if_type, l3_if_name))
 
@@ -1040,14 +1040,6 @@ def to_range(number_list):
         return "{}-{}".format(number_list[0], number_list[-1])
     else:
         return str(number_list[0])
-
-
-def get_l3_interface(vlan_node):
-    if_name_node = first(vlan_node.xpath("l3-interface"))
-    if if_name_node is not None:
-        return if_name_node.text.split(".")
-    else:
-        return None, None
 
 
 def parse_ips(interface_unit_node):

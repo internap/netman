@@ -14,7 +14,7 @@
 from ncclient.xml_ import to_ele, new_ele
 
 from netman.adapters.switches.juniper.base import interface_speed, interface_replace, interface_speed_update, \
-    first_text, bond_name, Juniper
+    first_text, bond_name, Juniper, first
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
 
 
@@ -115,3 +115,10 @@ class JuniperCustomStrategies(object):
                 raise BadVlanName()
 
         raise
+
+    def get_l3_interface(self, vlan_node):
+        if_name_node = first(vlan_node.xpath("l3-interface"))
+        if if_name_node is not None:
+            return if_name_node.text.split(".")
+        else:
+            return None, None
