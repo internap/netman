@@ -14,7 +14,7 @@
 from ncclient.xml_ import to_ele, new_ele
 
 from netman.adapters.switches.juniper.base import interface_speed, interface_replace, interface_speed_update, \
-    first_text, bond_name, Juniper, first
+    first_text, bond_name, Juniper, first, value_of, parse_range
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
 
 
@@ -25,6 +25,9 @@ def netconf(switch_descriptor, *args, **kwargs):
 class JuniperCustomStrategies(object):
     def get_interface_port_mode_update_element(self, mode):
         return to_ele("<port-mode>{}</port-mode>".format(mode))
+
+    def get_vlan_member_update_element(self, vlan):
+        return to_ele("<members>{}</members>".format(vlan))
 
     def get_port_mode_node_in_inteface_node(self, interface_node):
         return interface_node.xpath("unit/family/ethernet-switching/port-mode")
@@ -114,9 +117,51 @@ class JuniperCustomStrategies(object):
             elif message.startswith("Length"):
                 raise BadVlanName()
 
+    def interface_update(self, name, unit, attributes=None, vlan_members=None):
+        content = to_ele("""
+            <interface>
+                <name>{interface}</name>
+                <unit>
+                    <name>{unit}</name>
+                    <family>
+                        <ethernet-switching>
+                        </ethernet-switching>
+                    </family>
+                </unit>
+            </interface>
+            """.format(interface=name, unit=unit))
+        ethernet_switching_node = first(content.xpath("//ethernet-switching"))
+
+        for attribute in (attributes if attributes is not None else []):
+            ethernet_switching_node.append(attribute)
+
+        if vlan_members:
+            vlan = new_ele("vlan")
+            for attribute in vlan_members:
+                vlan.append(attribute)
+            ethernet_switching_node.append(vlan)
+
+        return content
+
     def get_l3_interface(self, vlan_node):
         if_name_node = first(vlan_node.xpath("l3-interface"))
         if if_name_node is not None:
             return if_name_node.text.split(".")
         else:
             return None, None
+
+    def list_vlan_members(self, interface_node, config):
+        vlans = set()
+        for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
+            vlan_id = value_of(config.xpath('data/configuration/vlans/vlan/name[text()="{}"]/../vlan-id'.format(members.text)), transformer=int)
+            if vlan_id:
+                vlans = vlans.union([vlan_id])
+            else:
+                vlans = vlans.union(parse_range(members.text))
+        return sorted(vlans)
+
+    def update_vlan_members(self, interface_node, vlan_members, vlan):
+        if interface_node is not None:
+            for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
+                vlan_members.append(to_ele('<members operation="delete">{}</members>'.format(members.text)))
+        vlan_members.append(to_ele("<members>{}</members>".format(vlan)))
