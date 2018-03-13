@@ -19,10 +19,10 @@ from hamcrest import assert_that, equal_to, instance_of, contains_string, has_le
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
 from netaddr import IPAddress, IPNetwork
-
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
+from netman.core.objects.exceptions import AccessVlanNotSet
 from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, UnknownInterface, \
     IPAlreadySet, UnknownIP
 from netman.core.objects.port_modes import ACCESS
@@ -1274,6 +1274,109 @@ class JuniperMXTest(unittest.TestCase):
 
         with self.assertRaises(UnknownVlan):
             self.switch.remove_ip_from_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_unset_interface_access_vlan_removes_the_vlan_id(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                      <unit>
+                        <name>0</name>
+                        <family>
+                          <bridge>
+                            <interface-mode>access</interface-mode>
+                            <vlan-id>999</vlan-id>
+                          </bridge>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+            """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                      <unit>
+                        <name>0</name>
+                        <family>
+                          <bridge>
+                            <vlan-id operation="delete" />
+                          </bridge>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.unset_interface_access_vlan("xe-0/0/1")
+
+    def test_unset_interface_access_vlan_fails_when_not_set(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                      <unit>
+                        <name>0</name>
+                        <family>
+                          <bridge>
+                            <interface-mode>access</interface-mode>
+                          </bridge>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+            """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(AccessVlanNotSet) as expect:
+            self.switch.unset_interface_access_vlan("xe-0/0/1")
+
+        assert_that(str(expect.exception), equal_to("Access Vlan is not set on interface xe-0/0/1"))
+
+    def test_unset_interface_access_vlan_unknown_interface_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """))   .and_return(a_configuration())
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.unset_interface_access_vlan("xe-0/0/1")
+
+        assert_that(str(expect.exception), equal_to("Unknown interface xe-0/0/1"))
 
     def test_get_interface(self):
         self.switch.in_transaction = False
