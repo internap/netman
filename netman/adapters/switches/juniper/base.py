@@ -766,10 +766,10 @@ class Juniper(SwitchBase):
     def get_vlan_interfaces(self, vlan_number):
         config = self.query(self.custom_strategies.one_vlan_by_vlan_id(vlan_number), all_interfaces)
 
-        if not config.xpath("data/configuration/vlans/vlan"):
+        if not self.custom_strategies.get_vlans(config):
             raise UnknownVlan(vlan_number)
 
-        vlan_node = config.xpath("data/configuration/vlans/vlan")[0]
+        vlan_node = self.custom_strategies.get_vlans(config)[0]
         interface_nodes = config.xpath("data/configuration/interfaces/interface")
         return self.get_vlan_interfaces_from_node(vlan_node, interface_nodes)
 

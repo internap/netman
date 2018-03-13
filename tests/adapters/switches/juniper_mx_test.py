@@ -18,18 +18,17 @@ from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, equal_to, instance_of, contains_string, has_length
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
-from netaddr import IPAddress
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, \
-    UnknownVlan, IPAlreadySet, \
-    UnknownIP
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, UnknownInterface, \
+    IPAlreadySet, UnknownIP
+from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
-from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
+from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration, an_rpc_response
 
 
 def test_factory():
@@ -1275,3 +1274,182 @@ class JuniperMXTest(unittest.TestCase):
 
         with self.assertRaises(UnknownVlan):
             self.switch.remove_ip_from_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_get_interface(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                    <interface>
+                        <name>xe-0/0/1</name>
+                    </interface>
+                </interfaces>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>xe-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <bridge-domains/>
+        """))
+
+        interface = self.switch.get_interface('xe-0/0/1')
+
+        assert_that(interface.name, equal_to("xe-0/0/1"))
+        assert_that(interface.shutdown, equal_to(False))
+        assert_that(interface.port_mode, equal_to(ACCESS))
+        assert_that(interface.access_vlan, equal_to(None))
+        assert_that(interface.trunk_native_vlan, equal_to(None))
+        assert_that(interface.trunk_vlans, equal_to([]))
+        assert_that(interface.auto_negotiation, equal_to(None))
+        assert_that(interface.mtu, equal_to(None))
+
+    def test_get_interfaces_lists_configuration_less_interfaces(self):
+        self.switch.in_transaction = False
+
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>
+                          xe-0/0/1
+                        </name>
+                        <admin-status>
+                          up
+                        </admin-status>
+                        <oper-status>
+                          down
+                        </oper-status>
+                      </physical-interface>
+                      <physical-interface>
+                        <name>
+                          xe-0/0/2
+                        </name>
+                        <admin-status>
+                          down
+                        </admin-status>
+                        <oper-status>
+                          down
+                        </oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
+
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces />
+                <bridge-domains />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces />
+            <bridge-domains/>
+        """))
+
+        if1, if2 = self.switch.get_interfaces()
+
+        assert_that(if1.name, equal_to("xe-0/0/1"))
+        assert_that(if1.shutdown, equal_to(False))
+        assert_that(if1.port_mode, equal_to(ACCESS))
+        assert_that(if1.access_vlan, equal_to(None))
+        assert_that(if1.trunk_native_vlan, equal_to(None))
+        assert_that(if1.trunk_vlans, equal_to([]))
+
+        assert_that(if2.name, equal_to("xe-0/0/2"))
+        assert_that(if2.shutdown, equal_to(True))
+
+    def test_get_nonexistent_interface_raises(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                    <filter>
+                      <configuration>
+                          <interfaces>
+                            <interface>
+                              <name>xe-0/0/INEXISTENT</name>
+                            </interface>
+                          </interfaces>
+                        <bridge-domains/>
+                      </configuration>
+                    </filter>
+                """)).and_return(a_configuration("""
+                    <interfaces/>
+                    <bridge-domains/>
+                """))
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-interface-information>
+                      <terse/>
+                    </get-interface-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                    <interface-information style="terse">
+                      <physical-interface>
+                        <name>
+                          xe-0/0/1
+                        </name>
+                        <admin-status>
+                          down
+                        </admin-status>
+                        <oper-status>
+                          down
+                        </oper-status>
+                      </physical-interface>
+                    </interface-information>
+                """)))
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.get_interface('xe-0/0/INEXISTENT')
+
+        assert_that(str(expect.exception), equal_to("Unknown interface xe-0/0/INEXISTENT"))
+
+    def test_get_unconfigured_interface_could_be_disabled(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                        <filter>
+                          <configuration>
+                              <interfaces>
+                                <interface>
+                                  <name>xe-0/0/27</name>
+                                </interface>
+                              </interfaces>
+                            <bridge-domains/>
+                          </configuration>
+                        </filter>
+                    """)).and_return(a_configuration("""
+                        <interfaces/>
+                        <bridge-domains/>
+                    """))
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                        <get-interface-information>
+                          <terse/>
+                        </get-interface-information>
+                    """)).and_return(an_rpc_response(textwrap.dedent("""
+                        <interface-information style="terse">
+                          <physical-interface>
+                            <name>
+                              xe-0/0/27
+                            </name>
+                            <admin-status>
+                              down
+                            </admin-status>
+                            <oper-status>
+                              down
+                            </oper-status>
+                          </physical-interface>
+                        </interface-information>
+                    """)))
+
+        assert_that(self.switch.get_interface('xe-0/0/27').shutdown, equal_to(True))
