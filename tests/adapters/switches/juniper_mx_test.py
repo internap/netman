@@ -22,7 +22,8 @@ from netaddr import IPNetwork
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, IPAlreadySet
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, IPAlreadySet, \
+    UnknownIP
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
 from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_configuration
@@ -766,3 +767,112 @@ class JuniperMXTest(unittest.TestCase):
 
         with self.assertRaises(IPAlreadySet):
             self.switch.add_ip_to_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_remove_ip_from_vlan(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>3.3.3.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                        <family>
+                          <inet>
+                            <address operation="delete">
+                              <name>3.3.3.2/27</name>
+                            </address>
+                          </inet>
+                        </family>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.remove_ip_from_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_remove_ip_from_vlan_ip_not_found(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                            <name>4.4.4.2/27</name>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        with self.assertRaises(UnknownIP):
+            self.switch.remove_ip_from_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_remove_ip_from_vlan_unknown_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.remove_ip_from_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))

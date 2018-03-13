@@ -16,7 +16,8 @@ from netaddr import IPNetwork
 from netman.adapters.switches.juniper.base import Juniper, Update
 from netman.adapters.switches.juniper.base import first
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet, \
+    UnknownIP
 
 
 class MxJuniper(Juniper):
@@ -85,7 +86,21 @@ class MxJuniper(Juniper):
         self._push(update)
 
     def remove_ip_from_vlan(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        config = self.query(one_interface_vlan(vlan_number))
+
+        if len(config.xpath("data/configuration/interfaces/interface/unit")) < 1:
+            raise UnknownVlan(vlan_number)
+
+        for addr_node in config.xpath("data/configuration/interfaces/interface/unit/family/inet/address/name"):
+            address = IPNetwork(addr_node.text)
+            if ip_network in address:
+                update = Update()
+                update.add_interface(ip_network_element(vlan_number, ip_network, ' operation="delete"'))
+
+                self._push(update)
+                return
+
+        raise UnknownIP(ip_network)
 
     def set_vlan_access_group(self, vlan_number, direction, name):
         raise NotImplementedError()
@@ -297,7 +312,7 @@ def one_interface_vlan(vlan_number):
     return m
 
 
-def ip_network_element(vlan_number, ip_network):
+def ip_network_element(vlan_number, ip_network, operation=''):
     return to_ele("""
         <interface>
             <name>irb</name>
@@ -305,11 +320,12 @@ def ip_network_element(vlan_number, ip_network):
               <name>{vlan_number}</name>
               <family>
                 <inet>
-                  <address>
+                  <address{operation}>
                     <name>{ip_network}</name>
                   </address>
                 </inet>
               </family>
             </unit>
         </interface>""".format(vlan_number=vlan_number,
-                               ip_network=ip_network))
+                               ip_network=ip_network,
+                               operation=operation))
