@@ -14,12 +14,12 @@
 from ncclient.xml_ import to_ele, new_ele
 from netaddr import IPNetwork
 
-from netman.adapters.switches.juniper.base import Juniper, Update
+from netman.adapters.switches.juniper.base import Juniper, Update, one_interface
 from netman.adapters.switches.juniper.base import first
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, \
     UnknownVlan, IPAlreadySet, \
-    UnknownIP
+    UnknownIP, AccessVlanNotSet, UnknownInterface
 
 IRB = "irb"
 PREEMPT_HOLD_TIME = 60
@@ -30,7 +30,16 @@ class MxJuniper(Juniper):
         raise NotImplementedError()
 
     def unset_interface_access_vlan(self, interface_id):
-        raise NotImplementedError()
+        config = self.query(one_interface(interface_id))
+        if len(config.xpath("data/configuration/interfaces/interface")) < 1:
+            raise UnknownInterface(interface_id)
+
+        if len(config.xpath("data/configuration/interfaces/interface/unit/family/bridge/vlan-id")) < 1:
+            raise AccessVlanNotSet(interface_id)
+
+        update = Update()
+        update.add_interface(interface_update(interface_id, "0", [to_ele('<vlan-id operation="delete" />')]))
+        self._push(update)
 
     def set_access_mode(self, interface_id):
         raise NotImplementedError()
@@ -399,3 +408,24 @@ def ip_network_element(vlan_number, ip_network, operation=''):
         </interface>""".format(vlan_number=vlan_number,
                                ip_network=ip_network,
                                operation=operation))
+
+
+def interface_update(name, unit, vlans):
+    content = to_ele("""
+        <interface>
+            <name>{}</name>
+            <unit>
+                <name>{}</name>
+                <family>
+                    <bridge>
+                    </bridge>
+                </family>
+            </unit>
+        </interface>
+        """.format(name, unit))
+    bridge = first(content.xpath("//bridge"))
+
+    for vlan in vlans:
+        bridge.append(vlan)
+
+    return content
