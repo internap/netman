@@ -26,12 +26,6 @@ PREEMPT_HOLD_TIME = 60
 
 
 class MxJuniper(Juniper):
-    def get_interface(self, interface_id):
-        raise NotImplementedError()
-
-    def get_interfaces(self):
-        raise NotImplementedError()
-
     def set_access_vlan(self, interface_id, vlan):
         raise NotImplementedError()
 
