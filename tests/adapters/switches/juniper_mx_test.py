@@ -22,9 +22,8 @@ from netaddr import IPAddress, IPNetwork
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import AccessVlanNotSet
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, UnknownInterface, \
-    IPAlreadySet, UnknownIP
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan,\
+    IPAlreadySet, UnknownIP, InterfaceInWrongPortMode, AccessVlanNotSet, UnknownInterface
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
@@ -1165,6 +1164,411 @@ class JuniperMXTest(unittest.TestCase):
 
         with self.assertRaises(IPAlreadySet):
             self.switch.add_ip_to_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_port_mode_access(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <bridge-domains/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <interface-mode>access</interface-mode>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("xe-0/0/6")
+
+    def test_port_mode_access_with_no_mode_and_1_vlan_does_not_remove_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <vlan-id>2998</vlan-id>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <bridge-domains/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <interface-mode>access</interface-mode>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_mode("xe-0/0/6")
+
+    def test_set_access_vlan_on_interface_with_access_mode_and_no_vlan_succeeds_easily(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>access</interface-mode>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <vlan-id>1000</vlan-id>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_access_vlan("xe-0/0/6", 1000)
+
+    def test_set_access_vlan_on_interface_that_already_has_it_does_nothing(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>access</interface-mode>
+                      <vlan-id>1000</vlan-id>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.set_access_vlan("xe-0/0/6", 1000)
+
+    def test_port_mode_trunk_with_no_port_mode_or_vlan_set_just_sets_the_port_mode(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                  </interface>
+                </interfaces>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+            <bridge-domains/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <interface-mode>trunk</interface-mode>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_trunk_mode("xe-0/0/6")
+
+    def test_add_trunk_vlan_on_interface_adds_to_the_list(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                      <vlan-id-list>2000</vlan-id-list>
+                      <vlan-id-list>2100-2200</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <vlan-id-list>1000</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.add_trunk_vlan("xe-0/0/6", 1000)
+
+    def test_add_trunk_vlan_on_interface_that_has_no_port_mode_and_no_vlan_sets_it(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <interface-mode>trunk</interface-mode>
+                          <vlan-id-list>1000</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.add_trunk_vlan("xe-0/0/6", 1000)
+
+    def test_add_trunk_vlan_on_interface_in_access_mode_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>PATATE</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <vlan-id-list>500</vlan-id-list>
+                      <interface-mode>access</interface-mode>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(InterfaceInWrongPortMode) as expect:
+            self.switch.add_trunk_vlan("xe-0/0/6", 1000)
+
+        assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
+
+    def test_add_trunk_vlan_on_unknown_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.add_trunk_vlan("xe-0/0/6", 1000)
+
+        assert_that(str(expect.exception), contains_string("Vlan 1000 not found"))
 
     def test_remove_ip_from_vlan(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""

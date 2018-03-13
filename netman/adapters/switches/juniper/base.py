@@ -209,7 +209,7 @@ class Juniper(SwitchBase):
 
         if len(update_attributes) > 0:
             update = Update()
-            update.add_interface(interface_update(interface_id, "0", update_attributes))
+            update.add_interface(self.custom_strategies.interface_update(interface_id, "0", update_attributes))
             self._push_interface_update(interface_id, update)
 
     def set_trunk_mode(self, interface_id):
@@ -227,7 +227,7 @@ class Juniper(SwitchBase):
 
         if len(update_attributes) > 0:
             update = Update()
-            update.add_interface(interface_update(interface_id, "0", update_attributes))
+            update.add_interface(self.custom_strategies.interface_update(interface_id, "0", update_attributes))
 
             self._push_interface_update(interface_id, update)
 
@@ -248,14 +248,11 @@ class Juniper(SwitchBase):
             update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("access"))
 
         if interface.access_vlan != vlan:
-            if interface_node is not None:
-                for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
-                    update_vlan_members.append(to_ele('<members operation="delete">{}</members>'.format(members.text)))
-            update_vlan_members.append(to_ele("<members>{}</members>".format(vlan)))
+            self.custom_strategies.update_vlan_members(interface_node, update_vlan_members, vlan)
 
         if update_attributes or update_vlan_members:
             update = Update()
-            update.add_interface(interface_update(interface_id, "0", update_attributes, update_vlan_members))
+            update.add_interface(self.custom_strategies.interface_update(interface_id, "0", update_attributes, update_vlan_members))
 
             try:
                 self._push_interface_update(interface_id, update)
@@ -274,7 +271,7 @@ class Juniper(SwitchBase):
 
         if interface.access_vlan is not None:
             update = Update()
-            update.add_interface(interface_update(interface_id, "0", [to_ele('<vlan operation="delete" />')]))
+            update.add_interface(self.custom_strategies.interface_update(interface_id, "0", [to_ele('<vlan operation="delete" />')]))
 
             self._push(update)
         else:
@@ -305,7 +302,7 @@ class Juniper(SwitchBase):
 
         if native_vlan_id_node is not None:
 
-            interface = interface_update(interface_id, "0", [port_mode_node] if port_mode_node is not None else [])
+            interface = self.custom_strategies.interface_update(interface_id, "0", [port_mode_node] if port_mode_node is not None else [])
             self.custom_strategies.set_native_vlan_id_node(interface, native_vlan_id_node)
             update = Update()
             update.add_interface(interface)
@@ -381,7 +378,7 @@ class Juniper(SwitchBase):
             raise NativeVlanNotSet(interface_id)
 
         update = Update()
-        update.add_interface(interface_update(interface_id, "0", [to_ele("<native-vlan-id operation=\"delete\" />")]))
+        update.add_interface(self.custom_strategies.interface_update(interface_id, "0", [to_ele("<native-vlan-id operation=\"delete\" />")]))
 
         self._push(update)
 
@@ -401,10 +398,10 @@ class Juniper(SwitchBase):
 
         if vlan not in interface.trunk_vlans:
             update = Update()
-            update.add_interface(interface_update(
+            update.add_interface(self.custom_strategies.interface_update(
                 interface_id, "0",
                 [self.custom_strategies.get_interface_port_mode_update_element("trunk")] if actual_port_mode is None else None,
-                [to_ele("<members>{}</members>".format(vlan))]
+                [self.custom_strategies.get_vlan_member_update_element(vlan)]
             ))
 
             self._push_interface_update(interface_id, update)
@@ -428,7 +425,7 @@ class Juniper(SwitchBase):
             raise TrunkVlanNotSet(interface_id)
 
         update = Update()
-        update.add_interface(interface_update(interface_id, "0", vlan_members=modifications))
+        update.add_interface(self.custom_strategies.interface_update(interface_id, "0", vlan_members=modifications))
 
         self._push(update)
 
@@ -731,7 +728,7 @@ class Juniper(SwitchBase):
     def fill_interface_from_node(self, interface, interface_node, config):
         if interface_node is not None:
             interface.port_mode = self.get_port_mode(interface_node) or ACCESS
-            vlans = list_vlan_members(interface_node, config)
+            vlans = self.custom_strategies.list_vlan_members(interface_node, config)
             if interface.port_mode is ACCESS:
                 interface.access_vlan = first(vlans)
             else:
@@ -980,33 +977,6 @@ def interface_vlan_members_update(name, unit, members_modification):
     return content
 
 
-def interface_update(name, unit, attributes=None, vlan_members=None):
-    content = to_ele("""
-        <interface>
-            <name>{}</name>
-            <unit>
-                <name>{}</name>
-                <family>
-                    <ethernet-switching>
-                    </ethernet-switching>
-                </family>
-            </unit>
-        </interface>
-        """.format(name, unit))
-    ethernet_switching_node = first(content.xpath("//ethernet-switching"))
-
-    for attribute in (attributes if attributes is not None else []):
-        ethernet_switching_node.append(attribute)
-
-    if vlan_members:
-        vlan = new_ele("vlan")
-        for attribute in vlan_members:
-            vlan.append(attribute)
-        ethernet_switching_node.append(vlan)
-
-    return content
-
-
 def interface_main_update(name, attributes):
     content = to_ele("""
         <interface>
@@ -1140,17 +1110,6 @@ def protocol_interface_update(name):
           <name>{}</name>
         </interface>
     """.format(name))
-
-
-def list_vlan_members(interface_node, config):
-    vlans = set()
-    for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
-        vlan_id = value_of(config.xpath('data/configuration/vlans/vlan/name[text()="{}"]/../vlan-id'.format(members.text)), transformer=int)
-        if vlan_id:
-            vlans = vlans.union([vlan_id])
-        else:
-            vlans = vlans.union(parse_range(members.text))
-    return sorted(vlans)
 
 
 def get_bond_master(interface_node):
