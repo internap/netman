@@ -19,12 +19,13 @@ from hamcrest import assert_that, equal_to, instance_of, contains_string, has_le
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
 from netaddr import IPAddress, IPNetwork
+
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
-    IPAlreadySet, UnknownIP, InterfaceInWrongPortMode, AccessVlanNotSet, UnknownInterface
-from netman.core.objects.exceptions import VrrpDoesNotExistForVlan
+    IPAlreadySet, UnknownIP, InterfaceInWrongPortMode, AccessVlanNotSet, UnknownInterface, TrunkVlanNotSet, \
+    VrrpDoesNotExistForVlan
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
@@ -327,6 +328,263 @@ class JuniperMXTest(unittest.TestCase):
             self.switch.remove_vlan(20)
 
         assert_that(str(expect.exception), equal_to("Vlan 20 not found"))
+
+    def test_remove_vlan_also_removes_associated_interface(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains/>
+                <interfaces/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>MEH</name>
+                <vlan-id>5</vlan-id>
+              </domain>
+              <domain>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+                <routing-interface>irb.25</routing-interface>
+              </domain>
+              <domain>
+                <name>MEH2</name>
+                <vlan-id>15</vlan-id>
+              </domain>
+            </bridge-domains>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <bridge-domains>
+                  <domain operation="delete">
+                    <name>STANDARD</name>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit operation="delete">
+                      <name>25</name>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.remove_vlan(10)
+
+    def test_remove_vlan_in_use_deletes_all_usages(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                        <vlan-id-list>9</vlan-id-list>
+                        <vlan-id-list>10</vlan-id-list>
+                        <vlan-id-list>11</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>xe-0/0/2</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                        <vlan-id-list>9-15</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>xe-0/0/3</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                        <interface-mode>access</interface-mode>
+                        <vlan-id-list>12</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>xe-0/0/4</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>access</interface-mode>
+                        <vlan-id>STANDARD</vlan-id>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>xe-0/0/5</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>access</interface-mode>
+                        <vlan-id>ANOTHER_NAME</vlan-id>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <bridge-domains>
+                  <domain operation="delete">
+                    <name>STANDARD</name>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                          <vlan-id-list operation="delete">10</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                  <interface>
+                    <name>xe-0/0/2</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                            <vlan-id-list operation="delete">9-15</vlan-id-list>
+                            <vlan-id-list>9</vlan-id-list>
+                            <vlan-id-list>11-15</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                  <interface>
+                    <name>xe-0/0/4</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                            <vlan-id operation="delete">STANDARD</vlan-id>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.remove_vlan(10)
+
+    def test_remove_vlan_delete_usage_and_interface_at_same_time(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains />
+                <interfaces />
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>STANDARD</name>
+                <vlan-id>10</vlan-id>
+                <routing-interface>irb.10</routing-interface>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>name</name>
+                <unit>
+                  <name>10</name>
+                  <family>
+                    <inet>
+                      <address>
+                        <name>1.1.1.1/24</name>
+                      </address>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+              <interface>
+                <name>xe-0/0/1</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <port-mode>trunk</port-mode>
+                        <vlan-id-list>10</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <bridge-domains>
+                  <domain operation="delete">
+                    <name>STANDARD</name>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit operation="delete">
+                      <name>10</name>
+                    </unit>
+                  </interface>
+                  <interface>
+                    <name>xe-0/0/1</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                            <vlan-id-list operation="delete">10</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.remove_vlan(10)
 
     def test_get_vlans(self):
         self.switch.in_transaction = False
@@ -2088,3 +2346,264 @@ class JuniperMXTest(unittest.TestCase):
                     """)))
 
         assert_that(self.switch.get_interface('xe-0/0/27').shutdown, equal_to(True))
+
+    def test_remove_trunk_vlan_removes_the_vlan_lists_in_every_possible_way(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                        <vlan-id-list>1000</vlan-id-list>
+                        <vlan-id-list>1000-1001</vlan-id-list>
+                        <vlan-id-list>999-1000</vlan-id-list>
+                        <vlan-id-list>999-1001</vlan-id-list>
+                        <vlan-id-list>998-1002</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                            <vlan-id-list operation="delete">1000</vlan-id-list>
+                            <vlan-id-list operation="delete">1000-1001</vlan-id-list>
+                            <vlan-id-list>1001</vlan-id-list>
+                            <vlan-id-list operation="delete">999-1000</vlan-id-list>
+                            <vlan-id-list>999</vlan-id-list>
+                            <vlan-id-list operation="delete">999-1001</vlan-id-list>
+                            <vlan-id-list>999</vlan-id-list>
+                            <vlan-id-list>1001</vlan-id-list>
+                            <vlan-id-list operation="delete">998-1002</vlan-id-list>
+                            <vlan-id-list>998-999</vlan-id-list>
+                            <vlan-id-list>1001-1002</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.remove_trunk_vlan("xe-0/0/6", 1000)
+
+    def test_remove_trunk_vlan_removes_the_vlan_even_if_referenced_by_name(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                        <vlan-id-list>1000</vlan-id-list>
+                        <vlan-id-list>VLAN_NAME</vlan-id-list>
+                        <vlan-id-list>SOEMTHING</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>xe-0/0/6</name>
+                    <unit>
+                      <name>0</name>
+                      <family>
+                        <bridge>
+                            <vlan-id-list operation="delete">1000</vlan-id-list>
+                            <vlan-id-list operation="delete">VLAN_NAME</vlan-id-list>
+                        </bridge>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.remove_trunk_vlan("xe-0/0/6", 1000)
+
+    def test_remove_trunk_vlan_not_in_lists_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>trunk</interface-mode>
+                        <vlan-id-list>500-999</vlan-id-list>
+                        <vlan-id-list>1001-4000</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(TrunkVlanNotSet) as expect:
+            self.switch.remove_trunk_vlan("xe-0/0/6", 1000)
+
+        assert_that(str(expect.exception), contains_string("Trunk Vlan is not set on interface xe-0/0/6"))
+
+    def test_remove_trunk_vlan_on_access_with_the_correct_vlan_interface_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <interface-mode>access</interface-mode>
+                      <vlan-id-list>1000</vlan-id-list>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(InterfaceInWrongPortMode) as expect:
+            self.switch.remove_trunk_vlan("xe-0/0/6", 1000)
+
+        assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
+
+    def test_remove_trunk_vlan_on_no_port_mode_interface_with_the_correct_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>xe-0/0/6</name>
+                <unit>
+                  <name>0</name>
+                  <family>
+                    <bridge>
+                      <vlan-id>1000</vlan-id>
+                    </bridge>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(InterfaceInWrongPortMode) as expect:
+            self.switch.remove_trunk_vlan("xe-0/0/6", 1000)
+
+        assert_that(str(expect.exception), contains_string("Operation cannot be performed on a access mode interface"))
+
+    def test_remove_trunk_vlan_on_unknown_interface_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces/>
+                <bridge-domains/>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN_NAME</name>
+                <vlan-id>1000</vlan-id>
+              </domain>
+            </bridge-domains>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(UnknownInterface) as expect:
+            self.switch.remove_trunk_vlan("xe-0/0/6", 1000)
+
+        assert_that(str(expect.exception), contains_string("Unknown interface xe-0/0/6"))

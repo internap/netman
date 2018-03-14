@@ -13,12 +13,12 @@
 # limitations under the License.
 from ncclient.xml_ import to_ele, new_ele
 from netaddr import IPNetwork
-from netman.adapters.switches.juniper.base import first, Juniper, Update, one_interface, parse_range
-from netman.adapters.switches.juniper.base import first_text
+
+from netman.adapters.switches.juniper.base import first, Juniper, Update, one_interface, parse_range, to_range, \
+    first_text
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, \
-    UnknownVlan, IPAlreadySet, \
-    UnknownIP, AccessVlanNotSet, UnknownInterface, VrrpDoesNotExistForVlan
+    UnknownVlan, IPAlreadySet, UnknownIP, AccessVlanNotSet, UnknownInterface, VrrpDoesNotExistForVlan
 
 IRB = "irb"
 PREEMPT_HOLD_TIME = 60
@@ -36,9 +36,6 @@ class MxJuniper(Juniper):
         update = Update()
         update.add_interface(self.custom_strategies.interface_update(interface_id, "0", [to_ele('<vlan-id operation="delete" />')]))
         self._push(update)
-
-    def remove_trunk_vlan(self, interface_id, vlan):
-        raise NotImplementedError()
 
     def set_interface_state(self, interface_id, state):
         raise NotImplementedError()
@@ -398,6 +395,51 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
             for members in interface_node.xpath("unit/family/bridge/vlan-id"):
                 vlan_members.append(to_ele('<vlan-id operation="delete">{}</vlan-id>'.format(members.text)))
         vlan_members.append(to_ele("<vlan-id>{}</vlan-id>".format(vlan)))
+
+    def craft_members_modification_to_remove_vlan(self, interface_node, vlan_name, number):
+        members_modifications = []
+
+        vlan_id_list = interface_node.xpath("unit/family/bridge/vlan-id-list") + interface_node.xpath("unit/family/bridge/vlan-id")
+
+        for vlan_members_node in vlan_id_list:
+            if vlan_members_node.text == vlan_name:
+                members_modifications.append(to_ele("<{tag} operation=\"delete\">{id}</{tag}>".format(
+                    tag=vlan_members_node.tag,
+                    id=vlan_members_node.text)
+                ))
+            else:
+                vlan_list = parse_range(vlan_members_node.text)
+                if number in vlan_list:
+                    members_modifications.append(to_ele("<vlan-id-list operation=\"delete\">{}</vlan-id-list>".format(vlan_members_node.text)))
+
+                    below = vlan_list[:vlan_list.index(number)]
+                    if len(below) > 0:
+                        members_modifications.append(to_ele("<vlan-id-list>{}</vlan-id-list>".format(to_range(below))))
+
+                    above = vlan_list[vlan_list.index(number) + 1:]
+                    if len(above) > 0:
+                        members_modifications.append(to_ele("<vlan-id-list>{}</vlan-id-list>".format(to_range(above))))
+
+        return members_modifications
+
+    def interface_vlan_members_update(self, name, unit, members_modification):
+        content = to_ele("""
+        <interface>
+            <name>{}</name>
+            <unit>
+                <name>{}</name>
+                <family>
+                    <bridge/>
+                </family>
+            </unit>
+        </interface>
+        """.format(name, unit))
+
+        vlan_node = first(content.xpath("//bridge"))
+        for m in members_modification:
+            vlan_node.append(m)
+
+        return content
 
 
 def one_interface_vlan(vlan_number):
