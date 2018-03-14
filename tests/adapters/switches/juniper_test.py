@@ -426,11 +426,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <vlans>
-                      <vlan>
-                        <vlan-id>10</vlan-id>
-                      </vlan>
-                    </vlans>
+                    <vlans />
                     <interfaces />
                   </configuration>
                 </filter>
@@ -457,11 +453,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <vlans>
-                      <vlan>
-                        <vlan-id>10</vlan-id>
-                      </vlan>
-                    </vlans>
+                    <vlans />
                     <interfaces />
                   </configuration>
                 </filter>
@@ -478,11 +470,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <vlans>
-                      <vlan>
-                        <vlan-id>20</vlan-id>
-                      </vlan>
-                    </vlans>
+                    <vlans />
                     <interfaces />
                   </configuration>
                 </filter>
@@ -567,11 +555,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <vlans>
-                      <vlan>
-                        <vlan-id>40</vlan-id>
-                      </vlan>
-                    </vlans>
+                    <vlans />
                     <interfaces />
                   </configuration>
                 </filter>
@@ -649,20 +633,24 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
-                <vlans>
-                  <vlan>
-                    <vlan-id>20</vlan-id>
-                  </vlan>
-                </vlans>
+                <vlans />
                 <interfaces />
               </configuration>
             </filter>
         """)).and_return(a_configuration("""
             <vlans>
               <vlan>
+                <name>NOT_GOOD_ONE</name>
+                <vlan-id>19</vlan-id>
+              </vlan>
+              <vlan>
                 <name>ON_IRB</name>
                 <vlan-id>20</vlan-id>
                 <l3-interface>irb.20</l3-interface>
+              </vlan>
+              <vlan>
+                <name>NOT_GOOD_TWO</name>
+                <vlan-id>21</vlan-id>
               </vlan>
             </vlans>
             <interfaces>
@@ -720,11 +708,7 @@ class JuniperTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
             <filter>
               <configuration>
-                <vlans>
-                  <vlan>
-                    <vlan-id>40</vlan-id>
-                  </vlan>
-                </vlans>
+                <vlans />
                 <interfaces />
               </configuration>
             </filter>

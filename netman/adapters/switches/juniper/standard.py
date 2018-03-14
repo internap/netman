@@ -97,16 +97,15 @@ class JuniperCustomStrategies(object):
             <name>{}</name>
         </vlan>""".format(name))
 
-    def get_vlans(self, config):
+    def vlan_nodes(self, config):
         return config.xpath("data/configuration/vlans/vlan")
 
-    def get_vlan_config(self, number, config):
-        vlan_node = config.xpath("data/configuration/vlans/vlan/vlan-id[text()=\"{}\"]/..".format(number))
+    def vlan_node(self, config, number):
+        vlan_node = first(config.xpath("data/configuration/vlans/vlan/vlan-id[text()=\"{}\"]/..".format(number)))
 
-        try:
-            return vlan_node[0]
-        except IndexError:
+        if vlan_node is None:
             raise UnknownVlan(number)
+        return vlan_node
 
     def manage_update_vlan_exception(self, message, number):
         if "being used by" in message:

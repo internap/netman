@@ -93,7 +93,7 @@ class Juniper(SwitchBase):
         config = self.query(self.custom_strategies.all_vlans, all_interfaces)
 
         vlan_list = []
-        for vlan_node in self.custom_strategies.get_vlans(config):
+        for vlan_node in self.custom_strategies.vlan_nodes(config):
             vlan = self.get_vlan_from_node(vlan_node, config)
             if vlan is not None:
                 vlan_list.append(vlan)
@@ -101,13 +101,9 @@ class Juniper(SwitchBase):
         return vlan_list
 
     def get_vlan(self, number):
-        config = self.query(self.custom_strategies.one_vlan_by_vlan_id(number), all_interfaces)
-        if self.custom_strategies.get_vlans(config):
-            vlan_node = self.custom_strategies.get_vlans(config)[0]
-
-            return self.get_vlan_from_node(vlan_node, config)
-        else:
-            raise UnknownVlan(number)
+        config = self.query(self.custom_strategies.all_vlans, all_interfaces)
+        vlan_node = self.custom_strategies.vlan_node(config, number)
+        return self.get_vlan_from_node(vlan_node, config)
 
     def get_vlan_from_node(self, vlan_node, config):
         vlan_id_node = first(vlan_node.xpath("vlan-id"))
@@ -150,7 +146,7 @@ class Juniper(SwitchBase):
         config = self.query(self.custom_strategies.all_vlans)
 
         try:
-            self.custom_strategies.get_vlan_config(number, config)
+            self.custom_strategies.vlan_node(config, number)
             raise VlanAlreadyExist(number)
         except UnknownVlan:
             pass
@@ -167,7 +163,7 @@ class Juniper(SwitchBase):
     def remove_vlan(self, number):
         config = self.query(self.custom_strategies.all_vlans, all_interfaces)
 
-        vlan_node = self.custom_strategies.get_vlan_config(number, config)
+        vlan_node = self.custom_strategies.vlan_node(config, number)
         vlan_name = first(vlan_node.xpath("name")).text
 
         update = Update()
@@ -237,7 +233,7 @@ class Juniper(SwitchBase):
 
         config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
-        self.custom_strategies.get_vlan_config(vlan, config)
+        self.custom_strategies.vlan_node(config, vlan)
 
         interface_node = self.get_interface_config(interface_id, config)
         interface = self.node_to_interface(interface_node, config)
@@ -283,7 +279,7 @@ class Juniper(SwitchBase):
 
         config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
-        self.custom_strategies.get_vlan_config(vlan, config)
+        self.custom_strategies.vlan_node(config, vlan)
 
         interface_node = self.get_interface_config(interface_id, config)
 
@@ -385,7 +381,7 @@ class Juniper(SwitchBase):
     def add_trunk_vlan(self, interface_id, vlan):
         config = self.query(all_interfaces, self.custom_strategies.all_vlans)
 
-        self.custom_strategies.get_vlan_config(vlan, config)
+        self.custom_strategies.vlan_node(config, vlan)
 
         interface_node = self.get_interface_config(interface_id, config)
 
@@ -417,7 +413,7 @@ class Juniper(SwitchBase):
         if interface.port_mode is ACCESS:
             raise InterfaceInWrongPortMode("access")
 
-        vlan_node = self.custom_strategies.get_vlan_config(vlan, config)
+        vlan_node = self.custom_strategies.vlan_node(config, vlan)
         vlan_name = first(vlan_node.xpath("name")).text
 
         modifications = craft_members_modification_to_remove_vlan(interface_node, vlan_name, vlan)
@@ -763,10 +759,7 @@ class Juniper(SwitchBase):
     def get_vlan_interfaces(self, vlan_number):
         config = self.query(self.custom_strategies.one_vlan_by_vlan_id(vlan_number), all_interfaces)
 
-        if not self.custom_strategies.get_vlans(config):
-            raise UnknownVlan(vlan_number)
-
-        vlan_node = self.custom_strategies.get_vlans(config)[0]
+        vlan_node = self.custom_strategies.vlan_node(config, vlan_number)
         interface_nodes = config.xpath("data/configuration/interfaces/interface")
         return self.get_vlan_interfaces_from_node(vlan_node, interface_nodes)
 
