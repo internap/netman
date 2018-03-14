@@ -463,7 +463,7 @@ class JuniperMXTest(unittest.TestCase):
                     <name>WITH-IF-MULTI-IP</name>
                     <vlan-id>40</vlan-id>
                     <routing-interface>irb.70</routing-interface>
-                  </domain>                  
+                  </domain>
                   <domain>
                     <name>This-yet-another-clam</name>
                     <vlan-id>41</vlan-id>
