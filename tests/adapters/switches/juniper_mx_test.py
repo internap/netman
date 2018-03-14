@@ -22,8 +22,9 @@ from netaddr import IPAddress, IPNetwork
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
-from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan,\
+from netman.core.objects.exceptions import VlanAlreadyExist, BadVlanNumber, BadVlanName, UnknownVlan, \
     IPAlreadySet, UnknownIP, InterfaceInWrongPortMode, AccessVlanNotSet, UnknownInterface
+from netman.core.objects.exceptions import VrrpDoesNotExistForVlan
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.switch_factory import RealSwitchFactory
@@ -1034,6 +1035,133 @@ class JuniperMXTest(unittest.TestCase):
         with self.assertRaises(UnknownIP):
             self.switch.add_vrrp_group(1234, 1, ips=[IPAddress("3.3.3.1"), IPAddress("4.4.4.1")], priority=110, track_id="0.0.0.0/0",
                                        track_decrement=50)
+
+    def test_remove_vrrp_success(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                          <name>192.0.1.1/27</name>
+                          <vrrp-group>
+                            <name>1</name>
+                            <virtual-address>192.0.1.2</virtual-address>
+                          </vrrp-group>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <address>
+                            <name>192.0.1.1/27</name>
+                            <vrrp-group operation="delete">
+                              <name>1</name>
+                            </vrrp-group>
+                          </address>
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>""")).and_return(an_ok_response())
+
+        self.switch.remove_vrrp_group(1234, 1)
+
+    def test_remove_vrrp_with_invalid_group_id(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                  <unit>
+                    <name>1234</name>
+                    <family>
+                      <inet>
+                        <address>
+                          <name>192.0.1.1/27</name>
+                          <vrrp-group>
+                            <name>99</name>
+                            <virtual-address>192.0.1.2</virtual-address>
+                          </vrrp-group>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+              </interface>
+            </interfaces>"""))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(VrrpDoesNotExistForVlan) as expect:
+            self.switch.remove_vrrp_group(1234, 1)
+
+        assert_that(str(expect.exception), equal_to("Vrrp group 1 does not exist for vlan 1234"))
+
+    def test_remove_vrrp_from_unknown_vlan(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                      <unit>
+                        <name>1234</name>
+                      </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.remove_vrrp_group(1234, 2)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_add_ip_to_vlan(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""

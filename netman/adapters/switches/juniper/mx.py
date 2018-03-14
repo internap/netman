@@ -13,12 +13,12 @@
 # limitations under the License.
 from ncclient.xml_ import to_ele, new_ele
 from netaddr import IPNetwork
-
-from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.adapters.switches.juniper.base import first, Juniper, Update, one_interface, parse_range
+from netman.adapters.switches.juniper.base import first_text
+from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, \
     UnknownVlan, IPAlreadySet, \
-    UnknownIP, AccessVlanNotSet, UnknownInterface
+    UnknownIP, AccessVlanNotSet, UnknownInterface, VrrpDoesNotExistForVlan
 
 IRB = "irb"
 PREEMPT_HOLD_TIME = 60
@@ -76,7 +76,7 @@ class MxJuniper(Juniper):
             if ip_network in address:
                 raise IPAlreadySet(ip_network)
 
-        update.add_interface(ip_network_element(vlan_number, ip_network))
+        update.add_interface(irb_address_update(vlan_number, ip_network))
 
         self._push(update)
 
@@ -90,7 +90,7 @@ class MxJuniper(Juniper):
             address = IPNetwork(addr_node.text)
             if ip_network in address:
                 update = Update()
-                update.add_interface(ip_network_element(vlan_number, ip_network, ' operation="delete"'))
+                update.add_interface(irb_address_update(vlan_number, ip_network, operation="delete"))
 
                 self._push(update)
                 return
@@ -166,53 +166,38 @@ class MxJuniper(Juniper):
 
         parent_address = self._get_address_that_contains_all_ips(adresses, ips)
 
-        interface = to_ele("""
-            <interface>
-            <name>irb</name>
-                <unit>
-                  <name>{vlan_number}</name>
-                  <family>
-                    <inet>
-                      <address>
-                        <name>{parent_address}</name>
-                        <vrrp-group>
-                          <name>{group_id}</name>
-                          <priority>{priority}</priority>
-                          <preempt>
-                            <hold-time>{preempt_hold_time}</hold-time>
-                          </preempt>
-                          <accept-data/>
-                          <authentication-type>simple</authentication-type>
-                          <authentication-key>{auth}</authentication-key>
-                          <track>
-                            <route>
-                              <route_address>{tracking}</route_address>
-                              <routing-instance>default</routing-instance>
-                              <priority-cost>{tracking_decrement}</priority-cost>
-                            </route>
-                          </track>
-                        </vrrp-group>
-                      </address>
-                    </inet>
-                  </family>
-                </unit>
-            </interface>""".format(vlan_number=vlan_number,
-                                   parent_address=parent_address,
-                                   group_id=group_id,
-                                   vip=ips[0],
-                                   preempt_hold_time=PREEMPT_HOLD_TIME,
-                                   priority=priority,
-                                   auth="VLAN{}".format(vlan_number),
-                                   tracking=track_id,
-                                   tracking_decrement=track_decrement))
-
-        vrrp_node = first(interface.xpath("//vrrp-group"))
+        vrrp_node = to_ele("""
+            <vrrp-group>
+              <name>{group_id}</name>
+              <priority>{priority}</priority>
+              <preempt>
+                <hold-time>{preempt_hold_time}</hold-time>
+              </preempt>
+              <accept-data/>
+              <authentication-type>simple</authentication-type>
+              <authentication-key>{auth}</authentication-key>
+              <track>
+                <route>
+                  <route_address>{tracking}</route_address>
+                  <routing-instance>default</routing-instance>
+                  <priority-cost>{tracking_decrement}</priority-cost>
+                </route>
+              </track>
+            </vrrp-group>""".format(vlan_number=vlan_number,
+                                    parent_address=parent_address,
+                                    group_id=group_id,
+                                    vip=ips[0],
+                                    preempt_hold_time=PREEMPT_HOLD_TIME,
+                                    priority=priority,
+                                    auth="VLAN{}".format(vlan_number),
+                                    tracking=track_id,
+                                    tracking_decrement=track_decrement))
 
         for ip in ips:
             vrrp_node.append(to_ele("<virtual-address>{}</virtual-address>".format(ip)))
 
         update = Update()
-        update.add_interface(interface)
+        update.add_interface(irb_address_update(vlan_number, parent_address, children=[vrrp_node]))
 
         self._push(update)
 
@@ -231,7 +216,26 @@ class MxJuniper(Juniper):
         return subnet_found
 
     def remove_vrrp_group(self, vlan_id, group_id):
-        raise NotImplementedError()
+        config = self.query(one_interface_vlan(vlan_id))
+
+        if len(config.xpath("data/configuration/interfaces/interface/unit")) < 1:
+            raise UnknownVlan(vlan_id)
+
+        address_node = first(config.xpath("data/configuration/interfaces/interface/unit/family"
+                                          "/inet/address/vrrp-group/name[text()=\"{}\"]/../..".format(group_id)))
+
+        if address_node is None:
+            raise VrrpDoesNotExistForVlan(vlan=vlan_id, vrrp_group_id=group_id)
+
+        vrrp_node = to_ele("""
+            <vrrp-group operation="delete">
+              <name>{group_id}</name>
+            </vrrp-group>""".format(group_id=group_id))
+
+        update = Update()
+        update.add_interface(irb_address_update(vlan_id, first_text(address_node.xpath("name")), children=[vrrp_node]))
+
+        self._push(update)
 
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         raise NotImplementedError()
@@ -412,8 +416,8 @@ def one_interface_vlan(vlan_number):
     return m
 
 
-def ip_network_element(vlan_number, ip_network, operation=''):
-    return to_ele("""
+def irb_address_update(vlan_number, ip_network, operation=None, children=None):
+    content = to_ele("""
         <interface>
             <name>irb</name>
             <unit>
@@ -428,4 +432,11 @@ def ip_network_element(vlan_number, ip_network, operation=''):
             </unit>
         </interface>""".format(vlan_number=vlan_number,
                                ip_network=ip_network,
-                               operation=operation))
+                               operation=' operation="{}"'.format(operation) if operation else ""))
+
+    if children is not None:
+        address = first(content.xpath("//address"))
+        for child in children:
+            address.append(child)
+
+    return content
