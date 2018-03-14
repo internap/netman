@@ -124,6 +124,7 @@ class Juniper(SwitchBase):
                     vlan.ips = parse_ips(interface_vlan_node)
                     vlan.access_groups[IN] = parse_inet_filter(interface_vlan_node, "input")
                     vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
+                    vlan.vrrp_groups = self.custom_strategies.parse_vrrp_groups(interface_vlan_node)
         return vlan
 
     def get_interfaces(self):
