@@ -66,7 +66,7 @@ class MxJuniper(Juniper):
 
     def add_ip_to_vlan(self, vlan_number, ip_network):
         config = self.query(self.custom_strategies.one_vlan_by_vlan_id(vlan_number), one_interface_vlan(vlan_number))
-        self.custom_strategies.get_vlan_config(vlan_number, config)
+        self.custom_strategies.vlan_node(config, vlan_number)
 
         update = Update()
         self.custom_strategies.add_update_vlan_interface(update, vlan_number, name=None)
@@ -332,16 +332,16 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
             <name>{}</name>
         </domain>""".format(name))
 
-    def get_vlans(self, config):
+    def vlan_nodes(self, config):
         return config.xpath("data/configuration/bridge-domains/domain")
 
-    def get_vlan_config(self, number, config):
-        vlan_node = config.xpath("data/configuration/bridge-domains/domain/vlan-id[text()=\"{}\"]/..".format(number))
+    def vlan_node(self, config, number):
+        vlan_node = first(config.xpath("data/configuration/bridge-domains/domain/vlan-id[text()=\"{}\"]/.."
+                                       .format(number)))
 
-        try:
-            return vlan_node[0]
-        except IndexError:
+        if vlan_node is None:
             raise UnknownVlan(number)
+        return vlan_node
 
     def manage_update_vlan_exception(self, message, number):
         if "being used by" in message:

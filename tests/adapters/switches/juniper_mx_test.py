@@ -448,20 +448,26 @@ class JuniperMXTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <bridge-domains>
-                      <domain>
-                        <vlan-id>40</vlan-id>
-                      </domain>
-                    </bridge-domains>
+                    <bridge-domains />
                     <interfaces />
                   </configuration>
                 </filter>
             """)).and_return(a_configuration("""
                 <bridge-domains>
                   <domain>
+                    <name>This-another-clam</name>
+                    <vlan-id>39</vlan-id>
+                    <routing-interface>irb.20</routing-interface>
+                  </domain>
+                  <domain>
                     <name>WITH-IF-MULTI-IP</name>
                     <vlan-id>40</vlan-id>
                     <routing-interface>irb.70</routing-interface>
+                  </domain>                  
+                  <domain>
+                    <name>This-yet-another-clam</name>
+                    <vlan-id>41</vlan-id>
+                    <routing-interface>irb.40</routing-interface>
                   </domain>
                 </bridge-domains>
                 <interfaces>
@@ -530,11 +536,7 @@ class JuniperMXTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <bridge-domains>
-                      <domain>
-                        <vlan-id>10</vlan-id>
-                      </domain>
-                    </bridge-domains>
+                    <bridge-domains />
                     <interfaces />
                   </configuration>
                 </filter>
@@ -561,15 +563,17 @@ class JuniperMXTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <bridge-domains>
-                      <domain>
-                        <vlan-id>10</vlan-id>
-                      </domain>
-                    </bridge-domains>
+                    <bridge-domains />
                     <interfaces />
                   </configuration>
                 </filter>
             """)).and_return(a_configuration("""
+                <bridge-domains>
+                  <domain>
+                    <name>This-another-clam</name>
+                    <vlan-id>39</vlan-id>
+                  </domain>
+                </bridge-domains>
             """))
 
         with self.assertRaises(UnknownVlan) as expect:
@@ -582,11 +586,7 @@ class JuniperMXTest(unittest.TestCase):
         self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
                 <filter>
                   <configuration>
-                    <bridge-domains>
-                      <domain>
-                        <vlan-id>20</vlan-id>
-                      </domain>
-                    </bridge-domains>
+                    <bridge-domains />
                     <interfaces />
                   </configuration>
                 </filter>
