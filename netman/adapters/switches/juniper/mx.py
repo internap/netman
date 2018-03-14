@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from ncclient.xml_ import to_ele, new_ele
-from netaddr import IPNetwork
+from netaddr import IPAddress, IPNetwork
 
 from netman.adapters.switches.juniper.base import first, Juniper, Update, one_interface, parse_range, to_range, \
     first_text
 from netman.adapters.switches.juniper.qfx_copper import JuniperQfxCopperCustomStrategies
-from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, \
-    UnknownVlan, IPAlreadySet, UnknownIP, AccessVlanNotSet, UnknownInterface, VrrpDoesNotExistForVlan
+from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan, IPAlreadySet, \
+    UnknownIP, AccessVlanNotSet, UnknownInterface, VrrpDoesNotExistForVlan
+from netman.core.objects.vrrp_group import VrrpGroup
 
 IRB = "irb"
 PREEMPT_HOLD_TIME = 60
@@ -441,6 +442,10 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
 
         return content
 
+    def parse_vrrp_groups(self, interface_unit):
+        return [_to_vrrp_group(vrrp_node)
+                for vrrp_node in interface_unit.xpath("family/inet/address/vrrp-group")]
+
 
 def one_interface_vlan(vlan_number):
     def m():
@@ -482,3 +487,16 @@ def irb_address_update(vlan_number, ip_network, operation=None, children=None):
             address.append(child)
 
     return content
+
+
+def _to_vrrp_group(vrrp_node):
+    priority = first_text(vrrp_node.xpath("priority"))
+    track_decrement = first_text(vrrp_node.xpath("track/route/priority-cost"))
+
+    return VrrpGroup(
+        id=int(first_text(vrrp_node.xpath("name"))),
+        ips=[IPAddress(ip.text) for ip in vrrp_node.xpath("virtual-address")],
+        priority=int(priority) if priority is not None else None,
+        track_id=first_text(vrrp_node.xpath("track/route/route_address")),
+        track_decrement=int(track_decrement) if track_decrement is not None else None,
+    )

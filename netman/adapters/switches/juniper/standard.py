@@ -205,3 +205,6 @@ class JuniperCustomStrategies(object):
             vlan_node.append(m)
 
         return content
+
+    def parse_vrrp_groups(self, interface_unit):
+        return []

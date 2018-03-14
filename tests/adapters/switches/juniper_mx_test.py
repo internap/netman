@@ -15,11 +15,10 @@ import textwrap
 import unittest
 
 from flexmock import flexmock, flexmock_teardown
-from hamcrest import assert_that, equal_to, instance_of, contains_string, has_length
+from hamcrest import assert_that, equal_to, instance_of, contains_string, has_length, is_
 from ncclient.operations import RPCError
 from ncclient.xml_ import to_ele
 from netaddr import IPAddress, IPNetwork
-
 from netman.adapters.switches.juniper.base import Juniper
 from netman.adapters.switches.juniper.mx import netconf
 from netman.core.objects.access_groups import IN, OUT
@@ -923,6 +922,122 @@ class JuniperMXTest(unittest.TestCase):
         vlan20ip1 = vlan.ips[0]
         assert_that(str(vlan20ip1.ip), equal_to("1.1.1.1"))
         assert_that(vlan20ip1.prefixlen, equal_to(24))
+
+    def test_get_vlan_with_vrrp(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <bridge-domains />
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <bridge-domains>
+                  <domain>
+                    <name>WITH-IF</name>
+                    <vlan-id>20</vlan-id>
+                    <routing-interface>irb.20</routing-interface>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                <interface>
+                  <name>irb</name>
+                  <unit>
+                    <name>20</name>
+                    <family>
+                      <inet>
+                        <address>
+                          <name>1.1.1.2/24</name>
+                          <vrrp-group>
+                            <name>1</name>
+                            <virtual-address>1.1.1.1</virtual-address>
+                            <priority>90</priority>
+                            <preempt>
+                              <hold-time>60</hold-time>
+                            </preempt>
+                            <accept-data/>
+                            <authentication-type>simple</authentication-type>
+                            <authentication-key>$9$1/aElvwsgoaGz3reKvLX.Pf5n/</authentication-key>
+                            <track>
+                              <route>
+                                <route_address>0.0.0.0/0</route_address>
+                                <routing-instance>default</routing-instance>
+                                <priority-cost>50</priority-cost>
+                              </route>
+                            </track>
+                        </vrrp-group>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+                </interface>
+                </interfaces>
+            """))
+
+        vlan = self.switch.get_vlan(20)
+
+        vrrp = vlan.vrrp_groups[0]
+        assert_that(vrrp.id, is_(1))
+        assert_that(vrrp.ips, has_length(1))
+        assert_that(vrrp.ips[0], is_(IPAddress('1.1.1.1')))
+        assert_that(vrrp.priority, is_(90))
+        assert_that(vrrp.hello_interval, is_(None))
+        assert_that(vrrp.dead_interval, is_(None))
+        assert_that(vrrp.track_id, is_("0.0.0.0/0"))
+        assert_that(vrrp.track_decrement, is_(50))
+
+    def test_get_vlan_with_vrrp_without_optional_fields_and_multiple_vips(self):
+        self.switch.in_transaction = False
+        self.netconf_mock.should_receive("get_config").with_args(source="running", filter=is_xml("""
+                <filter>
+                  <configuration>
+                    <bridge-domains />
+                    <interfaces />
+                  </configuration>
+                </filter>
+            """)).and_return(a_configuration("""
+                <bridge-domains>
+                  <domain>
+                    <name>WITH-IF</name>
+                    <vlan-id>20</vlan-id>
+                    <routing-interface>irb.20</routing-interface>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                <interface>
+                  <name>irb</name>
+                  <unit>
+                    <name>20</name>
+                    <family>
+                      <inet>
+                        <address>
+                          <name>1.1.1.2/24</name>
+                          <vrrp-group>
+                            <name>1</name>
+                            <virtual-address>1.1.1.1</virtual-address>
+                            <virtual-address>1.1.1.3</virtual-address>
+                          </vrrp-group>
+                        </address>
+                      </inet>
+                    </family>
+                  </unit>
+                </interface>
+                </interfaces>
+            """))
+
+        vlan = self.switch.get_vlan(20)
+
+        vrrp = vlan.vrrp_groups[0]
+        assert_that(vrrp.id, is_(1))
+        assert_that(vrrp.ips, has_length(2))
+        assert_that(vrrp.ips[0], is_(IPAddress('1.1.1.1')))
+        assert_that(vrrp.ips[1], is_(IPAddress('1.1.1.3')))
+        assert_that(vrrp.priority, is_(None))
+        assert_that(vrrp.hello_interval, is_(None))
+        assert_that(vrrp.dead_interval, is_(None))
+        assert_that(vrrp.track_id, is_(None))
+        assert_that(vrrp.track_decrement, is_(None))
 
     def test_add_vrrp_success(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
