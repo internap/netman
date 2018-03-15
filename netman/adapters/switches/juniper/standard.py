@@ -14,7 +14,7 @@
 from ncclient.xml_ import to_ele, new_ele
 
 from netman.adapters.switches.juniper.base import interface_speed, interface_replace, interface_speed_update, \
-    first_text, bond_name, Juniper, first, value_of, parse_range
+    first_text, bond_name, Juniper, first, value_of, parse_range, to_range
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
 
 
@@ -164,3 +164,44 @@ class JuniperCustomStrategies(object):
             for members in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
                 vlan_members.append(to_ele('<members operation="delete">{}</members>'.format(members.text)))
         vlan_members.append(to_ele("<members>{}</members>".format(vlan)))
+
+    def craft_members_modification_to_remove_vlan(self, interface_node, vlan_name, number):
+        members_modifications = []
+        for vlan_members_node in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
+            if vlan_members_node.text == vlan_name:
+                members_modifications.append(to_ele("<members operation=\"delete\">{}</members>".format(vlan_members_node.text)))
+            else:
+                vlan_list = parse_range(vlan_members_node.text)
+                if number in vlan_list:
+                    members_modifications.append(to_ele("<members operation=\"delete\">{}</members>".format(vlan_members_node.text)))
+
+                    below = vlan_list[:vlan_list.index(number)]
+                    if len(below) > 0:
+                        members_modifications.append(to_ele("<members>{}</members>".format(to_range(below))))
+
+                    above = vlan_list[vlan_list.index(number) + 1:]
+                    if len(above) > 0:
+                        members_modifications.append(to_ele("<members>{}</members>".format(to_range(above))))
+
+        return members_modifications
+
+    def interface_vlan_members_update(self, name, unit, members_modification):
+        content = to_ele("""
+            <interface>
+                <name>{}</name>
+                <unit>
+                    <name>{}</name>
+                    <family>
+                        <ethernet-switching>
+                            <vlan />
+                        </ethernet-switching>
+                    </family>
+                </unit>
+            </interface>
+            """.format(name, unit))
+
+        vlan_node = first(content.xpath("//vlan"))
+        for m in members_modification:
+            vlan_node.append(m)
+
+        return content

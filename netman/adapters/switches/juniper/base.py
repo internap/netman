@@ -174,10 +174,10 @@ class Juniper(SwitchBase):
             update.add_interface(interface_unit_interface_removal(l3_if_type, l3_if_name))
 
         for interface_node in config.xpath("data/configuration/interfaces/interface"):
-            members_modifications = craft_members_modification_to_remove_vlan(interface_node, vlan_name, number)
+            members_modifications = self.custom_strategies.craft_members_modification_to_remove_vlan(interface_node, vlan_name, number)
 
             if len(members_modifications) > 0:
-                update.add_interface(interface_vlan_members_update(
+                update.add_interface(self.custom_strategies.interface_vlan_members_update(
                     first(interface_node.xpath("name")).text,
                     first(interface_node.xpath("unit/name")).text,
                     members_modifications)
@@ -416,7 +416,7 @@ class Juniper(SwitchBase):
         vlan_node = self.custom_strategies.vlan_node(config, vlan)
         vlan_name = first(vlan_node.xpath("name")).text
 
-        modifications = craft_members_modification_to_remove_vlan(interface_node, vlan_name, vlan)
+        modifications = self.custom_strategies.craft_members_modification_to_remove_vlan(interface_node, vlan_name, vlan)
         if len(modifications) == 0:
             raise TrunkVlanNotSet(interface_id)
 
@@ -948,28 +948,6 @@ def rstp_interface_removal(interface_id):
         """.format(interface_id))
 
 
-def interface_vlan_members_update(name, unit, members_modification):
-    content = to_ele("""
-        <interface>
-            <name>{}</name>
-            <unit>
-                <name>{}</name>
-                <family>
-                    <ethernet-switching>
-                        <vlan />
-                    </ethernet-switching>
-                </family>
-            </unit>
-        </interface>
-        """.format(name, unit))
-
-    vlan_node = first(content.xpath("//vlan"))
-    for m in members_modification:
-        vlan_node.append(m)
-
-    return content
-
-
 def interface_main_update(name, attributes):
     content = to_ele("""
         <interface>
@@ -1027,27 +1005,6 @@ def bond_name(number):
 
 def bond_number(name):
     return int(name[2:])
-
-
-def craft_members_modification_to_remove_vlan(interface_node, vlan_name, number):
-    members_modifications = []
-    for vlan_members_node in interface_node.xpath("unit/family/ethernet-switching/vlan/members"):
-        if vlan_members_node.text == vlan_name:
-            members_modifications.append(to_ele("<members operation=\"delete\">{}</members>".format(vlan_members_node.text)))
-        else:
-            vlan_list = parse_range(vlan_members_node.text)
-            if number in vlan_list:
-                members_modifications.append(to_ele("<members operation=\"delete\">{}</members>".format(vlan_members_node.text)))
-
-                below = vlan_list[:vlan_list.index(number)]
-                if len(below) > 0:
-                    members_modifications.append(to_ele("<members>{}</members>".format(to_range(below))))
-
-                above = vlan_list[vlan_list.index(number) + 1:]
-                if len(above) > 0:
-                    members_modifications.append(to_ele("<members>{}</members>".format(to_range(above))))
-
-    return members_modifications
 
 
 def free_from_bond_operation(interface_name):
