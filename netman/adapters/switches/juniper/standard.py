@@ -211,3 +211,9 @@ class JuniperCustomStrategies(object):
 
     def parse_icmp_redirects(self, interface_unit):
         return []
+
+    def get_delete_trunk_vlan_element(self):
+        return self.get_delete_vlan_element()
+
+    def get_delete_vlan_element(self):
+        return to_ele('<vlan operation="delete" />')

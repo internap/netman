@@ -200,7 +200,7 @@ class Juniper(SwitchBase):
             update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("access"))
 
         if len(interface.trunk_vlans) > 0:
-            update_attributes.append(to_ele('<vlan operation="delete" />'))
+            update_attributes.append(self.custom_strategies.get_delete_trunk_vlan_element())
 
         if interface.trunk_native_vlan is not None:
             update_attributes.append(to_ele('<native-vlan-id operation="delete" />'))
@@ -221,7 +221,7 @@ class Juniper(SwitchBase):
             update_attributes.append(self.custom_strategies.get_interface_port_mode_update_element("trunk"))
 
         if interface.access_vlan is not None:
-            update_attributes.append(to_ele('<vlan operation="delete" />'))
+            update_attributes.append(self.custom_strategies.get_delete_vlan_element())
 
         if len(update_attributes) > 0:
             update = Update()
