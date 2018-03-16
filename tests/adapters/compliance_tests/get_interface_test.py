@@ -21,7 +21,7 @@ from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
 class GetInterfaceTest(ComplianceTestCase):
-    _dev_sample = "juniper"
+    _dev_sample = "juniper_mx"
 
     def setUp(self):
         super(GetInterfaceTest, self).setUp()

@@ -411,8 +411,9 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
 
     def update_vlan_members(self, interface_node, vlan_members, vlan):
         if interface_node is not None:
-            for members in interface_node.xpath("unit/family/bridge/vlan-id"):
-                vlan_members.append(to_ele('<vlan-id operation="delete">{}</vlan-id>'.format(members.text)))
+            if interface_node.xpath("unit/family/bridge/vlan-id-list"):
+                vlan_members.append(to_ele('<vlan-id-list operation="delete"/>'))
+
         vlan_members.append(to_ele("<vlan-id>{}</vlan-id>".format(vlan)))
 
     def craft_members_modification_to_remove_vlan(self, interface_node, vlan_name, number):
@@ -466,6 +467,12 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
 
     def parse_icmp_redirects(self, interface_unit):
         return first(interface_unit.xpath("family/inet/no-redirects")) is None
+
+    def get_delete_trunk_vlan_element(self):
+        return to_ele('<vlan-id-list operation="delete" />')
+
+    def get_delete_vlan_element(self):
+        return to_ele('<vlan-id operation="delete" />')
 
 
 def one_interface_vlan(vlan_number, extra_path=""):
