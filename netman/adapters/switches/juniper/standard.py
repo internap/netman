@@ -208,3 +208,6 @@ class JuniperCustomStrategies(object):
 
     def parse_vrrp_groups(self, interface_unit):
         return []
+
+    def parse_icmp_redirects(self, interface_unit):
+        return []
