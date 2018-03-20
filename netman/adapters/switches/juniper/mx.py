@@ -248,7 +248,25 @@ class MxJuniper(Juniper):
         raise NotImplementedError()
 
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
-        raise NotImplementedError()
+        config = self.query(self.custom_strategies.one_vlan_by_vlan_id(vlan_number),
+                            one_interface_vlan(vlan_number, extra_path="""<family>
+                                                                            <inet>
+                                                                              <no-redirects />
+                                                                            </inet>
+                                                                          </family>"""))
+        self.custom_strategies.vlan_node(config, vlan_number)
+
+        no_redirects_node = first(config.xpath("data/configuration/interfaces/interface/unit/family/inet/no-redirects"))
+
+        update = Update()
+
+        if no_redirects_node is None and state is False:
+            self.custom_strategies.add_update_vlan_interface(update, vlan_number, name=None)
+            update.add_interface(no_redirects(vlan_number=vlan_number))
+            self._push(update)
+        elif no_redirects_node is not None and state is True:
+            update.add_interface(no_redirects(vlan_number=vlan_number, operation="delete"))
+            self._push(update)
 
     def set_vlan_unicast_rpf_mode(self, vlan_number, mode):
         raise NotImplementedError()
@@ -446,8 +464,11 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
         return [_to_vrrp_group(vrrp_node)
                 for vrrp_node in interface_unit.xpath("family/inet/address/vrrp-group")]
 
+    def parse_icmp_redirects(self, interface_unit):
+        return first(interface_unit.xpath("family/inet/no-redirects")) is None
 
-def one_interface_vlan(vlan_number):
+
+def one_interface_vlan(vlan_number, extra_path=""):
     def m():
         return to_ele("""
             <interfaces>
@@ -455,10 +476,11 @@ def one_interface_vlan(vlan_number):
                     <name>{interface}</name>
                     <unit>
                         <name>{unit}</name>
+                        {extra_path}
                     </unit>
                 </interface>
             </interfaces>
-        """.format(interface=IRB, unit=vlan_number))
+        """.format(interface=IRB, unit=vlan_number, extra_path=extra_path))
 
     return m
 
@@ -487,6 +509,22 @@ def irb_address_update(vlan_number, ip_network, operation=None, children=None):
             address.append(child)
 
     return content
+
+
+def no_redirects(vlan_number, operation=None):
+    return to_ele("""
+        <interface>
+            <name>irb</name>
+            <unit>
+              <name>{vlan_number}</name>
+              <family>
+                <inet>
+                  <no-redirects{operation} />
+                </inet>
+              </family>
+            </unit>
+        </interface>""".format(vlan_number=vlan_number,
+                               operation=' operation="{}"'.format(operation) if operation else ""))
 
 
 def _to_vrrp_group(vrrp_node):

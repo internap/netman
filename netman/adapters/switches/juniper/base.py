@@ -110,7 +110,7 @@ class Juniper(SwitchBase):
 
         vlan = None
         if vlan_id_node is not None:
-            vlan = Vlan(number=int(vlan_id_node.text))
+            vlan = Vlan(number=int(vlan_id_node.text), icmp_redirects=True)
 
             description_node = first(vlan_node.xpath("description"))
             if description_node is not None:
@@ -125,6 +125,7 @@ class Juniper(SwitchBase):
                     vlan.access_groups[IN] = parse_inet_filter(interface_vlan_node, "input")
                     vlan.access_groups[OUT] = parse_inet_filter(interface_vlan_node, "output")
                     vlan.vrrp_groups = self.custom_strategies.parse_vrrp_groups(interface_vlan_node)
+                    vlan.icmp_redirects = self.custom_strategies.parse_icmp_redirects(interface_vlan_node)
         return vlan
 
     def get_interfaces(self):

@@ -780,6 +780,7 @@ class JuniperMXTest(unittest.TestCase):
         assert_that(vlan.name, equal_to(None))
         assert_that(vlan.access_groups[IN], equal_to(None))
         assert_that(vlan.access_groups[OUT], equal_to(None))
+        assert_that(vlan.icmp_redirects, equal_to(True))
         vlanip1, vlanip2, vlanip3 = vlan.ips
         assert_that(str(vlanip1.ip), equal_to("2.1.1.1"))
         assert_that(vlanip1.prefixlen, equal_to(24))
@@ -813,6 +814,7 @@ class JuniperMXTest(unittest.TestCase):
         assert_that(vlan.name, equal_to("my-description"))
         assert_that(vlan.access_groups[IN], equal_to(None))
         assert_that(vlan.access_groups[OUT], equal_to(None))
+        assert_that(vlan.icmp_redirects, equal_to(True))
         assert_that(vlan.ips, has_length(0))
 
     def test_get_vlan_with_unknown_vlan(self):
@@ -875,6 +877,7 @@ class JuniperMXTest(unittest.TestCase):
                       <name>20</name>
                       <family>
                         <inet>
+                          <no-redirects />
                           <address>
                             <name>1.1.1.1/24</name>
                           </address>
@@ -918,6 +921,7 @@ class JuniperMXTest(unittest.TestCase):
         assert_that(vlan.name, equal_to(None))
         assert_that(vlan.access_groups[IN], equal_to("AC-IN"))
         assert_that(vlan.access_groups[OUT], equal_to("AC-OUT"))
+        assert_that(vlan.icmp_redirects, equal_to(False))
         assert_that(vlan.ips, has_length(1))
         vlan20ip1 = vlan.ips[0]
         assert_that(str(vlan20ip1.ip), equal_to("1.1.1.1"))
@@ -1665,6 +1669,254 @@ class JuniperMXTest(unittest.TestCase):
 
         with self.assertRaises(IPAlreadySet):
             self.switch.add_ip_to_vlan(vlan_number=1234, ip_network=IPNetwork("3.3.3.2/27"))
+
+    def test_set_icmp_redirect_state_false_not_set_adds_statement(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN1234</name>
+                <vlan-id>1234</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <name>VLAN1234</name>
+                    <vlan-id>1234</vlan-id>
+                    <routing-interface>irb.1234</routing-interface>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_return(an_ok_response())
+
+        self.switch.set_vlan_icmp_redirects_state(vlan_number=1234, state=False)
+
+    def test_set_icmp_redirect_state_false_already_set_dont_do_anything(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN1234</name>
+                <vlan-id>1234</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                <unit>
+                  <name>4094</name>
+                  <family>
+                    <inet>
+                      <no-redirects/>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.set_vlan_icmp_redirects_state(vlan_number=1234, state=False)
+
+    def test_set_icmp_redirect_state_true_not_set_dont_do_anything(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN1234</name>
+                <vlan-id>1234</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces/>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").never()
+
+        self.switch.set_vlan_icmp_redirects_state(vlan_number=1234, state=True)
+
+    def test_set_icmp_redirect_state_true_already_set_remove_statement(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration("""
+            <bridge-domains>
+              <domain>
+                <name>VLAN1234</name>
+                <vlan-id>1234</vlan-id>
+              </domain>
+            </bridge-domains>
+            <interfaces>
+              <interface>
+                <name>irb</name>
+                <unit>
+                  <name>4094</name>
+                  <family>
+                    <inet>
+                      <no-redirects/>
+                    </inet>
+                  </family>
+                </unit>
+              </interface>
+            </interfaces>
+        """))
+
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects operation="delete" />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """))
+
+        self.switch.set_vlan_icmp_redirects_state(vlan_number=1234, state=True)
+
+    def test_set_icmp_redirect_unknow_vlan_raises(self):
+        self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
+            <filter>
+              <configuration>
+                <bridge-domains>
+                  <domain>
+                    <vlan-id>1234</vlan-id>
+                  </domain>
+                </bridge-domains>
+                <interfaces>
+                  <interface>
+                    <name>irb</name>
+                    <unit>
+                      <name>1234</name>
+                      <family>
+                        <inet>
+                          <no-redirects />
+                        </inet>
+                      </family>
+                    </unit>
+                  </interface>
+                </interfaces>
+              </configuration>
+            </filter>
+        """)).and_return(a_configuration())
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.set_vlan_icmp_redirects_state(vlan_number=1234, state=False)
 
     def test_port_mode_access(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""

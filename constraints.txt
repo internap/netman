@@ -12,11 +12,11 @@ flask==0.12.2
 idna==2.6                 # via requests
 itsdangerous==0.24        # via flask
 jinja2==2.10              # via flask
-lxml==4.1.1               # via ncclient
+lxml==4.2.0               # via ncclient
 markupsafe==1.0           # via jinja2
 ncclient==0.5.3
 netaddr==0.7.19
-paramiko==1.17.5
+paramiko==1.17.6
 pbr==3.1.1
 pycrypto==2.6.1           # via paramiko
 requests==2.18.4
