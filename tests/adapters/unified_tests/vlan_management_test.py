@@ -37,6 +37,7 @@ class VlanManagementTest(ConfiguredTestCase):
                                    track_id=self.test_vrrp_track_id, track_decrement=50, hello_interval=5, dead_interval=15)
         self.client.add_dhcp_relay_server(2999, IPAddress("10.10.10.11"))
         self.try_to.set_vlan_icmp_redirects_state(2999, False)
+        self.try_to.set_vlan_ntp_state(2999, False)
 
         single_vlan = self.client.get_vlan(2999)
         vlan_from_list = self.get_vlan_from_list(2999)

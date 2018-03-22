@@ -12,7 +12,7 @@ flask==0.12.2
 idna==2.6                 # via requests
 itsdangerous==0.24        # via flask
 jinja2==2.10              # via flask
-lxml==4.2.0               # via ncclient
+lxml==4.2.1               # via ncclient
 markupsafe==1.0           # via jinja2
 ncclient==0.5.3
 netaddr==0.7.19

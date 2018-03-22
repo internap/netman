@@ -23,5 +23,6 @@
    "dhcp_relay_servers": [],
    "arp_routing": true,
    "icmp_redirects": false,
-   "unicast_rpf_mode": null
+   "unicast_rpf_mode": null,
+   "ntp": null
 }

@@ -132,6 +132,7 @@ class CiscoTest(unittest.TestCase):
             " standby 1 track 101 decrement 50",
             " ip helper-address 10.10.10.1",
             " ip helper-address 10.10.10.2",
+            " ntp disable",
             "end"
         ])
 
@@ -154,6 +155,8 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan_list[2].vrf_forwarding, equal_to("BLAH"))
         assert_that(vlan_list[2].access_groups[IN], equal_to("SHIZZLE"))
         assert_that(vlan_list[2].access_groups[OUT], equal_to("WHIZZLE"))
+
+        assert_that(vlan_list[2].ntp, equal_to(True))
 
         v3 = vlan_list[3]
         assert_that(v3.number, equal_to(2998))
@@ -190,6 +193,8 @@ class CiscoTest(unittest.TestCase):
         assert_that(len(v3.dhcp_relay_servers), equal_to(2))
         assert_that(str(v3.dhcp_relay_servers[0]), equal_to('10.10.10.1'))
         assert_that(str(v3.dhcp_relay_servers[1]), equal_to('10.10.10.2'))
+
+        assert_that(v3.ntp, equal_to(False))
 
         assert_that(vlan_list[4].number, equal_to(3333))
         assert_that(vlan_list[4].name, equal_to("some-name"))
@@ -288,6 +293,7 @@ class CiscoTest(unittest.TestCase):
         assert_that(vlan.arp_routing, is_(False))
         assert_that(vlan.icmp_redirects, is_(False))
         assert_that(vlan.unicast_rpf_mode, is_(STRICT))
+        assert_that(vlan.ntp), equal_to(True)
 
         vrrp_group = vlan.vrrp_groups[0]
         assert_that(len(vrrp_group.ips), equal_to(3))
@@ -1075,6 +1081,59 @@ class CiscoTest(unittest.TestCase):
         self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
 
         self.switch.set_interface_state("FastEthernet0/4", OFF)
+
+    def test_set_ntp_state_disable(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "Building configuration...",
+            "Current configuration : 41 bytes",
+            "!",
+            "interface Vlan1234",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("ntp disable").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+
+        self.switch.set_vlan_ntp_state(1234, False)
+
+    def test_set_ntp_state_enable(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "Building configuration...",
+            "Current configuration : 41 bytes",
+            "!",
+            "interface Vlan1234",
+            " ntp disable",
+            "end"
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([
+            "Enter configuration commands, one per line.  End with CNTL/Z."
+        ])
+        self.mocked_ssh_client.should_receive("do").with_args("interface vlan 1234").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no shutdown").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("no ntp disable").and_return([]).once().ordered()
+        self.mocked_ssh_client.should_receive("do").with_args("exit").and_return([]).twice().ordered().ordered()
+
+        self.switch.set_vlan_ntp_state(1234, True)
+
+    def test_set_ntp_state_no_vlan_raises(self):
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config interface vlan 1234").once().ordered().and_return([
+            "                                  ^",
+            "% Invalid input detected at '^' marker.",
+        ])
+
+        self.mocked_ssh_client.should_receive("do").with_args("show running-config vlan 1234 | begin vlan").once().ordered().and_return([
+        ])
+
+        with self.assertRaises(UnknownVlan) as expect:
+            self.switch.set_vlan_ntp_state(1234, False)
+
+        assert_that(str(expect.exception), equal_to("Vlan 1234 not found"))
 
     def test_set_interface_state_off_invalid_interface_raises(self):
         self.mocked_ssh_client.should_receive("do").with_args("configure terminal").once().ordered().and_return([

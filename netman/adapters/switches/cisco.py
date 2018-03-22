@@ -85,7 +85,7 @@ class Cisco(SwitchBase):
         pass
 
     def get_vlan(self, number):
-        vlan = Vlan(int(number), icmp_redirects=True, arp_routing=True)
+        vlan = Vlan(int(number), icmp_redirects=True, arp_routing=True, ntp=True)
         apply_vlan_running_config_data(vlan, self._get_vlan_run_conf(number))
         apply_interface_running_config_data(
             vlan,
@@ -104,7 +104,7 @@ class Cisco(SwitchBase):
                 if name == ("VLAN{}".format(number)):
                     name = None
 
-                vlans[number] = Vlan(int(number), name, icmp_redirects=True, arp_routing=True)
+                vlans[number] = Vlan(int(number), name, icmp_redirects=True, arp_routing=True, ntp=True)
 
         for ip_interface_data in split_on_dedent(self.ssh.do("show ip interface")):
             if regex.match("^Vlan(\d+)\s.*", ip_interface_data[0]):
@@ -431,6 +431,12 @@ class Cisco(SwitchBase):
             else:
                 self.ssh.do('no ip redirects')
 
+    def set_vlan_ntp_state(self, vlan_number, state):
+        self.get_vlan_interface_data(vlan_number)
+
+        with self.config(), self.interface_vlan(vlan_number):
+            self.ssh.do('{}ntp disable'.format('no ' if state else ''))
+
     def reset_interface(self, interface_id):
         with self.config():
             for line in self.ssh.do('default interface {}'.format(interface_id)):
@@ -566,6 +572,9 @@ def apply_interface_running_config_data(vlan, data):
 
         elif regex.match("^ ip verify unicast source reachable-via rx", line):
             vlan.unicast_rpf_mode = STRICT
+
+        elif regex.match("^ ntp disable", line):
+            vlan.ntp = False
 
 
 def apply_vlan_running_config_data(vlan, data):

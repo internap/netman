@@ -17,11 +17,11 @@ click==6.7
 clint==0.5.1              # via hy
 configparser==3.5.0       # via flake8
 constantly==15.1.0        # via twisted
-cryptography==2.2         # via twisted
+cryptography==2.2.1       # via twisted
 docutils==0.14            # via sphinx
 ecdsa==0.13
 enum34==1.1.6             # via cryptography, flake8
-fake-switches==1.2.2
+fake-switches==1.2.4
 flake8==3.4.1
 flask==0.12.2
 flexmock==0.10.2
@@ -35,7 +35,7 @@ incremental==17.5.0       # via twisted
 ipaddress==1.0.19         # via cryptography
 itsdangerous==0.24
 jinja2==2.10
-lxml==4.2.0
+lxml==4.2.1
 markupsafe==1.0
 mccabe==0.6.1             # via flake8
 mock==2.0.0

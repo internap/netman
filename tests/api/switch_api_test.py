@@ -66,14 +66,16 @@ class SwitchApiTest(BaseApiTest):
                  dhcp_relay_servers=[IPAddress("10.10.10.1")],
                  arp_routing=True,
                  icmp_redirects=True,
-                 unicast_rpf_mode=STRICT),
+                 unicast_rpf_mode=STRICT,
+                 ntp=None),
             Vlan(1, "One", [IPNetwork('1.1.1.1/24')], vrf_forwarding="MY_VRF", access_group_in="Blah_blah",
                  vrrp_groups=[
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
                                track_id='101', track_decrement=50)
                  ],
                  arp_routing=None,
-                 icmp_redirects=False),
+                 icmp_redirects=False,
+                 ntp=False),
         ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -573,6 +575,16 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.put("/switches/my.switch/vlans/2500/icmp-redirects", raw_data='false')
+
+        assert_that(code, equal_to(204))
+
+    def test_disable_ntp(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_vlan_ntp_state').with_args(2500, False).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/vlans/2500/ntp", raw_data='false')
 
         assert_that(code, equal_to(204))
 

@@ -33,7 +33,8 @@ def to_api(vlan):
         dhcp_relay_servers=[str(server) for server in vlan.dhcp_relay_servers],
         arp_routing=vlan.arp_routing,
         icmp_redirects=vlan.icmp_redirects,
-        unicast_rpf_mode=vlan.unicast_rpf_mode
+        unicast_rpf_mode=vlan.unicast_rpf_mode,
+        ntp=vlan.ntp
     )
 
 
