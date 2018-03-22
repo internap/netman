@@ -219,6 +219,9 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def unset_bond_mtu(self, number):
         raise NotImplementedError()
 
+    def set_vlan_ntp_state(self, vlan_number, state):
+        raise NotImplementedError()
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):
