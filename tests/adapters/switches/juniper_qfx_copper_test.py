@@ -644,7 +644,7 @@ class JuniperTest(unittest.TestCase):
                     <name>ae10</name>
                     <aggregated-ether-options>
                       <link-speed>1g</link-speed>
-                    </ether-options>
+                    </aggregated-ether-options>
                   </interface>
                 </interfaces>
               </configuration>

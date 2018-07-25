@@ -319,9 +319,9 @@ class Juniper(SwitchBase):
             </interface>
             """.format(interface_id))
         if negotiation_state == ON:
-            content.append(to_ele("<ether-options><auto-negotiation></ether-options>"))
+            content.append(to_ele("<ether-options><auto-negotiation/></ether-options>"))
         else:
-            content.append(to_ele("<ether-options><no-auto-negotiation></ether-options>"))
+            content.append(to_ele("<ether-options><no-auto-negotiation/></ether-options>"))
         update = Update()
         update.add_interface(content)
 

@@ -2322,7 +2322,7 @@ class JuniperTest(unittest.TestCase):
                       <family>
                         <ethernet-switching>
                           <port-mode>trunk</port-mode>
-                          <vlan operation="delete">
+                          <vlan operation="delete" />
                         </ethernet-switching>
                       </family>
                     </unit>
@@ -2377,7 +2377,7 @@ class JuniperTest(unittest.TestCase):
                       <family>
                         <ethernet-switching>
                           <port-mode>trunk</port-mode>
-                          <vlan operation="delete">
+                          <vlan operation="delete" />
                         </ethernet-switching>
                       </family>
                     </unit>
@@ -3693,7 +3693,7 @@ class JuniperTest(unittest.TestCase):
                       <interface>
                         <name>ge-0/0/6</name>
                         <ether-options>
-                          <auto-negotiation operation=\"delete\"/>
+                          <auto-negotiation operation=\"delete\" />
                         </ether-options>
                       </interface>
                     </interfaces>
@@ -3767,7 +3767,7 @@ class JuniperTest(unittest.TestCase):
                       <interface>
                         <name>ge-0/0/6</name>
                         <ether-options>
-                          <no-auto-negotiation operation=\"delete\"/>
+                          <no-auto-negotiation operation=\"delete\" />
                         </ether-options>
                       </interface>
                     </interfaces>
@@ -4453,7 +4453,7 @@ class JuniperTest(unittest.TestCase):
                 <interfaces>
                   <interface>
                     <name>ge-0/0/6</name>
-                    <description>Resistance is futile</name>
+                    <description>Resistance is futile</description>
                   </interface>
                 </interfaces>
               </configuration>
@@ -4469,7 +4469,7 @@ class JuniperTest(unittest.TestCase):
                 <interfaces>
                   <interface>
                     <name>ge-0/0/99</name>
-                    <description>Resistance is futile</name>
+                    <description>Resistance is futile</description>
                   </interface>
                 </interfaces>
               </configuration>
@@ -5783,7 +5783,7 @@ class JuniperTest(unittest.TestCase):
                     <name>ae10</name>
                     <aggregated-ether-options>
                       <link-speed>1g</link-speed>
-                    </ether-options>
+                    </aggregated-ether-options>
                   </interface>
                   <interface>
                     <name>ge-0/0/1</name>
@@ -6197,7 +6197,7 @@ class JuniperTest(unittest.TestCase):
                   <lldp>
                     <interface>
                       <name>ge-0/0/6</name>
-                      <disable operation="delete"/>
+                      <disable operation="delete" />
                     </interface>
                   </lldp>
                 </protocols>
