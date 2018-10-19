@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade
+from netman.adapters.switches import cisco, juniper, dell, dell10g, brocade, arista
 from netman.adapters.switches.juniper.mx import netconf as mx_netconf
 from netman.adapters.switches.remote import RemoteSwitch
 from netman.core.objects.flow_control_switch import FlowControlSwitch
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 factories = {
+    "arista": arista.eapi,
     "cisco": cisco.ssh,
     "brocade": brocade.ssh,
     "brocade_ssh": brocade.ssh,

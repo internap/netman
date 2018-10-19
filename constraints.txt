@@ -4,23 +4,24 @@
 #
 #    pip-compile --no-index --no-emit-trusted-host --output-file constraints.txt requirements.txt
 #
-certifi==2018.8.24        # via requests
+certifi==2018.10.15       # via requests
 chardet==3.0.4            # via requests
-click==6.7                # via flask
+click==7.0                # via flask
 ecdsa==0.13               # via paramiko
 flask==1.0.2
 idna==2.7                 # via requests
 itsdangerous==0.24        # via flask
 jinja2==2.10              # via flask
-lxml==4.2.4               # via ncclient
+lxml==4.2.5               # via ncclient
 markupsafe==1.0           # via jinja2
-ncclient==0.6.2
+ncclient==0.6.3
 netaddr==0.7.19
 paramiko==1.17.6
-pbr==4.2.0
+pbr==5.0.0
 pycrypto==2.6.1           # via paramiko
-requests==2.19.1
+pyeapi==0.8.2
+requests==2.20.0
 selectors2==2.0.1         # via ncclient
 six==1.11.0               # via ncclient
-urllib3==1.23             # via requests
+urllib3==1.24             # via requests
 werkzeug==0.14.1          # via flask
