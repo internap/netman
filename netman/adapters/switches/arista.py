@@ -9,6 +9,10 @@ from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 
 
+def eapi(switch_descriptor):
+    return Arista(switch_descriptor=switch_descriptor)
+
+
 class Arista(SwitchBase):
     def __init__(self, switch_descriptor):
         super(Arista, self).__init__(switch_descriptor)

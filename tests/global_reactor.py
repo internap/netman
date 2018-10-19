@@ -39,8 +39,7 @@ class ThreadedReactor(threading.Thread):
 
             specs["service_class"](
                 switch_descriptor.hostname,
-                ssh_port=switch_descriptor.port,
-                telnet_port=switch_descriptor.port,
+                port=switch_descriptor.port,
                 switch_core=specs["core_class"](switch_config),
                 users={switch_descriptor.username: switch_descriptor.password}
             ).hook_to_reactor(cls._threaded_reactor.reactor)
