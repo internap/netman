@@ -20,7 +20,7 @@ from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
 class RemoveIpFromVlanTest(ComplianceTestCase):
-    _dev_sample = "cisco"
+    _dev_sample = "arista"
 
     def setUp(self):
         super(RemoveIpFromVlanTest, self).setUp()
