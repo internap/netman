@@ -20,16 +20,14 @@ from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
 class AddIpToVlanTest(ComplianceTestCase):
-    _dev_sample = "brocade"
+    _dev_sample = "arista"
 
     def setUp(self):
         super(AddIpToVlanTest, self).setUp()
         self.client.add_vlan(1000, name="vlan_name")
-        self.client.add_vlan(2000, name="vlan_name")
 
     def tearDown(self):
         self.janitor.remove_vlan(1000)
-        self.janitor.remove_vlan(2000)
         super(AddIpToVlanTest, self).tearDown()
 
     def test_assigns_the_ip(self):
