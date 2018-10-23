@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import re
 import threading
 
 from fake_switches.switch_configuration import SwitchConfiguration
@@ -31,14 +31,19 @@ class ThreadedReactor(threading.Thread):
         for specs in models:
             switch_descriptor = specs["switch_descriptor"]
 
+            hostname = switch_descriptor.hostname
+            m = re.match('^https?:\/\/(.*)$', switch_descriptor.hostname.lower())
+            if m:
+                hostname = m.group(1)
+
             switch_config = SwitchConfiguration(
-                ip=switch_descriptor.hostname,
+                ip=hostname,
                 name="my_switch",
                 privileged_passwords=[switch_descriptor.password],
                 ports=specs["ports"])
 
             specs["service_class"](
-                switch_descriptor.hostname,
+                hostname,
                 port=switch_descriptor.port,
                 switch_core=specs["core_class"](switch_config),
                 users={switch_descriptor.username: switch_descriptor.password}
