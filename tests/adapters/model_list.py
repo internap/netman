@@ -32,7 +32,7 @@ available_models = [
     {
         "switch_descriptor": SwitchDescriptor(
             model="arista",
-            hostname="127.0.0.1",
+            hostname="http://127.0.0.1",
             port=11015,
             username="root",
             password="root",

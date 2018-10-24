@@ -1,8 +1,10 @@
 import unittest
 
+import pyeapi
 from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, has_length, equal_to, is_
 from pyeapi.api.vlans import Vlans
+from pyeapi.client import Node
 from pyeapi.eapilib import CommandError
 
 from netman.adapters.switches.arista import Arista
@@ -21,6 +23,26 @@ class AristaTest(unittest.TestCase):
 
     def tearDown(self):
         flexmock_teardown()
+
+    def test_arista_instance_with_proper_transport_http(self):
+        arista_eapi = flexmock(pyeapi)
+        arista_eapi.should_receive('connect').with_args(host="127.0.0.1", transport="http",
+                                                        username=None, return_node=True,
+                                                        password=None, port=None).once() \
+            .and_return(flexmock(Node(connection=None)))
+
+        switch = Arista(SwitchDescriptor(model='arista', hostname="http://127.0.0.1"))
+        switch._connect()
+
+    def test_arista_instance_with_proper_default_transport(self):
+        arista_eapi = flexmock(pyeapi)
+        arista_eapi.should_receive('connect').with_args(host="127.0.0.1", transport="https",
+                                                        username=None, return_node=True,
+                                                        password=None, port=None).once() \
+            .and_return(flexmock(Node(connection=None)))
+
+        switch = Arista(SwitchDescriptor(model='arista', hostname="127.0.0.1"))
+        switch._connect()
 
     def test_get_vlans(self):
         four_vlans_payload = vlans_payload(result=[{'vlans': {'1': vlan_data(name='default'),

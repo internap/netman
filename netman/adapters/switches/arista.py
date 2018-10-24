@@ -1,6 +1,7 @@
+import re
+
 import pyeapi
 from pyeapi.api.vlans import Vlans, isvlan
-from pyeapi.client import Node
 from pyeapi.eapilib import CommandError
 
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
@@ -19,15 +20,17 @@ class Arista(SwitchBase):
         self.switch_descriptor = switch_descriptor
 
     def _connect(self):
-        self.conn = pyeapi.connect(host=self.switch_descriptor.hostname,
+        m = re.match('^(https?):\/\/(.*)$', self.switch_descriptor.hostname.lower())
+        transport, hostname = (m.group(1),  m.group(2)) if m else ('https', self.switch_descriptor.hostname)
+
+        self.node = pyeapi.connect(host=hostname,
                                    username=self.switch_descriptor.username,
                                    password=self.switch_descriptor.password,
                                    port=self.switch_descriptor.port,
-                                   transport='http')
+                                   transport=transport,
+                                   return_node=True)
 
-        self.node = Node(self.conn, transport='http', host=self.switch_descriptor.hostname,
-                         username=self.switch_descriptor.username, password=self.switch_descriptor.password,
-                         port=self.switch_descriptor.port)
+        self.conn = self.node.connection
 
     def _disconnect(self):
         self.conn = None
