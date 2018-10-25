@@ -31,8 +31,8 @@ from netman.core.objects.switch_descriptor import SwitchDescriptor
 available_models = [
     {
         "switch_descriptor": SwitchDescriptor(
-            model="arista",
-            hostname="http://127.0.0.1",
+            model="arista_http",
+            hostname="127.0.0.1",
             port=11015,
             username="root",
             password="root",
