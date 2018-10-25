@@ -324,3 +324,8 @@ class AristaTest(unittest.TestCase):
 
         with self.assertRaises(UnknownVlan):
             self.switch.remove_ip_from_vlan(123, IPNetwork("1.1.1.1/30"))
+
+    def test_transactions_commit_write_memory(self):
+        self.switch.node.should_receive("enable").with_args("write memory").once()
+
+        self.switch.commit_transaction()
