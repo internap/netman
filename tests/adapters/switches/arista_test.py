@@ -1,48 +1,29 @@
 import unittest
 
+import mock
 import pyeapi
 from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, has_length, equal_to, is_, contains_string
 from netaddr import IPNetwork
-from pyeapi.client import Node
 from pyeapi.eapilib import CommandError
 
+from netman.adapters.switches import arista
 from netman.adapters.switches.arista import Arista
 from netman.core.objects.exceptions import BadVlanNumber, VlanAlreadyExist, BadVlanName, UnknownVlan, \
     UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.vlan import Vlan
+from tests import ignore_deprecation_warnings
 from tests.fixtures.arista import vlan_data, result_payload, interface_vlan_data, show_interfaces, interface_address
 
 
 class AristaTest(unittest.TestCase):
-
     def setUp(self):
-        self.switch = Arista(SwitchDescriptor(model='arista', hostname="my.hostname"))
+        self.switch = Arista(SwitchDescriptor(model='arista', hostname="my.hostname"), transport="Eytch tea tea pee")
         self.switch.node = flexmock()
 
     def tearDown(self):
         flexmock_teardown()
-
-    def test_arista_instance_with_proper_transport_http(self):
-        arista_eapi = flexmock(pyeapi)
-        arista_eapi.should_receive('connect').with_args(host="127.0.0.1", transport="http",
-                                                        username=None, return_node=True,
-                                                        password=None, port=None).once() \
-            .and_return(flexmock(Node(connection=None)))
-
-        switch = Arista(SwitchDescriptor(model='arista', hostname="http://127.0.0.1"))
-        switch._connect()
-
-    def test_arista_instance_with_proper_default_transport(self):
-        arista_eapi = flexmock(pyeapi)
-        arista_eapi.should_receive('connect').with_args(host="127.0.0.1", transport="https",
-                                                        username=None, return_node=True,
-                                                        password=None, port=None).once() \
-            .and_return(flexmock(Node(connection=None)))
-
-        switch = Arista(SwitchDescriptor(model='arista', hostname="127.0.0.1"))
-        switch._connect()
 
     def test_get_vlans(self):
         vlans_payload = {'vlans': {'1': vlan_data(name='default'),
@@ -329,3 +310,72 @@ class AristaTest(unittest.TestCase):
         self.switch.node.should_receive("enable").with_args("write memory").once()
 
         self.switch.commit_transaction()
+
+
+class AristaFactoryTest(unittest.TestCase):
+    def tearDown(self):
+        flexmock_teardown()
+
+    def test_arista_instance_with_proper_transport(self):
+        pyeapi_client_node = mock.sentinel
+
+        flexmock(pyeapi).should_receive('connect').once() \
+            .with_args(host="1.2.3.4",
+                       username="you sir name",
+                       password="paw sword",
+                       port=8888,
+                       transport="trololo",
+                       return_node=True) \
+            .and_return(pyeapi_client_node)
+
+        switch = Arista(
+            SwitchDescriptor(model='arista',
+                             hostname="1.2.3.4",
+                             username="you sir name",
+                             password="paw sword",
+                             port=8888),
+            transport="trololo"
+        )
+
+        switch._connect()
+
+        assert_that(switch.node, is_(pyeapi_client_node))
+
+    @ignore_deprecation_warnings
+    def test_factory_transport_auto_detection_http(self):
+        switch_descriptor = SwitchDescriptor(model="arista", hostname='http://hostname')
+
+        instance = mock.sentinel
+        flexmock(arista).should_receive("Arista").once() \
+            .with_args(switch_descriptor, transport="http") \
+            .and_return(mock.sentinel)
+
+        assert_that(arista.eapi(switch_descriptor), is_(instance))
+
+        assert_that(switch_descriptor.hostname, is_("hostname"))
+
+    @ignore_deprecation_warnings
+    def test_factory_transport_auto_detection_https(self):
+        switch_descriptor = SwitchDescriptor(model="arista", hostname='https://hostname')
+
+        instance = mock.sentinel
+        flexmock(arista).should_receive("Arista").once() \
+            .with_args(switch_descriptor, transport="https") \
+            .and_return(mock.sentinel)
+
+        assert_that(arista.eapi(switch_descriptor), is_(instance))
+
+        assert_that(switch_descriptor.hostname, is_("hostname"))
+
+    @ignore_deprecation_warnings
+    def test_factory_transport_auto_detection_assumes_https_if_not_specified(self):
+        switch_descriptor = SwitchDescriptor(model="arista", hostname='hostname')
+
+        instance = mock.sentinel
+        flexmock(arista).should_receive("Arista").once() \
+            .with_args(switch_descriptor, transport="https") \
+            .and_return(mock.sentinel)
+
+        assert_that(arista.eapi(switch_descriptor), is_(instance))
+
+        assert_that(switch_descriptor.hostname, is_("hostname"))

@@ -1,4 +1,5 @@
 import re
+import warnings
 
 import pyeapi
 from netaddr import IPNetwork
@@ -11,24 +12,36 @@ from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 
 
+def eapi_http(switch_descriptor):
+    return Arista(switch_descriptor, transport="http")
+
+
+def eapi_https(switch_descriptor):
+    return Arista(switch_descriptor, transport="https")
+
+
 def eapi(switch_descriptor):
-    return Arista(switch_descriptor=switch_descriptor)
+    warnings.warn("Use either the _http or _https driver", DeprecationWarning)
+
+    m = re.match('^(https?):\/\/(.*)$', switch_descriptor.hostname.lower())
+    transport, hostname = (m.group(1), m.group(2)) if m else ('https', switch_descriptor.hostname)
+
+    switch_descriptor.hostname = hostname
+    return Arista(switch_descriptor, transport=transport)
 
 
 class Arista(SwitchBase):
-    def __init__(self, switch_descriptor):
+    def __init__(self, switch_descriptor, transport):
         super(Arista, self).__init__(switch_descriptor)
         self.switch_descriptor = switch_descriptor
+        self.transport = transport
 
     def _connect(self):
-        m = re.match('^(https?):\/\/(.*)$', self.switch_descriptor.hostname.lower())
-        transport, hostname = (m.group(1), m.group(2)) if m else ('https', self.switch_descriptor.hostname)
-
-        self.node = pyeapi.connect(host=hostname,
+        self.node = pyeapi.connect(host=self.switch_descriptor.hostname,
                                    username=self.switch_descriptor.username,
                                    password=self.switch_descriptor.password,
                                    port=self.switch_descriptor.port,
-                                   transport=transport,
+                                   transport=self.transport,
                                    return_node=True)
 
     def _disconnect(self):

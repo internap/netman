@@ -21,7 +21,7 @@ from tests.adapters.compliance_test_case import ComplianceTestCase
 
 
 class AddVlanTest(ComplianceTestCase):
-    _dev_sample = "arista"
+    _dev_sample = "arista_http"
 
     def test_creates_an_empty_vlan(self):
         self.client.add_vlan(1000)

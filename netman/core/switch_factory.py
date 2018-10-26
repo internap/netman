@@ -20,6 +20,8 @@ from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 factories = {
     "arista": arista.eapi,
+    "arista_http": arista.eapi_http,
+    "arista_https": arista.eapi_https,
     "cisco": cisco.ssh,
     "brocade": brocade.ssh,
     "brocade_ssh": brocade.ssh,

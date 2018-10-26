@@ -21,7 +21,7 @@ from tests.adapters.configured_test_case import ConfiguredTestCase, skip_on_swit
 class DhcpRelayServerTest(ConfiguredTestCase):
     __test__ = False
 
-    @skip_on_switches("juniper", "juniper_qfx_copper", "juniper_mx", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "arista")
+    @skip_on_switches("juniper", "juniper_qfx_copper", "juniper_mx", "dell", "dell_telnet", "dell10g", "dell10g_telnet", "arista_http")
     def test_add_and_get_and_delete_dhcp_relay_server(self):
         try:
             self.client.add_vlan(2999, name="my-test-vlan")
