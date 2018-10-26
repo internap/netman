@@ -56,6 +56,9 @@ class Arista(SwitchBase):
     def commit_transaction(self):
         self.node.enable('write memory')
 
+    def rollback_transaction(self):
+        pass
+
     def get_vlan(self, number):
         try:
             vlans_result, interfaces_result = self.node.enable(
