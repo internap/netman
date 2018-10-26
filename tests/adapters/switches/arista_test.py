@@ -311,6 +311,9 @@ class AristaTest(unittest.TestCase):
 
         self.switch.commit_transaction()
 
+    def test_transactions_rollback_does_nothing(self):
+        self.switch.rollback_transaction()
+
 
 class AristaFactoryTest(unittest.TestCase):
     def tearDown(self):
