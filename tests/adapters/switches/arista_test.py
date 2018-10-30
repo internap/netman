@@ -10,7 +10,8 @@ from pyeapi.eapilib import CommandError
 from netman.adapters.switches import arista
 from netman.adapters.switches.arista import Arista, parse_vlan_ranges
 from netman.core.objects.exceptions import BadVlanNumber, VlanAlreadyExist, BadVlanName, UnknownVlan, \
-    UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists
+    UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface, UnknownBond, UnknownDhcpRelayServer, \
+    DhcpRelayServerAlreadyExists
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import TRUNK
@@ -596,6 +597,82 @@ class AristaTest(unittest.TestCase):
             .with_args(["interface Ethernet1", "switchport trunk allowed vlan remove 800"])
 
         self.switch.remove_trunk_vlan("Ethernet1", 800)
+
+    def test_set_bond_trunk_mode_initial(self):
+        self.switch.node.should_receive("config").with_args([
+            "interface Port-Channel1",
+            "switchport mode trunk",
+            "switchport trunk allowed vlan none"
+        ]).once()
+
+        self.switch.set_bond_trunk_mode(1)
+
+    def test_set_bond_trunk_mode_initial_invalid_interface_raises(self):
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Port-Channel9999",
+                        "switchport mode trunk",
+                        "switchport trunk allowed vlan none"]) \
+            .and_raise(CommandError(1002, "CLI command 3 of 6 'interface Port-Channel9999' failed: invalid command",
+                                    command_error="Invalid input (at token 1: 'Port-Channel9999')"))
+
+        with self.assertRaises(UnknownBond):
+            self.switch.set_bond_trunk_mode(9999)
+
+    def test_add_bond_trunk_vlan(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(800).and_return(Vlan(800))
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Port-Channel1",
+                        "switchport trunk allowed vlan add 800"]).once()
+
+        self.switch.add_bond_trunk_vlan(1, vlan=800)
+
+    def test_add_bond_trunk_vlan_invalid_vlan_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(800).and_raise(UnknownVlan(800))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.add_bond_trunk_vlan(1, vlan=800)
+
+    def test_add_bond_trunk_vlan_invalid_interface_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(800).and_return(Vlan(800))
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Port-Channel9999",
+                        "switchport trunk allowed vlan add 800"]) \
+            .and_raise(CommandError(1002, "CLI command 3 of 6 'interface Port-Channel9999' failed: invalid command",
+                                    command_error="Invalid input (at token 1: 'Port-Channel9999')"))
+
+        with self.assertRaises(UnknownBond):
+            self.switch.add_bond_trunk_vlan(9999, vlan=800)
+
+    def test_remove_bond_trunk_vlan(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_interface") \
+            .with_args("Port-Channel1") \
+            .and_return(Interface(name="Port-Channel1", trunk_vlans=[800], port_mode="trunk"))
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Port-Channel1", "switchport trunk allowed vlan remove 800"])
+
+        self.switch.remove_bond_trunk_vlan(1, 800)
+
+    def test_remove_bond_trunk_vlan_invalid_vlan_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_interface") \
+            .with_args("Port-Channel1") \
+            .and_return(Interface(name="Port-Channel1", trunk_vlans=[], port_mode="trunk"))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.remove_bond_trunk_vlan(1, vlan=800)
+
+    def test_remove_bond_trunk_vlan_invalid_interface_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_interface") \
+            .with_args("Port-Channel9999") \
+            .and_raise(UnknownInterface("Port-Channel9999"))
+
+        with self.assertRaises(UnknownBond):
+            self.switch.remove_bond_trunk_vlan(9999, vlan=800)
 
     def test_add_dhcp_relay_server(self):
         vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
