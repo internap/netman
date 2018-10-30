@@ -8,9 +8,10 @@ from netaddr import IPNetwork
 from pyeapi.eapilib import CommandError
 
 from netman.adapters.switches import arista
-from netman.adapters.switches.arista import Arista
+from netman.adapters.switches.arista import Arista, parse_vlan_ranges
 from netman.core.objects.exceptions import BadVlanNumber, VlanAlreadyExist, BadVlanName, UnknownVlan, \
     UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface
+from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
@@ -424,6 +425,121 @@ class AristaTest(unittest.TestCase):
         assert_that(if2.shutdown, equal_to(True))
         assert_that(if2.trunk_vlans, equal_to([]))
         assert_that(if2.auto_negotiation, equal_to(ON))
+
+    def parse_range_test(self):
+        result = parse_vlan_ranges(None)
+        assert_that(list(result), equal_to(range(1, 4094)))
+
+        result = parse_vlan_ranges("NONE")
+        assert_that(list(result), equal_to([]))
+
+        result = parse_vlan_ranges("ALL")
+        assert_that(list(result), equal_to(range(1, 4094)))
+
+        result = parse_vlan_ranges("1")
+        assert_that(list(result), equal_to([1]))
+
+        result = parse_vlan_ranges("2-5")
+        assert_that(list(result), equal_to([2, 3, 4, 5]))
+
+        result = parse_vlan_ranges("1,3-5,7")
+        assert_that(list(result), equal_to([1, 3, 4, 5, 7]))
+
+    def test_set_trunk_mode_initial(self):
+        self.switch.node.should_receive("config").with_args([
+            "interface Ethernet1",
+            "switchport mode trunk",
+            "switchport trunk allowed vlan none"
+        ]).once()
+
+        self.switch.set_trunk_mode("Ethernet1")
+
+    def test_set_trunk_mode_initial_invalid_interface_raises(self):
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Invalid_Ethernet",
+                        "switchport mode trunk",
+                        "switchport trunk allowed vlan none"]) \
+            .and_raise(CommandError(1002, "CLI command 3 of 6 'interface Invalid_Ethernet' failed: invalid command",
+                                    command_error="Invalid input (at token 1: 'Invalid_Ethernet')"))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.set_trunk_mode("Invalid_Ethernet")
+
+    def test_add_trunk_vlan(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(800).and_return(Vlan(800))
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Ethernet1",
+                        "switchport trunk allowed vlan add 800"]).once()
+
+        self.switch.add_trunk_vlan("Ethernet1", vlan=800)
+
+    def test_add_trunk_vlan_invalid_vlan_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(800).and_raise(UnknownVlan(800))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.add_trunk_vlan("Ethernet1", vlan=800)
+
+    def test_add_trunk_vlan_invalid_interface_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(800).and_return(Vlan(800))
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Invalid_Ethernet",
+                        "switchport trunk allowed vlan add 800"]) \
+            .and_raise(UnknownInterface("Invalid_Ethernet"))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.add_trunk_vlan("Invalid_Ethernet", vlan=800)
+
+    def test_remove_trunk_vlan(self):
+        interface_payload = result_payload(result={'interfaces': {'Ethernet1': interface_data(
+            name="Ethernet1",
+            lineProtocolStatus="up",
+            autoNegotiate="off",
+            mtu=1234
+        )}})
+        switchport_payload = result_payload(result={'switchports': {'Ethernet1': {'enabled': True,
+                                                                                  'switchportInfo': switchport_data(
+                                                                                      mode="trunk",
+                                                                                      trunkAllowedVlans="800-802,804",
+                                                                                      trunkingNativeVlanId=1
+                                                                                  )}}})
+        self.switch.node.should_receive("enable") \
+            .with_args(["show interfaces Ethernet1", "show interfaces Ethernet1 switchport"], strict=True) \
+            .and_return([interface_payload, switchport_payload])
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Ethernet1", "switchport trunk allowed vlan remove 800"])
+
+        self.switch.remove_trunk_vlan("Ethernet1", 800)
+
+    def test_remove_trunk_vlan_invalid_vlan_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_interface") \
+            .with_args("Ethernet1") \
+            .and_return(Interface(name="Ethernet1", trunk_vlans=[], port_mode="trunk"))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.remove_trunk_vlan("Ethernet1", vlan=800)
+
+    def test_remove_trunk_vlan_invalid_interface_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_interface") \
+            .with_args("Ethernet1") \
+            .and_raise(UnknownInterface("Ethernet1"))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.remove_trunk_vlan("Ethernet1", vlan=800)
+
+    def test_remove_trunk_vlan_no_port_mode_still_working(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_interface") \
+            .with_args("Ethernet1") \
+            .and_return(Interface(name="Ethernet1", trunk_vlans=[800], port_mode=None))
+        self.switch.node.should_receive("config") \
+            .with_args(["interface Ethernet1", "switchport trunk allowed vlan remove 800"])
+
+        self.switch.remove_trunk_vlan("Ethernet1", 800)
 
 
 class AristaFactoryTest(unittest.TestCase):
