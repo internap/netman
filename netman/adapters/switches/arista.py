@@ -9,7 +9,8 @@ from pyeapi.eapilib import CommandError
 from netman import regex
 from netman.adapters.switches.util import split_on_dedent
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
-    IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface
+    IPAlreadySet, IPNotAvailable, UnknownIP, UnknownInterface, UnknownBond, DhcpRelayServerAlreadyExists, \
+    UnknownDhcpRelayServer
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -223,6 +224,18 @@ class Arista(SwitchBase):
         ]
         self.node.config(commands)
 
+    def set_bond_trunk_mode(self, number):
+        with NamedBond(number) as bond:
+            return self.set_trunk_mode(bond.name)
+
+    def add_bond_trunk_vlan(self, number, vlan):
+        with NamedBond(number) as bond:
+            return self.add_trunk_vlan(bond.name, vlan)
+
+    def remove_bond_trunk_vlan(self, number, vlan):
+        with NamedBond(number) as bond:
+            return self.remove_trunk_vlan(bond.name, vlan)
+
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         vlan = self.get_vlan(vlan_number)
 
@@ -252,7 +265,8 @@ class Arista(SwitchBase):
                         try:
                             vlan.dhcp_relay_servers.append(IPAddress(regex[0]))
                         except AddrFormatError:
-                            self.logger.warning('Unsupported IP Helper address found in Vlan {} : {}'.format(vlan.number, regex[0]))
+                            self.logger.warning(
+                                'Unsupported IP Helper address found in Vlan {} : {}'.format(vlan.number, regex[0]))
 
     def _fetch_interface_vlans_config(self, vlans):
         all_interface_vlans = sorted('Vlan{}'.format(vlan.number) for vlan in vlans)
@@ -312,6 +326,26 @@ def parse_range(single_range):
         return range(int(regex[0]), int(regex[1]) + 1)
     else:
         return [int(single_range)]
+
+
+def bond_name(number):
+    return "Port-Channel{}".format(number)
+
+
+class NamedBond(object):
+    def __init__(self, number):
+        self.number = number
+
+    @property
+    def name(self):
+        return bond_name(self.number)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is UnknownInterface:
+            raise UnknownBond(self.number), None, exc_tb
 
 
 def _extract_vlans(vlans_info):
