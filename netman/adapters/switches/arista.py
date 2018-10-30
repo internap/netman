@@ -187,6 +187,39 @@ class Arista(SwitchBase):
         interfaces = parse_interfaces(result[0]['result']['interfaces'], result[1]['result']['switchports'])
         return interfaces
 
+    def set_trunk_mode(self, interface_id):
+        commands = [
+            "interface {}".format(interface_id),
+            "switchport mode trunk",
+            "switchport trunk allowed vlan none"
+        ]
+        try:
+            self.node.config(commands)
+        except CommandError:
+            raise UnknownInterface(interface_id)
+
+    def add_trunk_vlan(self, interface_id, vlan):
+        self.get_vlan(vlan)
+        commands = [
+            "interface {}".format(interface_id),
+            "switchport trunk allowed vlan add {}".format(vlan)
+        ]
+        try:
+            self.node.config(commands)
+        except CommandError:
+            raise UnknownInterface(interface_id)
+
+    def remove_trunk_vlan(self, interface_id, vlan):
+        interface = self.get_interface(interface_id)
+        if vlan not in interface.trunk_vlans:
+            raise UnknownVlan(vlan)
+
+        commands = [
+            "interface {}".format(interface_id),
+            "switchport trunk allowed vlan remove {}".format(vlan)
+        ]
+        self.node.config(commands)
+
 
 def parse_interfaces(interfaces_data, switchports_data):
     interfaces = []
