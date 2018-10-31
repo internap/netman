@@ -84,6 +84,7 @@ class AristaTest(unittest.TestCase):
 
         assert_that(vlan456.number, equal_to(456))
         assert_that(vlan456.name, equal_to('Patate'))
+        assert_that(vlan456.name, equal_to('Patate'))
         ip11, ip13, ip12 = vlan456.ips
         assert_that(ip11, is_(IPNetwork("192.168.11.1/29")))
         assert_that(ip13, is_(IPNetwork("192.168.13.1/29")))
@@ -597,6 +598,96 @@ class AristaTest(unittest.TestCase):
             .with_args(["interface Ethernet1", "switchport trunk allowed vlan remove 800"])
 
         self.switch.remove_trunk_vlan("Ethernet1", 800)
+
+    def test_add_dhcp_relay_server(self):
+        vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
+
+        interfaces_payload = show_interfaces(
+            interface_vlan_data(name="Vlan123")
+        )
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show vlan 123", "show interfaces Vlan123"], strict=True) \
+            .and_return([result_payload(result=vlans_payload),
+                         result_payload(result=interfaces_payload)])
+
+        self.switch.node.should_receive("get_config").once() \
+            .with_args(params="interfaces Vlan123") \
+            .and_return(['interface Vlan123',
+                         '   ip helper-address 10.10.30.200',
+                         '   ip helper-address 10.10.30.201'])
+
+        self.switch.node.should_receive("config").once() \
+            .with_args(['interface Vlan123',
+                        'ip helper-address 10.10.30.202'])
+
+        self.switch.add_dhcp_relay_server(123, IPAddress('10.10.30.202'))
+
+    def test_add_same_dhcp_relay_server_fails(self):
+        vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
+
+        interfaces_payload = show_interfaces(
+            interface_vlan_data(name="Vlan123")
+        )
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show vlan 123", "show interfaces Vlan123"], strict=True) \
+            .and_return([result_payload(result=vlans_payload),
+                         result_payload(result=interfaces_payload)])
+
+        self.switch.node.should_receive("get_config").once() \
+            .with_args(params="interfaces Vlan123") \
+            .and_return(['interface Vlan123',
+                         '   ip helper-address 10.10.30.200',
+                         '   ip helper-address 10.10.30.201'])
+
+        with self.assertRaises(DhcpRelayServerAlreadyExists):
+            self.switch.add_dhcp_relay_server(123, IPAddress('10.10.30.201'))
+
+    def test_remove_dhcp_relay_server(self):
+        vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
+
+        interfaces_payload = show_interfaces(
+            interface_vlan_data(name="Vlan123")
+        )
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show vlan 123", "show interfaces Vlan123"], strict=True) \
+            .and_return([result_payload(result=vlans_payload),
+                         result_payload(result=interfaces_payload)])
+
+        self.switch.node.should_receive("get_config").once() \
+            .with_args(params="interfaces Vlan123") \
+            .and_return(['interface Vlan123',
+                         '   ip helper-address 10.10.30.200',
+                         '   ip helper-address 10.10.30.202'])
+
+        self.switch.node.should_receive("config").once() \
+            .with_args(['interface Vlan123',
+                        'no ip helper-address 10.10.30.202'])
+
+        self.switch.remove_dhcp_relay_server(123, IPAddress('10.10.30.202'))
+
+    def test_remove_non_existent_dhcp_relay_server_fails(self):
+        vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
+
+        interfaces_payload = show_interfaces(
+            interface_vlan_data(name="Vlan123")
+        )
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show vlan 123", "show interfaces Vlan123"], strict=True) \
+            .and_return([result_payload(result=vlans_payload),
+                         result_payload(result=interfaces_payload)])
+
+        self.switch.node.should_receive("get_config").once() \
+            .with_args(params="interfaces Vlan123") \
+            .and_return(['interface Vlan123',
+                         '   ip helper-address 10.10.30.200',
+                         '   ip helper-address 10.10.30.202'])
+
+        with self.assertRaises(UnknownDhcpRelayServer):
+            self.switch.remove_dhcp_relay_server(123, IPAddress('10.10.30.222'))
 
     def test_set_bond_trunk_mode_initial(self):
         self.switch.node.should_receive("config").with_args([

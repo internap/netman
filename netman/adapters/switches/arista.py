@@ -9,8 +9,8 @@ from pyeapi.eapilib import CommandError
 from netman import regex
 from netman.adapters.switches.util import split_on_dedent
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
-    IPAlreadySet, IPNotAvailable, UnknownIP, UnknownInterface, UnknownBond, DhcpRelayServerAlreadyExists, \
-    UnknownDhcpRelayServer
+    IPAlreadySet, IPNotAvailable, UnknownIP, UnknownInterface, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
+    UnknownBond
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
