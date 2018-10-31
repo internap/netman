@@ -2,13 +2,14 @@ import re
 import warnings
 
 import pyeapi
-from netaddr import IPNetwork
+from netaddr import IPNetwork, IPAddress, AddrFormatError
 from pyeapi.api.vlans import isvlan
 from pyeapi.eapilib import CommandError
 
 from netman import regex
+from netman.adapters.switches.util import split_on_dedent
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
-    IPAlreadySet, IPNotAvailable, UnknownIP, UnknownInterface
+    IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -82,6 +83,7 @@ class Arista(SwitchBase):
 
         vlans = _extract_vlans(vlans_info)
         _apply_interface_data(interfaces_info, vlans)
+        self._apply_interface_vlan_data(vlans)
 
         return vlans[0]
 
@@ -90,6 +92,7 @@ class Arista(SwitchBase):
 
         vlans = _extract_vlans(vlans_result['result'])
         _apply_interface_data(interfaces_result['result'], vlans)
+        self._apply_interface_vlan_data(vlans)
 
         return sorted(vlans, key=lambda v: v.number)
 
@@ -219,6 +222,45 @@ class Arista(SwitchBase):
             "switchport trunk allowed vlan remove {}".format(vlan)
         ]
         self.node.config(commands)
+
+    def add_dhcp_relay_server(self, vlan_number, ip_address):
+        vlan = self.get_vlan(vlan_number)
+
+        if ip_address in vlan.dhcp_relay_servers:
+            raise DhcpRelayServerAlreadyExists(vlan_number=vlan_number, ip_address=ip_address)
+
+        self.node.config(['interface Vlan{}'.format(vlan_number),
+                          'ip helper-address {}'.format(ip_address)])
+
+    def remove_dhcp_relay_server(self, vlan_number, ip_address):
+        vlan = self.get_vlan(vlan_number)
+
+        if ip_address not in vlan.dhcp_relay_servers:
+            raise UnknownDhcpRelayServer(vlan_number=vlan_number, ip_address=ip_address)
+
+        self.node.config(['interface Vlan{}'.format(vlan_number),
+                          'no ip helper-address {}'.format(ip_address)])
+
+    def _apply_interface_vlan_data(self, vlans):
+        config = self._fetch_interface_vlans_config(vlans)
+
+        for interface in split_on_dedent(config):
+            if regex.match("^.*Vlan(\d+)$", interface[0]):
+                vlan = _find_vlan_by_number(vlans, regex[0])
+                for line in interface[1:]:
+                    if regex.match(" *ip helper-address (.*)", line):
+                        try:
+                            vlan.dhcp_relay_servers.append(IPAddress(regex[0]))
+                        except AddrFormatError:
+                            self.logger.warning('Unsupported IP Helper address found in Vlan {} : {}'.format(vlan.number, regex[0]))
+
+    def _fetch_interface_vlans_config(self, vlans):
+        all_interface_vlans = sorted('Vlan{}'.format(vlan.number) for vlan in vlans)
+        return self.node.get_config(params='interfaces {}'.format(' '.join(all_interface_vlans)))
+
+
+def _find_vlan_by_number(vlans, number):
+    return next((vlan for vlan in vlans if vlan.number == int(number)))
 
 
 def parse_interfaces(interfaces_data, switchports_data):
