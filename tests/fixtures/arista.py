@@ -45,6 +45,76 @@ interface_vlan_data = jabstract({
     'physicalAddress': 'fa:16:3e:02:b9:e2'
 })
 
+interface_data = jabstract({
+    'autoNegotiate': 'off',
+    'bandwidth': 0,
+    'burnedInAddress': 'fa:16:3e:0e:ee:81',
+    'description': '',
+    'duplex': 'duplexFull',
+    'forwardingModel': 'bridged',
+    'hardware': 'ethernet',
+    'interfaceAddress': [],
+    'interfaceCounters': {
+        'counterRefreshTime': 1541082601.226264,
+        'inBroadcastPkts': 0,
+        'inDiscards': 0,
+        'inMulticastPkts': 30902,
+        'inOctets': 2183607,
+        'inTotalPkts': 30948,
+        'inUcastPkts': 46,
+        'inputErrorsDetail': {
+            'alignmentErrors': 0,
+            'fcsErrors': 0,
+            'giantFrames': 0,
+            'runtFrames': 0,
+            'rxPause': 0,
+            'symbolErrors': 0},
+        'linkStatusChanges': 4,
+        'outBroadcastPkts': 0,
+        'outDiscards': 0,
+        'outMulticastPkts': 447388,
+        'outOctets': 32423850,
+        'outUcastPkts': 0,
+        'outputErrorsDetail': {
+            'collisions': 0,
+            'deferredTransmissions': 0,
+            'lateCollisions': 0,
+            'txPause': 0},
+        'totalInErrors': 0,
+        'totalOutErrors': 0},
+    'interfaceStatistics': {
+        'inBitsRate': 0.0,
+        'inPktsRate': 0.0,
+        'outBitsRate': 0.0,
+        'outPktsRate': 0.0,
+        'updateInterval': 300.0},
+    'interfaceStatus': 'disabled',
+    'lastStatusChangeTimestamp': 1541080271.3714354,
+    'lineProtocolStatus': 'down',
+    'loopbackMode': 'loopbackNone',
+    'mtu': 9214,
+    'name': 'Ethernet1',
+    'physicalAddress': 'fa:16:3e:0e:ee:81'
+})
+
+switchport_data = jabstract({
+    'accessVlanId': 1,
+    'accessVlanName': 'default',
+    'dot1qVlanTagRequired': False,
+    'dot1qVlanTagRequiredStatus': False,
+    'dynamicAllowedVlans': {},
+    'dynamicTrunkGroups': [],
+    'macLearning': True,
+    'mode': 'access',
+    'sourceportFilterMode': 'enabled',
+    'staticTrunkGroups': [],
+    'tpid': '0x8100',
+    'tpidStatus': True,
+    'trunkAllowedVlans': '800,805',
+    'trunkingNativeVlanId': 1,
+    'trunkingNativeVlanName': 'default'
+})
+
 
 def show_interfaces(*interface_data):
     return {'interfaces': {i["name"]: i for i in interface_data}}

@@ -21,7 +21,7 @@ cryptography==2.3.1       # via twisted
 docutils==0.14            # via sphinx
 ecdsa==0.13
 enum34==1.1.6             # via cryptography, flake8
-fake-switches==1.3.2
+fake-switches==1.3.5
 flake8==3.4.1
 flask==1.0.2
 flexmock==0.10.2
@@ -34,7 +34,7 @@ idna==2.7
 imagesize==1.1.0          # via sphinx
 incremental==17.5.0       # via twisted
 ipaddress==1.0.22         # via cryptography
-itsdangerous==0.24
+itsdangerous==1.1.0
 jabstract==0.1.2
 jinja2==2.10
 lxml==4.2.5
@@ -46,7 +46,7 @@ ncclient==0.6.3
 netaddr==0.7.19
 nose==1.3.7
 paramiko==1.17.6
-pbr==5.0.0
+pbr==5.1.0
 pyasn1==0.4.4             # via mockssh, twisted
 pycodestyle==2.3.1        # via flake8
 pycparser==2.19           # via cffi
@@ -55,7 +55,7 @@ pyeapi==0.8.2
 pyflakes==1.5.0           # via flake8
 pygments==2.2.0           # via sphinx
 pyhamcrest==1.9.0
-pytz==2018.5              # via babel
+pytz==2018.7              # via babel
 requests==2.20.0
 rply==0.7.6               # via hy
 selectors2==2.0.1
@@ -65,6 +65,6 @@ sphinx==1.5.6
 sphinxcontrib-httpdomain==1.7.0
 tftpy==0.8.0              # via fake-switches
 twisted[conch]==16.6.0    # via fake-switches, mockssh
-urllib3==1.24
+urllib3==1.24.1
 werkzeug==0.14.1
-zope.interface==4.5.0     # via twisted
+zope.interface==4.6.0     # via twisted
