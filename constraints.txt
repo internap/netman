@@ -10,18 +10,18 @@ click==7.0                # via flask
 ecdsa==0.13               # via paramiko
 flask==1.0.2
 idna==2.7                 # via requests
-itsdangerous==0.24        # via flask
+itsdangerous==1.1.0       # via flask
 jinja2==2.10              # via flask
 lxml==4.2.5               # via ncclient
 markupsafe==1.0           # via jinja2
 ncclient==0.6.3
 netaddr==0.7.19
 paramiko==1.17.6
-pbr==5.0.0
+pbr==5.1.0
 pycrypto==2.6.1           # via paramiko
 pyeapi==0.8.2
 requests==2.20.0
 selectors2==2.0.1         # via ncclient
 six==1.11.0               # via ncclient
-urllib3==1.24             # via requests
+urllib3==1.24.1           # via requests
 werkzeug==0.14.1          # via flask

@@ -11,10 +11,13 @@ from netman.adapters.switches import arista
 from netman.adapters.switches.arista import Arista
 from netman.core.objects.exceptions import BadVlanNumber, VlanAlreadyExist, BadVlanName, UnknownVlan, \
     UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface
+from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.vlan import Vlan
 from tests import ignore_deprecation_warnings
-from tests.fixtures.arista import vlan_data, result_payload, interface_vlan_data, show_interfaces, interface_address
+from tests.fixtures.arista import vlan_data, result_payload, interface_vlan_data, show_interfaces, interface_address, \
+    switchport_data, interface_data
 
 
 class AristaTest(unittest.TestCase):
@@ -313,6 +316,114 @@ class AristaTest(unittest.TestCase):
 
     def test_transactions_rollback_does_nothing(self):
         self.switch.rollback_transaction()
+
+    def test_get_interface(self):
+        interface_payload = result_payload(result={
+            'interfaces': {
+                'Ethernet1': interface_data(
+                    name="Ethernet1",
+                    lineProtocolStatus="up",
+                    autoNegotiate="off",
+                    mtu=1234
+                )
+            }
+        })
+
+        switchport_payload = result_payload(result={
+            'switchports': {
+                'Ethernet1': {
+                    'enabled': True,
+                    'switchportInfo': switchport_data(
+                        mode="trunk",
+                        trunkAllowedVlans="800-802,804",
+                        trunkingNativeVlanId=1
+                    )
+                }
+            }
+        })
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show interfaces Ethernet1", "show interfaces Ethernet1 switchport"], strict=True) \
+            .and_return([interface_payload, switchport_payload])
+
+        interface = self.switch.get_interface("Ethernet1")
+
+        assert_that(interface.name, equal_to("Ethernet1"))
+        assert_that(interface.shutdown, equal_to(False))
+        assert_that(interface.port_mode, equal_to(TRUNK))
+        assert_that(interface.trunk_vlans, equal_to([800, 801, 802, 804]))
+        assert_that(interface.auto_negotiation, equal_to(OFF))
+        assert_that(interface.mtu, equal_to(1234))
+
+    def test_get_interface_no_interface_raises(self):
+        self.switch.node.should_receive("enable") \
+            .with_args(["show interfaces InvalidInterface", "show interfaces InvalidInterface switchport"], strict=True) \
+            .and_raise(CommandError(1002,
+                                    "CLI command 4 of 4 'show interfaces InvalidInterface' failed: invalid command",
+                                    command_error="Invalid input (at token 0: 'show')"))
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.get_interface("InvalidInterface")
+
+    def test_get_interface_unsupported_interface_raises(self):
+        interface_payload = result_payload(result={
+            'interfaces': {
+                'UndesiredInterface': interface_data(name="UndesiredInterface", )
+            }
+        })
+        switchport_payload = result_payload(result={'switchports': {}})
+        self.switch.node.should_receive("enable") \
+            .with_args(["show interfaces Unsupported1", "show interfaces Unsupported1 switchport"], strict=True) \
+            .and_return([interface_payload, switchport_payload])
+
+        with self.assertRaises(UnknownInterface):
+            self.switch.get_interface("Unsupported1")
+
+    def test_get_interfaces(self):
+        interface_payload = result_payload(result={
+            'interfaces': {
+                'Ethernet1': interface_data(
+                    name="Ethernet1",
+                    lineProtocolStatus="up",
+                    autoNegotiate="off",
+                    mtu=1234
+                ),
+                'Ethernet2': interface_data(
+                    name="Ethernet2",
+                    lineProtocolStatus="down",
+                    autoNegotiate="on"
+                )}})
+
+        switchport_payload = result_payload(result={
+            'switchports': {
+                'Ethernet1': {
+                    'enabled': True,
+                    'switchportInfo': switchport_data(
+                        mode="trunk",
+                        trunkAllowedVlans="800-802,804",
+                        trunkingNativeVlanId=1
+                    )
+                }
+            }
+        })
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show interfaces", "show interfaces switchport"], strict=True) \
+            .and_return([interface_payload, switchport_payload])
+
+        if1, if2 = sorted(self.switch.get_interfaces(), key=lambda i: i.name)
+
+        assert_that(if1.name, equal_to("Ethernet1"))
+        assert_that(if1.shutdown, equal_to(False))
+        assert_that(if1.port_mode, equal_to(TRUNK))
+        assert_that(if1.trunk_vlans, equal_to([800, 801, 802, 804]))
+        assert_that(if1.auto_negotiation, equal_to(OFF))
+        assert_that(if1.mtu, equal_to(1234))
+
+        assert_that(if2.name, equal_to("Ethernet2"))
+        assert_that(if2.shutdown, equal_to(True))
+        assert_that(if2.trunk_vlans, equal_to([]))
+        assert_that(if2.auto_negotiation, equal_to(ON))
 
 
 class AristaFactoryTest(unittest.TestCase):

@@ -6,8 +6,12 @@ from netaddr import IPNetwork
 from pyeapi.api.vlans import isvlan
 from pyeapi.eapilib import CommandError
 
+from netman import regex
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
-    IPAlreadySet, IPNotAvailable, UnknownIP
+    IPAlreadySet, IPNotAvailable, UnknownIP, UnknownInterface
+from netman.core.objects.interface import Interface
+from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
 
@@ -157,6 +161,82 @@ class Arista(SwitchBase):
             self.node.config(commands)
         else:
             raise UnknownIP(ip_network)
+
+    def get_interface(self, interface_id):
+        commands = [
+            "show interfaces {}".format(interface_id),
+            "show interfaces {} switchport".format(interface_id)
+        ]
+        try:
+            result = self.node.enable(commands, strict=True)
+        except CommandError:
+            raise UnknownInterface(interface_id)
+
+        interfaces = parse_interfaces(result[0]['result']['interfaces'], result[1]['result']['switchports'])
+        if len(interfaces) > 0:
+            return interfaces[0]
+        raise UnknownInterface(interface_id)
+
+    def get_interfaces(self):
+        commands = [
+            "show interfaces",
+            "show interfaces switchport"
+        ]
+        result = self.node.enable(commands, strict=True)
+
+        interfaces = parse_interfaces(result[0]['result']['interfaces'], result[1]['result']['switchports'])
+        return interfaces
+
+
+def parse_interfaces(interfaces_data, switchports_data):
+    interfaces = []
+    for interface_data in interfaces_data.values():
+        if regex.match("(\w*Ethernet[^\s]*)", interface_data["name"]) or \
+                regex.match("(Port-channel[^\s]*)", interface_data["name"]):
+
+            interface = Interface(name=interface_data["name"], shutdown=False)
+
+            if interface_data["lineProtocolStatus"] == "down":
+                interface.shutdown = True
+
+            interface.mtu = int(interface_data["mtu"])
+            interface.auto_negotiation = ON if interface_data["autoNegotiate"] == "on" else OFF
+
+            if interface.name in switchports_data:
+                patch_switchport(interface, switchports_data[interface.name]["switchportInfo"])
+
+            interfaces.append(interface)
+
+    return interfaces
+
+
+def patch_switchport(interface, data):
+    if data["mode"] == "access":
+        interface.port_mode = ACCESS
+    elif data["mode"] == "trunk":
+        interface.port_mode = TRUNK
+
+    interface.trunk_native_vlan = data["trunkingNativeVlanId"]
+    interface.trunk_vlans = parse_vlan_ranges(data["trunkAllowedVlans"]) if data["trunkAllowedVlans"] else []
+
+
+def parse_vlan_ranges(all_ranges):
+    if all_ranges is None or all_ranges == "ALL":
+        return range(1, 4094)
+    elif all_ranges == "NONE":
+        return []
+    else:
+        full_list = []
+        for vlan_list in [parse_range(r) for r in all_ranges.split(",")]:
+            full_list += vlan_list
+        return full_list
+
+
+def parse_range(single_range):
+    if regex.match("(\d+)-(\d+)", single_range):
+        return range(int(regex[0]), int(regex[1]) + 1)
+    else:
+        return [int(single_range)]
 
 
 def _extract_vlans(vlans_info):
