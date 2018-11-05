@@ -289,6 +289,17 @@ class RemoteSwitch(SwitchBase):
     def remove_vrrp_group(self, vlan_number, group_id):
         self.delete("/vlans/{}/vrrp-groups/{}".format(vlan_number, group_id))
 
+    def add_vlan_varp_ip(self, vlan_number, ip_network):
+        self.post('/vlans/{vlan_number}/varp-ips'.format(
+            vlan_number=vlan_number,
+        ), raw_data=str(ip_network))
+
+    def remove_vlan_varp_ip(self, vlan_number, ip_network):
+        self.delete('/vlans/{vlan_number}/varp-ips/{ip_network}'.format(
+            vlan_number=vlan_number,
+            ip_network=ip_network
+        ))
+
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         self.post("/vlans/{}/dhcp-relay-server".format(
             vlan_number), raw_data=str(ip_address))

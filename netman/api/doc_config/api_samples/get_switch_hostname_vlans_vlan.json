@@ -24,5 +24,6 @@
    "arp_routing": true,
    "icmp_redirects": false,
    "unicast_rpf_mode": null,
-   "ntp": null
+   "ntp": null,
+   "varp_ips": []
 }

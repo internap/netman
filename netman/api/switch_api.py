@@ -37,6 +37,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/ips/<path:ip_network>', view_func=self.remove_ip, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrrp-groups', view_func=self.add_vrrp_group, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrrp-groups/<vrrp_group_id>', view_func=self.remove_vrrp_group, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/varp-ips', view_func=self.add_varp_ip, methods=['POST'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/varp-ips/<path:ip_network>', view_func=self.remove_varp_ip, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/access-groups/<direction>', view_func=self.set_vlan_access_group, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/access-groups/<direction>', view_func=self.unset_vlan_access_group, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/vrf-forwarding', view_func=self.set_vlan_vrf, methods=['PUT'])
@@ -277,6 +279,44 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.remove_vrrp_group(vlan_number, vrrp_group_id)
+        return 204, None
+
+    @to_response
+    @content(is_ip_network)
+    @resource(Switch, Vlan)
+    def add_varp_ip(self, switch, vlan_number, validated_ip_network):
+        """
+        Adds a VARP IP Network to a VLAN
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: VLAN number, between 1 and 4096
+        :body:
+            Highlighted fields are mandatory
+
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_varp_ips.json
+                :language: json
+                :emphasize-lines: 2-3
+
+            or
+
+            .. literalinclude:: ../doc_config/api_samples/post_switch_hostname_vlans_vlanid_varp_ips.txt
+        """
+
+        switch.add_vlan_varp_ip(vlan_number=vlan_number, ip_network=validated_ip_network)
+        return 201, None
+
+    @to_response
+    @resource(Switch, Vlan, IPNetworkResource)
+    def remove_varp_ip(self, switch, vlan_number, ip_network):
+        """
+        Removes a VARP ip from a VLAN
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: VLAN number, between 1 and 4096
+        :arg str ip_network: IP/Subnet in the "x.x.x.x/xx" format
+        """
+
+        switch.remove_vlan_varp_ip(vlan_number=vlan_number, ip_network=ip_network)
         return 204, None
 
     @to_response

@@ -67,7 +67,8 @@ class SwitchApiTest(BaseApiTest):
                  arp_routing=True,
                  icmp_redirects=True,
                  unicast_rpf_mode=STRICT,
-                 ntp=None),
+                 ntp=None,
+                 varp_ips=[IPNetwork('4.4.4.4/24'), IPNetwork('5.5.5.5/24')]),
             Vlan(1, "One", [IPNetwork('1.1.1.1/24')], vrf_forwarding="MY_VRF", access_group_in="Blah_blah",
                  vrrp_groups=[
                      VrrpGroup(id=1, ips=[IPAddress('1.1.1.2')], priority=90, hello_interval=5, dead_interval=15,
@@ -75,7 +76,8 @@ class SwitchApiTest(BaseApiTest):
                  ],
                  arp_routing=None,
                  icmp_redirects=False,
-                 ntp=False),
+                 ntp=False,
+                 varp_ips=[IPNetwork('3.3.3.3/24')])
         ]).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -1024,6 +1026,62 @@ class SwitchApiTest(BaseApiTest):
         self.switch_mock.should_receive('disconnect').once().ordered()
 
         result, code = self.delete("/switches/my.switch/vlans/2500/dhcp-relay-server/10.10.10.1")
+
+        assert_that(code, equal_to(204))
+
+    def test_add_varp_ip_formatted(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('add_vlan_varp_ip').with_args(
+            vlan_number=2500,
+            ip_network=IPNetwork('1.2.3.4/25')
+        ).once().ordered()
+
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.post("/switches/my.switch/vlans/2500/varp-ips", fixture="post_switch_hostname_vlans_vlanid_varp_ips.json")
+
+        assert_that(code, equal_to(201))
+
+    def test_add_varp_ip_works_with_raw_ipnetworks(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('add_vlan_varp_ip').with_args(
+            vlan_number=2500,
+            ip_network=IPNetwork('1.2.3.4/25')
+        ).once().ordered()
+
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.post("/switches/my.switch/vlans/2500/varp-ips", fixture="post_switch_hostname_vlans_vlanid_varp_ips.txt")
+
+        assert_that(code, equal_to(201))
+
+    def test_remove_varp_ip(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('remove_vlan_varp_ip').with_args(
+            vlan_number=2500,
+            ip_network=IPNetwork('10.10.10.1')
+        ).once().ordered()
+
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/vlans/2500/varp-ips/10.10.10.1")
+
+        assert_that(code, equal_to(204))
+
+    def test_remove_varp_ip_works_with_ipnetwork(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('remove_vlan_varp_ip').with_args(
+            vlan_number=2500,
+            ip_network=IPNetwork('10.10.10.1/29')
+        ).once().ordered()
+
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/vlans/2500/varp-ips/10.10.10.1/29")
 
         assert_that(code, equal_to(204))
 

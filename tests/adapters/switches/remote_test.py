@@ -18,7 +18,7 @@ import unittest
 from hamcrest import assert_that, equal_to, is_, instance_of
 import mock
 from ncclient.operations import RPCError
-from netaddr import IPAddress
+from netaddr import IPAddress, IPNetwork
 from flexmock import flexmock, flexmock_teardown
 
 from netman.core.objects.interface_states import OFF, ON
@@ -501,6 +501,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(vrrp_group.dead_interval, is_(15))
         assert_that(vrrp_group.track_id, is_("101"))
         assert_that(vrrp_group.track_decrement, is_(50))
+        assert_that(vlan1.varp_ips, is_([]))
 
     def test_get_vlans(self):
         self.requests_mock.should_receive("get").once().with_args(
@@ -528,6 +529,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(vrrp_group.dead_interval, is_(15))
         assert_that(vrrp_group.track_id, is_("101"))
         assert_that(vrrp_group.track_decrement, is_(50))
+        assert_that(vlan1.varp_ips, is_([IPNetwork('3.3.3.3/24')]))
 
         assert_that(vlan2.number, is_(2))
         assert_that(vlan2.name, is_(''))
@@ -547,6 +549,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(vrrp_group2.id, is_(2))
         assert_that(vrrp_group2.ips, is_([IPAddress("3.3.3.1")]))
         assert_that(vrrp_group2.priority, is_(100))
+        assert_that(vlan2.varp_ips, is_([IPNetwork('4.4.4.4/24'), IPNetwork('5.5.5.5/24')]))
 
     def test_get_vlan_interfaces(self):
         self.requests_mock.should_receive("get").once().with_args(
@@ -1488,6 +1491,29 @@ class RemoteSwitchTest(unittest.TestCase):
                 status_code=201))
 
         self.switch.remove_dhcp_relay_server(2000, '1.2.3.4')
+
+    def test_add_varp_ip(self):
+        self.requests_mock.should_receive("post").once().with_args(
+            url=self.netman_url+'/switches/toto/vlans/2000/varp-ips',
+            headers=self.headers,
+            data='1.2.3.4/29'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=201))
+
+        self.switch.add_vlan_varp_ip(2000, IPNetwork('1.2.3.4/29'))
+
+    def test_remove_varp_ip(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url+'/switches/toto/vlans/2000/varp-ips/1.2.3.4/29',
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.remove_vlan_varp_ip(2000, IPNetwork('1.2.3.4/29'))
 
     def test_set_interface_lldp_state(self):
         self.requests_mock.should_receive("put").once().with_args(

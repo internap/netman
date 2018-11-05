@@ -23,7 +23,7 @@ def to_api(vlan):
     return dict(
         number=vlan.number,
         name=vlan.name,
-        ips=sorted([{'address': ipn.ip.format(), 'mask': ipn.prefixlen} for ipn in vlan.ips], key=lambda i: i['address']),
+        ips=serialize_ip_network(vlan.ips),
         vrrp_groups=sorted([vrrp_group.to_api(group) for group in vlan.vrrp_groups], key=lambda i: i['id']),
         vrf_forwarding=vlan.vrf_forwarding,
         access_groups={
@@ -34,7 +34,8 @@ def to_api(vlan):
         arp_routing=vlan.arp_routing,
         icmp_redirects=vlan.icmp_redirects,
         unicast_rpf_mode=vlan.unicast_rpf_mode,
-        ntp=vlan.ntp
+        ntp=vlan.ntp,
+        varp_ips=serialize_ip_network(vlan.varp_ips)
     )
 
 
@@ -43,11 +44,21 @@ def to_core(serialized):
     ips = serialized.pop('ips')
     vrrp_groups = serialized.pop('vrrp_groups')
     dhcp_relay_servers = serialized.pop('dhcp_relay_servers')
+    varp_ips = serialized.pop('varp_ips')
     return Vlan(
         access_group_in=access_groups['in'],
         access_group_out=access_groups['out'],
-        ips=[IPNetwork('{address}/{mask}'.format(**ip)) for ip in ips],
+        ips=deserialize_ip_network(ips),
         vrrp_groups=[vrrp_group.to_core(group) for group in vrrp_groups],
         dhcp_relay_servers=[IPAddress(i) for i in dhcp_relay_servers],
+        varp_ips=deserialize_ip_network(varp_ips),
         **serialized
     )
+
+
+def deserialize_ip_network(ips):
+    return [IPNetwork('{address}/{mask}'.format(**ip)) for ip in ips]
+
+
+def serialize_ip_network(ips):
+    return sorted([{'address': ipn.ip.format(), 'mask': ipn.prefixlen} for ipn in ips], key=lambda i: i['address'])
