@@ -222,6 +222,12 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_vlan_ntp_state(self, vlan_number, state):
         raise NotImplementedError()
 
+    def add_vlan_varp_ip(self, vlan_number, ip_network):
+        raise NotImplementedError()
+
+    def remove_vlan_varp_ip(self, vlan_number, ip_network):
+        raise NotImplementedError()
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

@@ -10,10 +10,10 @@ from pyeapi.eapilib import CommandError
 from netman.adapters.switches import arista
 from netman.adapters.switches.arista import Arista, parse_vlan_ranges
 from netman.core.objects.exceptions import BadVlanNumber, VlanAlreadyExist, BadVlanName, UnknownVlan, \
-    UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface, UnknownBond, UnknownDhcpRelayServer, \
-    DhcpRelayServerAlreadyExists
+    UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
+    UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan
 from netman.core.objects.interface import Interface
-from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.vlan import Vlan
@@ -63,7 +63,10 @@ class AristaTest(unittest.TestCase):
                          '   ip helper-address 10.10.30.200',
                          '   ip helper-address 10.10.30.201',
                          'interface Vlan456',
+                         '   ip virtual-router address 10.10.77.1',
+                         '   ip virtual-router address 10.10.77.200/28',
                          'interface Vlan789',
+                         '   ip virtual-router address 10.10.77.3',
                          '   ip helper-address 10.10.30.203',
                          '   ip helper-address 10.10.30.204',
                          '   ip helper-address 10.10.30.205',
@@ -81,6 +84,7 @@ class AristaTest(unittest.TestCase):
         dhcp_ip1, dhcp_ip2 = vlan123.dhcp_relay_servers
         assert_that(dhcp_ip1, is_(IPAddress('10.10.30.200')))
         assert_that(dhcp_ip2, is_(IPAddress('10.10.30.201')))
+        assert_that(vlan123.varp_ips, has_length(0))
 
         assert_that(vlan456.number, equal_to(456))
         assert_that(vlan456.name, equal_to('Patate'))
@@ -90,15 +94,22 @@ class AristaTest(unittest.TestCase):
         assert_that(ip13, is_(IPNetwork("192.168.13.1/29")))
         assert_that(ip12, is_(IPNetwork("192.168.12.1/29")))
         assert_that(vlan456.dhcp_relay_servers, has_length(0))
+        varp1, varp2 = vlan456.varp_ips
+        assert_that(varp1, is_(IPNetwork("10.10.77.1/32")))
+        assert_that(varp2, is_(IPNetwork("10.10.77.200/28")))
 
         assert_that(vlan789.ips, has_length(0))
         dhcp_ip1, dhcp_ip2, dhcp_ip3 = vlan789.dhcp_relay_servers
         assert_that(dhcp_ip1, is_(IPAddress('10.10.30.203')))
         assert_that(dhcp_ip2, is_(IPAddress('10.10.30.204')))
         assert_that(dhcp_ip3, is_(IPAddress('10.10.30.205')))
+        assert_that(vlan789.varp_ips, has_length(1))
+        varp_ip = vlan789.varp_ips[0]
+        assert_that(varp_ip, is_(IPNetwork('10.10.77.3/32')))
 
         assert_that(vlan1234.ips, has_length(0))
         assert_that(vlan1234.dhcp_relay_servers, has_length(0))
+        assert_that(vlan1234.varp_ips, has_length(0))
 
     def test_get_vlan(self):
         vlans_payload = {'vlans': {'456': vlan_data(name='Patate')}}
@@ -121,7 +132,9 @@ class AristaTest(unittest.TestCase):
         self.switch.node.should_receive("get_config").with_args(params="interfaces Vlan456").once() \
             .and_return(['interface Vlan456',
                          '   ip helper-address 10.10.30.200',
-                         '   ip helper-address 10.10.30.201'])
+                         '   ip virtual-router address 10.10.77.1',
+                         '   ip helper-address 10.10.30.201',
+                         '   ip virtual-router address 10.10.77.2/28'])
 
         vlan = self.switch.get_vlan(456)
 
@@ -131,6 +144,9 @@ class AristaTest(unittest.TestCase):
         assert_that(ip11, is_(IPNetwork("192.168.11.1/29")))
         assert_that(ip13, is_(IPNetwork("192.168.13.1/29")))
         assert_that(ip12, is_(IPNetwork("192.168.12.1/29")))
+        varp1, varp2 = vlan.varp_ips
+        assert_that(varp1, is_(IPNetwork("10.10.77.1/32")))
+        assert_that(varp2, is_(IPNetwork("10.10.77.2/28")))
 
         helper_addr1, helper_addr2 = vlan.dhcp_relay_servers
         assert_that(helper_addr1, is_(IPAddress('10.10.30.200')))
@@ -765,7 +781,7 @@ class AristaTest(unittest.TestCase):
         with self.assertRaises(UnknownBond):
             self.switch.remove_bond_trunk_vlan(9999, vlan=800)
 
-    def test_add_dhcp_relay_server(self):
+    def test_add_varp_ip(self):
         vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
 
         interfaces_payload = show_interfaces(
@@ -779,17 +795,24 @@ class AristaTest(unittest.TestCase):
 
         self.switch.node.should_receive("get_config").once() \
             .with_args(params="interfaces Vlan123") \
-            .and_return(['interface Vlan123',
-                         '   ip helper-address 10.10.30.200',
-                         '   ip helper-address 10.10.30.201'])
+            .and_return(['interface Vlan123'])
 
         self.switch.node.should_receive("config").once() \
             .with_args(['interface Vlan123',
-                        'ip helper-address 10.10.30.202'])
+                        'ip virtual-router address 10.10.20.12/28'])
 
-        self.switch.add_dhcp_relay_server(123, IPAddress('10.10.30.202'))
+        self.switch.add_vlan_varp_ip(123, IPNetwork('10.10.20.12/28'))
 
-    def test_add_same_dhcp_relay_server_fails(self):
+    def test_add_varp_ip_unknown_vlan_raises(self):
+        self.switch.node.should_receive("enable").once() \
+            .with_args(["show vlan 111", "show interfaces Vlan111"], strict=True) \
+            .and_raise(CommandError(1000, "CLI command 2 of 3 'show vlan 111' failed: could not run command",
+                                    command_error="VLAN 111 not found in current VLAN database"))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.add_vlan_varp_ip(111, IPNetwork('10.10.20.12/28'))
+
+    def test_add_existing_varp_ip_to_same_vlan_raises(self):
         vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
 
         interfaces_payload = show_interfaces(
@@ -804,13 +827,12 @@ class AristaTest(unittest.TestCase):
         self.switch.node.should_receive("get_config").once() \
             .with_args(params="interfaces Vlan123") \
             .and_return(['interface Vlan123',
-                         '   ip helper-address 10.10.30.200',
-                         '   ip helper-address 10.10.30.201'])
+                         '   ip virtual-router address 10.10.20.12/28'])
 
-        with self.assertRaises(DhcpRelayServerAlreadyExists):
-            self.switch.add_dhcp_relay_server(123, IPAddress('10.10.30.201'))
+        with self.assertRaises(VarpAlreadyExistsForVlan):
+            self.switch.add_vlan_varp_ip(123, IPNetwork('10.10.20.12/28'))
 
-    def test_remove_dhcp_relay_server(self):
+    def test_add_varp_conflicting_ip_raises(self):
         vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
 
         interfaces_payload = show_interfaces(
@@ -824,17 +846,44 @@ class AristaTest(unittest.TestCase):
 
         self.switch.node.should_receive("get_config").once() \
             .with_args(params="interfaces Vlan123") \
-            .and_return(['interface Vlan123',
-                         '   ip helper-address 10.10.30.200',
-                         '   ip helper-address 10.10.30.202'])
+            .and_return(['interface Vlan123'])
 
         self.switch.node.should_receive("config").once() \
             .with_args(['interface Vlan123',
-                        'no ip helper-address 10.10.30.202'])
+                        'ip virtual-router address 10.10.20.12/28']) \
+            .and_raise(CommandError(1000,
+                                    "Error [1000]: CLI command 4 of 4 "
+                                    "'ip virtual-router address 10.10.20.1/28' failed: could not run command "
+                                    "[Address 10.10.20.1 is already assigned to interface Vlan20]"))
 
-        self.switch.remove_dhcp_relay_server(123, IPAddress('10.10.30.202'))
+        with self.assertRaises(IPNotAvailable):
+            self.switch.add_vlan_varp_ip(123, IPNetwork('10.10.20.12/28'))
 
-    def test_remove_non_existent_dhcp_relay_server_fails(self):
+    def test_add_varp_other_eapi_error_raises(self):
+        vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
+
+        interfaces_payload = show_interfaces(
+            interface_vlan_data(name="Vlan123")
+        )
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show vlan 123", "show interfaces Vlan123"], strict=True) \
+            .and_return([result_payload(result=vlans_payload),
+                         result_payload(result=interfaces_payload)])
+
+        self.switch.node.should_receive("get_config").once() \
+            .with_args(params="interfaces Vlan123") \
+            .and_return(['interface Vlan123'])
+
+        self.switch.node.should_receive("config").once() \
+            .with_args(['interface Vlan123',
+                        'ip virtual-router address 10.10.20.12/28']) \
+            .and_raise(CommandError(1000, "Communication Error"))
+
+        with self.assertRaises(CommandError):
+            self.switch.add_vlan_varp_ip(123, IPNetwork('10.10.20.12/28'))
+
+    def test_remove_varp_ip(self):
         vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
 
         interfaces_payload = show_interfaces(
@@ -849,11 +898,41 @@ class AristaTest(unittest.TestCase):
         self.switch.node.should_receive("get_config").once() \
             .with_args(params="interfaces Vlan123") \
             .and_return(['interface Vlan123',
-                         '   ip helper-address 10.10.30.200',
-                         '   ip helper-address 10.10.30.202'])
+                         '   ip virtual-router address 10.10.20.12/28'])
 
-        with self.assertRaises(UnknownDhcpRelayServer):
-            self.switch.remove_dhcp_relay_server(123, IPAddress('10.10.30.222'))
+        self.switch.node.should_receive("config").once() \
+            .with_args(['interface Vlan123',
+                        'no ip virtual-router address 10.10.20.12/28'])
+
+        self.switch.remove_vlan_varp_ip(123, IPNetwork('10.10.20.12/28'))
+
+    def test_remove_varp_unknown_ip_raises(self):
+        vlans_payload = {'vlans': {'123': vlan_data(name='Patate')}}
+
+        interfaces_payload = show_interfaces(
+            interface_vlan_data(name="Vlan123")
+        )
+
+        self.switch.node.should_receive("enable") \
+            .with_args(["show vlan 123", "show interfaces Vlan123"], strict=True) \
+            .and_return([result_payload(result=vlans_payload),
+                         result_payload(result=interfaces_payload)])
+
+        self.switch.node.should_receive("get_config").once() \
+            .with_args(params="interfaces Vlan123") \
+            .and_return(['interface Vlan123'])
+
+        with self.assertRaises(VarpDoesNotExistForVlan):
+            self.switch.remove_vlan_varp_ip(123, IPNetwork('10.10.20.12/28'))
+
+    def test_remove_varp_ip_unknown_vlan_raises(self):
+        self.switch.node.should_receive("enable").once() \
+            .with_args(["show vlan 111", "show interfaces Vlan111"], strict=True) \
+            .and_raise(CommandError(1000, "CLI command 2 of 3 'show vlan 111' failed: could not run command",
+                                    command_error="VLAN 111 not found in current VLAN database"))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.remove_vlan_varp_ip(111, IPNetwork('10.10.20.12/28'))
 
 
 class AristaFactoryTest(unittest.TestCase):
