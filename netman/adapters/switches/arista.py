@@ -9,8 +9,8 @@ from pyeapi.eapilib import CommandError
 from netman import regex
 from netman.adapters.switches.util import split_on_dedent
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
-    IPAlreadySet, IPNotAvailable, UnknownIP, UnknownInterface, UnknownBond, DhcpRelayServerAlreadyExists, \
-    UnknownDhcpRelayServer
+    IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface, \
+    UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -254,6 +254,29 @@ class Arista(SwitchBase):
         self.node.config(['interface Vlan{}'.format(vlan_number),
                           'no ip helper-address {}'.format(ip_address)])
 
+    def add_vlan_varp_ip(self, vlan_number, ip_network):
+        vlan = self.get_vlan(vlan_number)
+
+        if ip_network in vlan.varp_ips:
+            raise VarpAlreadyExistsForVlan(vlan=vlan_number, ip_network=ip_network)
+
+        try:
+            self.node.config(['interface Vlan{}'.format(vlan_number),
+                              'ip virtual-router address {}'.format(ip_network)])
+        except CommandError as e:
+            if regex.match("^.*is already assigned to interface Vlan(\d+)]", e.message):
+                raise IPNotAvailable(ip_network=ip_network, reason=str(e))
+            raise
+
+    def remove_vlan_varp_ip(self, vlan_number, ip_network):
+        vlan = self.get_vlan(vlan_number)
+
+        if ip_network not in vlan.varp_ips:
+            raise VarpDoesNotExistForVlan(vlan=vlan_number, ip_network=ip_network)
+
+        self.node.config(['interface Vlan{}'.format(vlan_number),
+                          'no ip virtual-router address {}'.format(ip_network)])
+
     def _apply_interface_vlan_data(self, vlans):
         config = self._fetch_interface_vlans_config(vlans)
 
@@ -267,6 +290,8 @@ class Arista(SwitchBase):
                         except AddrFormatError:
                             self.logger.warning(
                                 'Unsupported IP Helper address found in Vlan {} : {}'.format(vlan.number, regex[0]))
+                    if regex.match(" *ip virtual-router address (.*)", line):
+                        vlan.varp_ips.append(IPNetwork(regex[0]))
 
     def _fetch_interface_vlans_config(self, vlans):
         all_interface_vlans = sorted('Vlan{}'.format(vlan.number) for vlan in vlans)

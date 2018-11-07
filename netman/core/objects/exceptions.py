@@ -154,6 +154,16 @@ class VrrpDoesNotExistForVlan(InvalidValue):
         super(VrrpDoesNotExistForVlan, self).__init__("Vrrp group {group} does not exist for vlan {vlan}".format(group=vrrp_group_id, vlan=vlan))
 
 
+class VarpAlreadyExistsForVlan(Conflict):
+    def __init__(self, vlan=None, ip_network=None):
+        super(VarpAlreadyExistsForVlan, self).__init__("Varp ip network {ip} is already on vlan {vlan}".format(ip=ip_network, vlan=vlan))
+
+
+class VarpDoesNotExistForVlan(InvalidValue):
+    def __init__(self, vlan=None, ip_network=None):
+        super(VarpDoesNotExistForVlan, self).__init__("Varp ip {ip} is not configured for vlan {vlan}".format(ip=ip_network, vlan=vlan))
+
+
 class NoIpOnVlanForVrrp(InvalidValue):
     def __init__(self, vlan=None):
         super(NoIpOnVlanForVrrp, self).__init__("Vlan {vlan} needs an IP before configuring VRRP".format(vlan=vlan))
