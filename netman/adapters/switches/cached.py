@@ -359,6 +359,14 @@ class CachedSwitch(SwitchBase):
             if group.id == group_id:
                 self.vlans_cache[vlan_number].vrrp_groups.remove(group)
 
+    def add_vlan_varp_ip(self, vlan_number, ip_network):
+        self.real_switch.add_vlan_varp_ip(vlan_number, ip_network)
+        self.vlans_cache[vlan_number].varp_ips.append(ip_network)
+
+    def remove_vlan_varp_ip(self, vlan_number, ip_network):
+        self.real_switch.remove_vlan_varp_ip(vlan_number, ip_network)
+        self.vlans_cache[vlan_number].varp_ips.remove(ip_network)
+
     def add_dhcp_relay_server(self, vlan_number, ip_address):
         self.real_switch.add_dhcp_relay_server(vlan_number, ip_address)
         self.vlans_cache[vlan_number].dhcp_relay_servers.append(ip_address)
