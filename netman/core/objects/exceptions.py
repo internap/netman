@@ -85,12 +85,12 @@ class UnknownVrf(UnknownResource):
 
 
 class UnknownDhcpRelayServer(UnknownResource):
-    def __init__(self, vlan_number, ip_address):
+    def __init__(self, vlan_number=None, ip_address=None):
         super(UnknownDhcpRelayServer, self).__init__("DHCP relay server {} not found on VLAN {}".format(ip_address, vlan_number))
 
 
 class DhcpRelayServerAlreadyExists(UnknownResource):
-    def __init__(self, vlan_number, ip_address):
+    def __init__(self, vlan_number=None, ip_address=None):
         super(DhcpRelayServerAlreadyExists, self).__init__("DHCP relay server {} already exists on VLAN {}".format(ip_address, vlan_number))
 
 
