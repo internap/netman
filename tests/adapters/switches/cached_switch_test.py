@@ -825,23 +825,23 @@ class CacheSwitchTest(unittest.TestCase):
         self.switch.get_vlans()
 
         self.real_switch_mock.should_receive("add_vlan_varp_ip").once() \
-            .with_args(1, IPAddress("1.1.1.1"))
+            .with_args(1, IPNetwork("1.1.1.1/29"))
 
-        self.switch.add_vlan_varp_ip(1, IPAddress("1.1.1.1"))
+        self.switch.add_vlan_varp_ip(1, IPNetwork("1.1.1.1/29"))
 
         assert_that(
             self.switch.get_vlans(),
-            is_([Vlan(1, varp_ips=[IPAddress("1.1.1.1")])]))
+            is_([Vlan(1, varp_ips=[IPNetwork("1.1.1.1/29")])]))
 
     def test_remove_vlan_varp_ip(self):
         self.real_switch_mock.should_receive("get_vlans").once() \
-            .and_return([Vlan(1, varp_ips=[IPAddress("1.1.1.1")])])
+            .and_return([Vlan(1, varp_ips=[IPNetwork("1.1.1.1/29")])])
         self.switch.get_vlans()
 
         self.real_switch_mock.should_receive("remove_vlan_varp_ip").once() \
-            .with_args(1, IPAddress("1.1.1.1"))
+            .with_args(1, IPNetwork("1.1.1.1/29"))
 
-        self.switch.remove_vlan_varp_ip(1, IPAddress("1.1.1.1"))
+        self.switch.remove_vlan_varp_ip(1, IPNetwork("1.1.1.1/29"))
 
         assert_that(
             self.switch.get_vlans(),

@@ -25,7 +25,10 @@
       "arp_routing": null,
       "icmp_redirects": false,
       "unicast_rpf_mode": null,
-      "ntp": false
+      "ntp": false,
+      "varp_ips": [
+         {"address": "3.3.3.3", "mask": 24}
+      ]
    },
    {
       "number": 2,
@@ -63,6 +66,10 @@
       "arp_routing": true,
       "icmp_redirects": true,
       "unicast_rpf_mode": "STRICT",
-      "ntp": null
+      "ntp": null,
+      "varp_ips": [
+         {"address": "4.4.4.4", "mask": 24},
+         {"address": "5.5.5.5", "mask": 24}
+      ]
    }
 ]
