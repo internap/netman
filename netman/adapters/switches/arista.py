@@ -7,6 +7,7 @@ from pyeapi.api.vlans import isvlan
 from pyeapi.eapilib import CommandError
 
 from netman import regex
+from netman.adapters.shell import default_command_timeout
 from netman.adapters.switches.util import split_on_dedent
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
     IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface, \
@@ -48,7 +49,8 @@ class Arista(SwitchBase):
                                    password=self.switch_descriptor.password,
                                    port=self.switch_descriptor.port,
                                    transport=self.transport,
-                                   return_node=True)
+                                   return_node=True,
+                                   timeout=default_command_timeout)
 
     def _disconnect(self):
         self.node = None
