@@ -14,219 +14,296 @@
 
 import logging
 from contextlib import contextmanager
+from functools import wraps
 
 from netman.core.objects.backward_compatible_switch_operations import BackwardCompatibleSwitchOperations
 
 
+def not_implemented(func):
+    @wraps(func)
+    def func_wrapper(*args, **kwargs):
+        raise NotImplementedError("'{}' is not implemented".format(func.func_name))
+    return func_wrapper
+
+
 class SwitchOperations(BackwardCompatibleSwitchOperations):
 
+    @not_implemented
     def connect(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def disconnect(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def transaction(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def start_transaction(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def commit_transaction(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def rollback_transaction(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def end_transaction(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_vlan(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_vlans(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_vlan(self, number, name=None):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_vlan(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_interface(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_interfaces(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_access_vlan(self, interface_id, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_interface_access_vlan(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_access_mode(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_trunk_mode(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_trunk_vlan(self, interface_id, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_trunk_vlan(self, interface_id, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_interface_state(self, interface_id, state):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_interface_state(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_interface_auto_negotiation_state(self, interface_id, negotiation_state):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_interface_auto_negotiation_state(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_interface_native_vlan(self, interface_id, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_interface_native_vlan(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def reset_interface(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_vlan_interfaces(self, vlan_number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_ip_to_vlan(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_ip_from_vlan(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_vlan_access_group(self, vlan_number, direction, name):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_vlan_access_group(self, vlan_number, direction):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_vlan_vrf(self, vlan_number, vrf_name):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_vlan_vrf(self, vlan_number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_interface_description(self, interface_id, description):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_interface_description(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def edit_interface_spanning_tree(self, interface_id, edge=None):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_bond(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_bond(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_bond(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_bonds(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_interface_to_bond(self, interface, bond_number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_interface_from_bond(self, interface):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_bond_link_speed(self, number, speed):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_bond_description(self, number, description):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_bond_description(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_bond_trunk_mode(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_bond_access_mode(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_bond_trunk_vlan(self, number, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_bond_trunk_vlan(self, number, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_bond_native_vlan(self, number, vlan):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_bond_native_vlan(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def edit_bond_spanning_tree(self, number, edge=None):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_vrrp_group(self, vlan_number, group_id, ips=None, priority=None, hello_interval=None, dead_interval=None,
                        track_id=None, track_decrement=None):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_vrrp_group(self, vlan_id, group_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_dhcp_relay_server(self, vlan_number, ip_address):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_dhcp_relay_server(self, vlan_number, ip_address):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_interface_lldp_state(self, interface_id, enabled):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_vlan_arp_routing_state(self, vlan_number, state):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_vlan_icmp_redirects_state(self, vlan_number, state):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_vlan_unicast_rpf_mode(self, vlan_number, mode):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_vlan_unicast_rpf_mode(self, vlan_number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def get_versions(self):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_interface_mtu(self, interface_id, size):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_interface_mtu(self, interface_id):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_bond_mtu(self, number, size):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def unset_bond_mtu(self, number):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def set_vlan_ntp_state(self, vlan_number, state):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def add_vlan_varp_ip(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        pass
 
+    @not_implemented
     def remove_vlan_varp_ip(self, vlan_number, ip_network):
-        raise NotImplementedError()
+        pass
 
 
 class SwitchBase(SwitchOperations):
