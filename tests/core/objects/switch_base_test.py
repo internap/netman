@@ -17,7 +17,7 @@ from flexmock import flexmock, flexmock_teardown
 from hamcrest import assert_that, is_
 
 from netman.core.objects.exceptions import NetmanException
-from netman.core.objects.switch_base import SwitchBase
+from netman.core.objects.switch_base import SwitchBase, SwitchOperations
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
 
@@ -96,3 +96,11 @@ class SwitchBaseTest(TestCase):
             self.switch.end_transaction()
 
         assert_that(self.switch.in_transaction, is_(True))
+
+    def test_not_implemented_methods_raise_with_their_names(self):
+        so = SwitchOperations()
+        for method_name in SwitchOperations.__dict__:
+            if not method_name.startswith('__'):
+                method = getattr(so, method_name)
+                with self.assertRaisesRegexp(NotImplementedError, "'{}' is not implemented".format(method_name)):
+                    method()
