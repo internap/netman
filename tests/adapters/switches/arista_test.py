@@ -948,7 +948,8 @@ class AristaFactoryTest(unittest.TestCase):
                        password="paw sword",
                        port=8888,
                        transport="trololo",
-                       return_node=True) \
+                       return_node=True,
+                       timeout=300) \
             .and_return(pyeapi_client_node)
 
         switch = Arista(
@@ -963,6 +964,29 @@ class AristaFactoryTest(unittest.TestCase):
         switch._connect()
 
         assert_that(switch.node, is_(pyeapi_client_node))
+
+    def test_arista_uses_command_timeout(self):
+        arista.default_command_timeout = 500
+
+        pyeapi_client_node = mock.sentinel
+
+        flexmock(pyeapi).should_receive('connect').once() \
+            .with_args(host="1.2.3.4",
+                       username=None,
+                       password=None,
+                       port=None,
+                       transport="trololo",
+                       return_node=True,
+                       timeout=500) \
+            .and_return(pyeapi_client_node)
+
+        switch = Arista(
+            SwitchDescriptor(model='arista',
+                             hostname="1.2.3.4"),
+            transport="trololo"
+        )
+
+        switch._connect()
 
     @ignore_deprecation_warnings
     def test_factory_transport_auto_detection_http(self):
