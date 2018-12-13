@@ -1,7 +1,6 @@
 pbr>=1.8
 Flask>=0.11
-# paramiko 1.18: 9720259c11cd430c095ff332090ebb6b09bd248d seems to cause problem in resolving hostkey
-paramiko>=1.15.1,<1.18
+paramiko>=1.15.1
 netaddr>=0.7.13
 ncclient>=0.5.0
 requests>=2.6.2
