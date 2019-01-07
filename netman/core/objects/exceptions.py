@@ -254,6 +254,11 @@ class MalformedSwitchSessionRequest(InvalidValue):
         super(MalformedSwitchSessionRequest, self).__init__("Malformed switch session request")
 
 
+class BadLoadIntervalNumber(InvalidValue):
+    def __init__(self):
+        super(BadLoadIntervalNumber, self).__init__("Load interval number is invalid")
+
+
 class Timeout(Exception):
     pass
 

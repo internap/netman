@@ -50,6 +50,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/ntp', view_func=self.set_vlan_ntp_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/unicast-rpf-mode', view_func=self.set_vlan_unicast_rpf_mode, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/unicast-rpf-mode', view_func=self.unset_vlan_unicast_rpf_mode, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/load-interval', view_func=self.set_vlan_load_interval, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/load-interval', view_func=self.unset_vlan_load_interval, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces', view_func=self.get_interfaces, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.reset_interface, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.get_interface, methods=['GET'])
@@ -348,6 +350,36 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.unset_vlan_access_group(vlan_number, direction)
+        return 204, None
+
+    @to_response
+    @content(is_int)
+    @resource(Switch, Vlan)
+    def set_vlan_load_interval(self, switch, vlan_number, value):
+        """
+        Sets the load interval of a vlan
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        :body:
+            .. literalinclude:: ../doc_config/api_samples/put_switch_hostname_vlans_vlanid_load_interval.txt
+        """
+
+        switch.set_vlan_load_interval(vlan_number, value)
+
+        return 204, None
+
+    @to_response
+    @resource(Switch, Vlan)
+    def unset_vlan_load_interval(self, switch, vlan_number):
+        """
+        Unsets the load interval of a vlan
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        """
+
+        switch.unset_vlan_load_interval(vlan_number)
         return 204, None
 
     @to_response

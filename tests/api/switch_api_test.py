@@ -1728,6 +1728,33 @@ class SwitchApiTest(BaseApiTest):
         assert_that(code, equal_to(500))
         assert_that(result, equal_to({'error': 'Unexpected error: tests.api.switch_api_test.EmptyException'}))
 
+    def test_set_vlan_load_interval(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_vlan_load_interval').with_args(123, 30).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/vlans/123/load-interval",
+                                fixture="put_switch_hostname_vlans_vlanid_load_interval.txt")
+
+        assert_that(code, equal_to(204))
+
+    def test_set_vlan_load_interval_bad_content(self):
+        result, code = self.put("/switches/my.switch/vlans/123/load-interval", raw_data="ahahaha")
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'Expected integer content, got "ahahaha"'}))
+
+    def test_unset_vlan_load_interval(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('unset_vlan_load_interval').with_args(123).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.delete("/switches/my.switch/vlans/123/load-interval")
+
+        assert_that(code, equal_to(204))
+
 
 class EmptyException(Exception):
     pass

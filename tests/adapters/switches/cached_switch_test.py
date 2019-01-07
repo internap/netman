@@ -987,3 +987,29 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(
             self.switch.get_bonds(),
             is_([Bond('xe-1/0/2', mtu=None)]))
+
+    def test_set_vlan_load_interval(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(123)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive("set_vlan_load_interval").once() \
+            .with_args(123, 30)
+        self.switch.set_vlan_load_interval(123, 30)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(123, load_interval=30)]))
+
+    def test_unset_vlan_load_interval(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(123, load_interval=30)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive("unset_vlan_load_interval").once() \
+            .with_args(123)
+        self.switch.unset_vlan_load_interval(123)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(123, load_interval=None)]))
