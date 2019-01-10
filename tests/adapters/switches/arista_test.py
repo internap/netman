@@ -11,7 +11,7 @@ from netman.adapters.switches import arista
 from netman.adapters.switches.arista import Arista, parse_vlan_ranges
 from netman.core.objects.exceptions import BadVlanNumber, VlanAlreadyExist, BadVlanName, UnknownVlan, \
     UnknownIP, IPNotAvailable, IPAlreadySet, UnknownInterface, UnknownDhcpRelayServer, DhcpRelayServerAlreadyExists, \
-    UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan, BadLoadIntervalNumber
+    UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan, BadLoadIntervalNumber, BadMplsIpState
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import ON, OFF
 from netman.core.objects.port_modes import TRUNK
@@ -36,7 +36,8 @@ class AristaTest(unittest.TestCase):
                                    '456': vlan_data(name='Patate'),
                                    '789': vlan_data(name="new_interface_vlan_without_ip"),
                                    '1234': vlan_data(name="interface_with_removed_ip"),
-                                   '1235': vlan_data(name="vlan_with_load_interval")}}
+                                   '1235': vlan_data(name="vlan_with_load_interval"),
+                                   '1236': vlan_data(name="vlan_with_no_mpls_ip")}}
 
         interfaces_payload = show_interfaces(
             interface_vlan_data(name="Vlan456", interfaceAddress=[interface_address(
@@ -59,7 +60,7 @@ class AristaTest(unittest.TestCase):
                          result_payload(result=interfaces_payload)])
 
         self.switch.node.should_receive("get_config").with_args(
-            params="interfaces Vlan1 Vlan123 Vlan1234 Vlan1235 Vlan456 Vlan789").once() \
+            params="interfaces Vlan1 Vlan123 Vlan1234 Vlan1235 Vlan1236 Vlan456 Vlan789").once() \
             .and_return(['interface Vlan123',
                          '   ip helper-address 10.10.30.200',
                          '   ip helper-address 10.10.30.201',
@@ -73,9 +74,11 @@ class AristaTest(unittest.TestCase):
                          '   ip helper-address 10.10.30.205',
                          'interface Vlan1234',
                          'interface Vlan1235',
-                         '   load-interval 30'])
+                         '   load-interval 30',
+                         'interface Vlan1236',
+                         '   no mpls ip'])
 
-        vlan1, vlan123, vlan456, vlan789, vlan1234, vlan1235 = self.switch.get_vlans()
+        vlan1, vlan123, vlan456, vlan789, vlan1234, vlan1235, vlan1236 = self.switch.get_vlans()
 
         assert_that(vlan1.number, equal_to(1))
         assert_that(vlan1.name, equal_to('default'))
@@ -116,6 +119,10 @@ class AristaTest(unittest.TestCase):
 
         assert_that(vlan1235.number, equal_to(1235))
         assert_that(vlan1235.load_interval, equal_to(30))
+        assert_that(vlan1235.mpls_ip, equal_to(True))
+
+        assert_that(vlan1236.number, equal_to(1236))
+        assert_that(vlan1236.mpls_ip, equal_to(False))
 
     def test_get_vlan(self):
         vlans_payload = {'vlans': {'456': vlan_data(name='Patate')}}
@@ -141,13 +148,15 @@ class AristaTest(unittest.TestCase):
                          '   ip virtual-router address 10.10.77.1',
                          '   ip helper-address 10.10.30.201',
                          '   ip virtual-router address 10.10.77.2/28',
-                         '   load-interval 30'])
+                         '   load-interval 30',
+                         '   no mpls ip'])
 
         vlan = self.switch.get_vlan(456)
 
         assert_that(vlan.number, equal_to(456))
         assert_that(vlan.name, equal_to('Patate'))
         assert_that(vlan.load_interval, equal_to(30))
+        assert_that(vlan.mpls_ip, equal_to(False))
         ip11, ip13, ip12 = vlan.ips
         assert_that(ip11, is_(IPNetwork("192.168.11.1/29")))
         assert_that(ip13, is_(IPNetwork("192.168.13.1/29")))
@@ -984,6 +993,39 @@ class AristaTest(unittest.TestCase):
 
         with self.assertRaises(UnknownVlan):
             self.switch.unset_vlan_load_interval(123)
+
+    def test_set_vlan_mpls_ip_state_false(self):
+        self.switch = flexmock(spec=self.switch)
+        self.switch.should_receive("get_vlan").with_args(123) \
+            .and_return(Vlan(123))
+        self.switch.node.should_receive("config").with_args(["interface Vlan123",
+                                                             "no mpls ip"]).once()
+
+        self.switch.set_vlan_mpls_ip_state(123, False)
+
+    def test_set_vlan_mpls_ip_state_true(self):
+        self.switch = flexmock(spec=self.switch)
+        self.switch.should_receive("get_vlan").with_args(123) \
+            .and_return(Vlan(123))
+        self.switch.node.should_receive("config").with_args(["interface Vlan123",
+                                                             "mpls ip"]).once()
+
+        self.switch.set_vlan_mpls_ip_state(123, True)
+
+    def test_set_vlan_mpls_ip_with_invalid_state_raises(self):
+        self.switch = flexmock(spec=self.switch)
+        self.switch.should_receive("get_vlan").with_args(123) \
+            .and_return(Vlan(123))
+
+        with self.assertRaises(BadMplsIpState):
+            self.switch.set_vlan_mpls_ip_state(123, 30)
+
+    def test_set_vlan_mpls_ip_unknown_vlan_raises(self):
+        self.switch = flexmock(self.switch)
+        self.switch.should_receive("get_vlan").with_args(123).and_raise(UnknownVlan(123))
+
+        with self.assertRaises(UnknownVlan):
+            self.switch.set_vlan_mpls_ip_state(123, False)
 
 
 class AristaFactoryTest(unittest.TestCase):

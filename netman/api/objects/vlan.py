@@ -36,7 +36,8 @@ def to_api(vlan):
         unicast_rpf_mode=vlan.unicast_rpf_mode,
         ntp=vlan.ntp,
         varp_ips=serialize_ip_network(vlan.varp_ips),
-        load_interval=vlan.load_interval
+        load_interval=vlan.load_interval,
+        mpls_ip=vlan.mpls_ip
     )
 
 

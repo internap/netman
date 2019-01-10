@@ -26,5 +26,6 @@
    "unicast_rpf_mode": null,
    "ntp": null,
    "varp_ips": [],
-   "load_interval": null
+   "load_interval": null,
+   "mpls_ip": true
 }

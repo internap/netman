@@ -259,6 +259,11 @@ class BadLoadIntervalNumber(InvalidValue):
         super(BadLoadIntervalNumber, self).__init__("Load interval number is invalid")
 
 
+class BadMplsIpState(InvalidValue):
+    def __init__(self, state=None):
+        super(BadMplsIpState, self).__init__("MPLS IP state is invalid : {}".format(state))
+
+
 class Timeout(Exception):
     pass
 

@@ -19,7 +19,7 @@ from netman.core.objects.access_groups import OUT, IN
 class Vlan(Model):
     def __init__(self, number=None, name=None, ips=None, vrrp_groups=None, vrf_forwarding=None, access_group_in=None,
                  access_group_out=None, dhcp_relay_servers=None, arp_routing=None, icmp_redirects=None,
-                 unicast_rpf_mode=None, ntp=None, varp_ips=None, load_interval=None):
+                 unicast_rpf_mode=None, ntp=None, varp_ips=None, load_interval=None, mpls_ip=None):
         self.number = number
         self.name = name
         self.access_groups = {IN: access_group_in, OUT: access_group_out}
@@ -33,3 +33,4 @@ class Vlan(Model):
         self.ntp = ntp
         self.varp_ips = varp_ips or []
         self.load_interval = load_interval
+        self.mpls_ip = mpls_ip

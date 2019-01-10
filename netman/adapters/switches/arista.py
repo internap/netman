@@ -9,6 +9,7 @@ from pyeapi.eapilib import CommandError
 from netman import regex
 from netman.adapters.shell import default_command_timeout
 from netman.adapters.switches.util import split_on_dedent
+from netman.api.validators import is_valid_mpls_state
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
     IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface, \
     UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan, BadLoadIntervalNumber
@@ -271,6 +272,13 @@ class Arista(SwitchBase):
         self.node.config(['interface Vlan{}'.format(vlan_number),
                           'no load-interval'])
 
+    def set_vlan_mpls_ip_state(self, vlan_number, state):
+        is_valid_mpls_state(state)
+        self.get_vlan(vlan_number)
+
+        self.node.config(['interface Vlan{}'.format(vlan_number),
+                          'mpls ip' if state else 'no mpls ip'])
+
     def add_vlan_varp_ip(self, vlan_number, ip_network):
         vlan = self.get_vlan(vlan_number)
 
@@ -311,6 +319,8 @@ class Arista(SwitchBase):
                         vlan.varp_ips.append(IPNetwork(regex[0]))
                     if regex.match(" *load-interval (.*)", line):
                         vlan.load_interval = int(regex[0])
+                    if regex.match(" *no mpls ip", line):
+                        vlan.mpls_ip = False
 
     def _fetch_interface_vlans_config(self, vlans):
         all_interface_vlans = sorted('Vlan{}'.format(vlan.number) for vlan in vlans)
@@ -398,7 +408,8 @@ def _extract_vlans(vlans_info):
         if vlan['name'] == "VLAN{:04d}".format(int(id)):
             vlan['name'] = None
 
-        vlan_list.append(Vlan(number=int(id), name=vlan['name'], icmp_redirects=True, arp_routing=True, ntp=True))
+        vlan_list.append(Vlan(number=int(id), name=vlan['name'], icmp_redirects=True,
+                              arp_routing=True, ntp=True, mpls_ip=True))
     return vlan_list
 
 

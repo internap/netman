@@ -20,8 +20,9 @@ from hamcrest import is_, equal_to
 from hamcrest import assert_that
 
 from netman.api.api_utils import MultiContext, BadRequest
-from netman.api.validators import is_vlan_number, is_boolean, Vlan, Interface, is_dict_with, optional, is_type
-from netman.core.objects.exceptions import BadVlanNumber
+from netman.api.validators import is_vlan_number, is_boolean, Vlan, Interface, is_dict_with, \
+    optional, is_type, is_valid_mpls_state
+from netman.core.objects.exceptions import BadVlanNumber, BadMplsIpState
 
 
 class DecoratorTests(unittest.TestCase):
@@ -119,3 +120,15 @@ class IsDictTests(unittest.TestCase):
             validate("what")
 
         assert_that(str(expect.exception), equal_to("Malformed JSON request"))
+
+    def test_is_valid_mpls_state(self):
+        self.assertEqual(dict(state=True), is_valid_mpls_state('true'))
+        self.assertEqual(dict(state=False), is_valid_mpls_state('false'))
+        self.assertEqual(dict(state=True), is_valid_mpls_state(True))
+        self.assertEqual(dict(state=False), is_valid_mpls_state(False))
+
+    def test_is_valid_mpls_state_with_invalid_input(self):
+        with self.assertRaises(BadMplsIpState) as expect:
+            is_valid_mpls_state('30')
+
+        self.assertIn('MPLS IP state is invalid', str(expect.exception))
