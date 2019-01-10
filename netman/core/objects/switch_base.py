@@ -305,6 +305,14 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def remove_vlan_varp_ip(self, vlan_number, ip_network):
         pass
 
+    @not_implemented
+    def set_vlan_load_interval(self, vlan_number, time_interval):
+        pass
+
+    @not_implemented
+    def unset_vlan_load_interval(self, vlan_number):
+        pass
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

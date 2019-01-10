@@ -1639,6 +1639,29 @@ class RemoteSwitchTest(unittest.TestCase):
             str(expect.exception),
             equal_to("ncclient.operations.rpc.RPCError: Switch is locked and can't be modified"))
 
+    def test_set_vlan_load_interval(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url + "/switches/toto/vlans/123/load-interval",
+            headers=self.headers,
+            data="30"
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_vlan_load_interval(123, 30)
+
+    def test_unset_vlan_load_interval(self):
+        self.requests_mock.should_receive("delete").once().with_args(
+            url=self.netman_url + "/switches/toto/vlans/123/load-interval",
+            headers=self.headers
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.unset_vlan_load_interval(123)
+
 
 class Reply:
     def __init__(self, status_code, content, headers=None):

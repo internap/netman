@@ -421,3 +421,11 @@ class CachedSwitch(SwitchBase):
     def set_vlan_arp_routing_state(self, vlan_number, state):
         self.real_switch.set_vlan_arp_routing_state(vlan_number, state)
         self.vlans_cache[vlan_number].arp_routing = (state == ON)
+
+    def set_vlan_load_interval(self, vlan_number, time_interval):
+        self.real_switch.set_vlan_load_interval(vlan_number, time_interval)
+        self.vlans_cache[vlan_number].load_interval = time_interval
+
+    def unset_vlan_load_interval(self, vlan_number):
+        self.real_switch.unset_vlan_load_interval(vlan_number)
+        self.vlans_cache[vlan_number].load_interval = None

@@ -169,6 +169,14 @@ class RemoteSwitch(SwitchBase):
     def unset_vlan_vrf(self, vlan_number):
         self.delete('/vlans/{vlan_number}/vrf-forwarding'.format(vlan_number=vlan_number))
 
+    def set_vlan_load_interval(self, vlan_number, time_interval):
+        self.put('/vlans/{vlan_number}/load-interval'.format(
+            vlan_number=vlan_number
+        ), raw_data=str(time_interval))
+
+    def unset_vlan_load_interval(self, vlan_number):
+        self.delete('/vlans/{vlan_number}/load-interval'.format(vlan_number=vlan_number))
+
     def set_access_mode(self, interface_id):
         self.put("/interfaces/" + interface_id + '/port-mode', raw_data='access')
 

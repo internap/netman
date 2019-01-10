@@ -11,7 +11,7 @@ from netman.adapters.shell import default_command_timeout
 from netman.adapters.switches.util import split_on_dedent
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
     IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface, \
-    UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan
+    UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan, BadLoadIntervalNumber
 from netman.core.objects.interface import Interface
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
@@ -256,6 +256,21 @@ class Arista(SwitchBase):
         self.node.config(['interface Vlan{}'.format(vlan_number),
                           'no ip helper-address {}'.format(ip_address)])
 
+    def set_vlan_load_interval(self, vlan_number, time_interval):
+        self.get_vlan(vlan_number)
+
+        try:
+            self.node.config(['interface Vlan{}'.format(vlan_number),
+                              'load-interval {}'.format(time_interval)])
+        except CommandError:
+            raise BadLoadIntervalNumber()
+
+    def unset_vlan_load_interval(self, vlan_number):
+        self.get_vlan(vlan_number)
+
+        self.node.config(['interface Vlan{}'.format(vlan_number),
+                          'no load-interval'])
+
     def add_vlan_varp_ip(self, vlan_number, ip_network):
         vlan = self.get_vlan(vlan_number)
 
@@ -294,6 +309,8 @@ class Arista(SwitchBase):
                                 'Unsupported IP Helper address found in Vlan {} : {}'.format(vlan.number, regex[0]))
                     if regex.match(" *ip virtual-router address (.*)", line):
                         vlan.varp_ips.append(IPNetwork(regex[0]))
+                    if regex.match(" *load-interval (.*)", line):
+                        vlan.load_interval = int(regex[0])
 
     def _fetch_interface_vlans_config(self, vlans):
         all_interface_vlans = sorted('Vlan{}'.format(vlan.number) for vlan in vlans)
