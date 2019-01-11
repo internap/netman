@@ -388,6 +388,7 @@ class SwitchApi(SwitchApiBase):
     def set_vlan_mpls_ip_state(self, switch, vlan_number, state):
         """
         Sets the mpls ip state of a vlan
+
         :arg str hostname: Hostname or IP of the switch
         :arg int vlan_number: Vlan number, between 1 and 4096
         :body:
