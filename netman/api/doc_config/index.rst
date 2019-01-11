@@ -17,6 +17,7 @@ Cisco 6500       No                Yes                    Yes             Yes
 Juniper EX2200   Yes               No                     No              Yes
 Juniper QFX      Yes               No                     No              Yes
 Dell             No                Yes                    No              Yes
+Arista 7280R     No                No                     Yes             Yes
 ==============   ===============   ====================   =============   ===============
 
 API documentation
