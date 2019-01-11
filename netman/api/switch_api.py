@@ -20,7 +20,7 @@ from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
-    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode
+    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode, is_valid_mpls_state
 from netman.core.objects.interface_states import OFF, ON
 
 
@@ -52,6 +52,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/unicast-rpf-mode', view_func=self.unset_vlan_unicast_rpf_mode, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/load-interval', view_func=self.set_vlan_load_interval, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/load-interval', view_func=self.unset_vlan_load_interval, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/vlans/<vlan_number>/mpls-ip', view_func=self.set_vlan_mpls_ip_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces', view_func=self.get_interfaces, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.reset_interface, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>', view_func=self.get_interface, methods=['GET'])
@@ -366,7 +367,6 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.set_vlan_load_interval(vlan_number, value)
-
         return 204, None
 
     @to_response
@@ -380,6 +380,21 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.unset_vlan_load_interval(vlan_number)
+        return 204, None
+
+    @to_response
+    @content(is_valid_mpls_state)
+    @resource(Switch, Vlan)
+    def set_vlan_mpls_ip_state(self, switch, vlan_number, state):
+        """
+        Sets the mpls ip state of a vlan
+        :arg str hostname: Hostname or IP of the switch
+        :arg int vlan_number: Vlan number, between 1 and 4096
+        :body:
+            ``true`` or ``false``
+        """
+
+        switch.set_vlan_mpls_ip_state(vlan_number, state)
         return 204, None
 
     @to_response

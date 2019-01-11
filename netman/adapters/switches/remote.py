@@ -177,6 +177,11 @@ class RemoteSwitch(SwitchBase):
     def unset_vlan_load_interval(self, vlan_number):
         self.delete('/vlans/{vlan_number}/load-interval'.format(vlan_number=vlan_number))
 
+    def set_vlan_mpls_ip_state(self, vlan_number, state):
+        self.put('/vlans/{vlan_number}/mpls-ip'.format(
+            vlan_number=vlan_number
+        ), data=state)
+
     def set_access_mode(self, interface_id):
         self.put("/interfaces/" + interface_id + '/port-mode', raw_data='access')
 

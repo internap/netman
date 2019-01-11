@@ -429,3 +429,7 @@ class CachedSwitch(SwitchBase):
     def unset_vlan_load_interval(self, vlan_number):
         self.real_switch.unset_vlan_load_interval(vlan_number)
         self.vlans_cache[vlan_number].load_interval = None
+
+    def set_vlan_mpls_ip_state(self, vlan_number, state):
+        self.real_switch.set_vlan_mpls_ip_state(vlan_number, state)
+        self.vlans_cache[vlan_number].mpls_ip = state

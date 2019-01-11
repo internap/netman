@@ -27,7 +27,7 @@ from tests.api import open_fixture
 from netman.adapters.switches.remote import RemoteSwitch, factory
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownBond, VlanAlreadyExist, BadBondLinkSpeed, LockedSwitch, \
-    NetmanException, UnknownInterface, UnknownSession, UnknownVlan
+    NetmanException, UnknownInterface, UnknownSession, UnknownVlan, BadMplsIpState
 from netman.core.objects.port_modes import ACCESS, TRUNK, DYNAMIC
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 
@@ -1661,6 +1661,45 @@ class RemoteSwitchTest(unittest.TestCase):
                 status_code=204))
 
         self.switch.unset_vlan_load_interval(123)
+
+    def test_set_vlan_mpls_ip_state_true(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url + "/switches/toto/vlans/123/mpls-ip",
+            headers=self.headers,
+            data='true'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_vlan_mpls_ip_state(123, True)
+
+    def test_set_vlan_mpls_ip_state_false(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url + "/switches/toto/vlans/123/mpls-ip",
+            headers=self.headers,
+            data='false'
+        ).and_return(
+            Reply(
+                content='',
+                status_code=204))
+
+        self.switch.set_vlan_mpls_ip_state(123, False)
+
+    def test_set_vlan_mpls_ip_state_invalid(self):
+        self.requests_mock.should_receive("put").once().with_args(
+            url=self.netman_url + "/switches/toto/vlans/123/mpls-ip",
+            headers=self.headers,
+            data='30'
+        ).and_return(
+            Reply(
+                content=json.dumps({"error": "",
+                                    "error-module": BadMplsIpState.__module__,
+                                    "error-class": BadMplsIpState.__name__}),
+                status_code=400))
+
+        with self.assertRaises(BadMplsIpState):
+            self.switch.set_vlan_mpls_ip_state(123, 30)
 
 
 class Reply:

@@ -313,6 +313,10 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def unset_vlan_load_interval(self, vlan_number):
         pass
 
+    @not_implemented
+    def set_vlan_mpls_ip_state(self, vlan_number, state):
+        pass
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

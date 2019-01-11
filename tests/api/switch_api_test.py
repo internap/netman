@@ -66,6 +66,7 @@ class SwitchApiTest(BaseApiTest):
                  dhcp_relay_servers=[IPAddress("10.10.10.1")],
                  arp_routing=True,
                  icmp_redirects=True,
+                 mpls_ip=True,
                  unicast_rpf_mode=STRICT,
                  ntp=None,
                  varp_ips=[IPNetwork('4.4.4.4/24'), IPNetwork('5.5.5.5/24')]),
@@ -76,6 +77,7 @@ class SwitchApiTest(BaseApiTest):
                  ],
                  arp_routing=None,
                  icmp_redirects=False,
+                 mpls_ip=True,
                  ntp=False,
                  varp_ips=[IPNetwork('3.3.3.3/24')])
         ]).once().ordered()
@@ -96,7 +98,8 @@ class SwitchApiTest(BaseApiTest):
                                track_id='101', track_decrement=50)
                  ],
                  arp_routing=True,
-                 icmp_redirects=False),
+                 icmp_redirects=False,
+                 mpls_ip=True),
         ).once().ordered()
         self.switch_mock.should_receive('disconnect').once().ordered()
 
@@ -1754,6 +1757,32 @@ class SwitchApiTest(BaseApiTest):
         result, code = self.delete("/switches/my.switch/vlans/123/load-interval")
 
         assert_that(code, equal_to(204))
+
+    def test_set_vlan_mpls_ip_state_false(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_vlan_mpls_ip_state').with_args(123, False).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/vlans/123/mpls-ip", raw_data='false')
+
+        assert_that(code, equal_to(204))
+
+    def test_set_vlan_mpls_ip_state_true(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('set_vlan_mpls_ip_state').with_args(123, True).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.put("/switches/my.switch/vlans/123/mpls-ip", raw_data='true')
+
+        assert_that(code, equal_to(204))
+
+    def test_set_vlan_mpls_ip_bad_content(self):
+        result, code = self.put("/switches/my.switch/vlans/123/mpls-ip", raw_data="ahahaha")
+
+        assert_that(code, equal_to(400))
+        assert_that(result, equal_to({'error': 'MPLS IP state is invalid : ahahaha'}))
 
 
 class EmptyException(Exception):

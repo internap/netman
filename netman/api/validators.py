@@ -24,7 +24,7 @@ from netman.api.api_utils import BadRequest, MultiContext
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownResource, BadVlanNumber,\
     BadVlanName, BadBondNumber, BadBondLinkSpeed, MalformedSwitchSessionRequest, \
-    BadVrrpGroupNumber
+    BadVrrpGroupNumber, BadMplsIpState
 from netman.core.objects.unicast_rpf_modes import STRICT
 
 
@@ -224,6 +224,13 @@ def is_session(data, **_):
     return {
         'hostname': json_data["hostname"]
     }
+
+
+def is_valid_mpls_state(state):
+    option = str(state).lower()
+    if option not in ['true', 'false']:
+        raise BadMplsIpState(state)
+    return {'state': option == 'true'}
 
 
 def is_vlan(data, **_):

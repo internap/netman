@@ -1013,3 +1013,16 @@ class CacheSwitchTest(unittest.TestCase):
         assert_that(
             self.switch.get_vlans(),
             is_([Vlan(123, load_interval=None)]))
+
+    def test_set_vlan_mpls_ip_state_true(self):
+        self.real_switch_mock.should_receive("get_vlans").once() \
+            .and_return([Vlan(123, mpls_ip=False)])
+        self.switch.get_vlans()
+
+        self.real_switch_mock.should_receive("set_vlan_mpls_ip_state").once() \
+            .with_args(123, True)
+        self.switch.set_vlan_mpls_ip_state(123, True)
+
+        assert_that(
+            self.switch.get_vlans(),
+            is_([Vlan(123, mpls_ip=True)]))

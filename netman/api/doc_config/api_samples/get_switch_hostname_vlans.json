@@ -29,7 +29,8 @@
       "varp_ips": [
          {"address": "3.3.3.3", "mask": 24}
       ],
-      "load_interval": null
+      "load_interval": null,
+      "mpls_ip": true
    },
    {
       "number": 2,
@@ -72,6 +73,7 @@
          {"address": "4.4.4.4", "mask": 24},
          {"address": "5.5.5.5", "mask": 24}
       ],
-      "load_interval": null
+      "load_interval": null,
+      "mpls_ip": true
    }
 ]
