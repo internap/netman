@@ -32,4 +32,5 @@ matrix:
         - docker-compose up -d
         - docker inspect -f {{.State.Running}} netman_tsr1.yul1.example.net_1
         - docker inspect -f {{.State.Running}} netman_netman_1
+        - docker ps
         - "curl -X POST http://localhost:32771/switches/netman_tsr1.yul1.example.net_1/vlans -d '{\"number\": 1000, \"name\": \"myvlan\"}' -H 'Content-Type: application/json' -H 'Netman-model: cisco' -H 'Netman-username: root' -H 'Netman-password: root'"
