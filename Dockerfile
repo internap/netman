@@ -15,4 +15,6 @@ RUN PBR_VERSION=0.0.0 pip install .
 EXPOSE 5000
 ENTRYPOINT [ "python" ]
 
+HEALTHCHECK --interval=5s --timeout=3s CMD wget http://localhost:5000/netman/info -q -O -
+
 CMD [ "netman/main.py", "--host=0.0.0.0"]
