@@ -58,7 +58,7 @@ def load_app(session_inactivity_timeout=None):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Netman Server')
-    parser.add_argument('--host', nargs='?', default="127.0.0.1")
+    parser.add_argument('--host', nargs='?', default="0.0.0.0")
     parser.add_argument('--port', type=int, nargs='?', default=5000)
     parser.add_argument('--session-inactivity-timeout', type=int, nargs='?')
 

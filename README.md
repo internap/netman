@@ -74,6 +74,32 @@ curl -X POST http://127.0.0.1:5000/switches/hostname_or_ip/vlans -d '{"number": 
     -H "Netman-Proxy-Server: http://192.168.1.1"
 ```
 
+Docker usage
+============
+
+From your computer, start a Netman container and a fake-switch container in order to mock a switch Netman will configure.
+```shell
+$ docker-compose up -d
+```
+
+Create a Vlan
+```bash
+curl -X POST http://localhost:32771/switches/netman_tsr1.yul1.example.net_1/vlans -d '{"number": 1000, "name": "myvlan"}' 
+    -H "Content-Type: application/json" 
+    -H "Netman-model: cisco" 
+    -H "Netman-username: root" 
+    -H "Netman-password: root"
+```
+
+Get information of an existing Vlan
+```bash
+curl -X GET http://localhost:32771/switches/netman_tsr1.yul1.example.net_1/vlans/1000 
+    -H "Content-Type: application/json" 
+    -H "Netman-model: cisco" 
+    -H "Netman-username: root" 
+    -H "Netman-password: root"
+```
+
 Contributing
 ============
 
