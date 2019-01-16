@@ -7,24 +7,24 @@
 alabaster==0.7.12         # via sphinx
 appdirs==1.4.3            # via rply, twisted
 args==0.1.0               # via clint
-asn1crypto==0.24.0        # via cryptography
+asn1crypto==0.24.0
 astor==0.7.1              # via hy
 babel==2.6.0              # via sphinx
+bcrypt==3.1.5
 certifi==2018.11.29
-cffi==1.11.5              # via cryptography
+cffi==1.11.5
 chardet==3.0.4
 click==7.0
 clint==0.5.1              # via hy
 configparser==3.5.0       # via flake8
 constantly==15.1.0        # via twisted
-cryptography==2.4.2       # via twisted
+cryptography==2.4.2
 docutils==0.14            # via sphinx
-ecdsa==0.13
-enum34==1.1.6             # via cryptography, flake8
+enum34==1.1.6
 fake-switches==1.3.8
 flake8==3.4.1
 flask==1.0.2
-flexmock==0.10.2
+flexmock==0.10.3
 funcparserlib==0.3.6      # via hy
 funcsigs==1.0.2           # via mock
 futures==3.2.0
@@ -33,7 +33,7 @@ hy==0.15.0                # via mockssh
 idna==2.8
 imagesize==1.1.0          # via sphinx
 incremental==17.5.0       # via twisted
-ipaddress==1.0.22         # via cryptography
+ipaddress==1.0.22
 itsdangerous==1.1.0
 jabstract==0.1.2
 jinja2==2.10
@@ -45,16 +45,17 @@ mockssh==1.4.3
 ncclient==0.6.3
 netaddr==0.7.19
 nose==1.3.7
-paramiko==1.17.6
+paramiko==2.4.2
 pbr==5.1.1
-pyasn1==0.4.5             # via mockssh, twisted
+pyasn1==0.4.5
 pycodestyle==2.3.1        # via flake8
-pycparser==2.19           # via cffi
-pycrypto==2.6.1
+pycparser==2.19
+pycrypto==2.6.1           # via mockssh
 pyeapi==0.8.2
 pyflakes==1.5.0           # via flake8
 pygments==2.3.1           # via sphinx
 pyhamcrest==1.9.0
+pynacl==1.3.0
 pytz==2018.9              # via babel
 requests==2.21.0
 rply==0.7.6               # via hy

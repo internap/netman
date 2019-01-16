@@ -28,7 +28,7 @@ class TelnetLoginSpecialCasesTest(unittest.TestCase):
     port = 10013
 
     def test_hanging_during_the_login_process_raises_a_connect_timeout(self):
-        shell.default_connect_timeout = 0.1
+        shell.default_connect_timeout = 0.5
         with self.assertRaises(ConnectTimeout) as expect:
             self.client("127.0.0.1", "admin", "1234", self.port)
 
