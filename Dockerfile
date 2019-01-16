@@ -15,4 +15,4 @@ RUN PBR_VERSION=0.0.0 pip install .
 EXPOSE 5000
 ENTRYPOINT [ "python" ]
 
-CMD [ "netman/main.py" ]
+CMD [ "netman/main.py", "--host=0.0.0.0"]
