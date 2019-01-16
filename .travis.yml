@@ -14,3 +14,23 @@ deploy:
   on:
     tags: true
     repo: internap/netman
+
+services:
+  - docker
+
+matrix:
+  include:
+    - env:
+        - DOCKER_COMPOSE_VERSION=1.10.0
+      install:
+        - sudo rm /usr/local/bin/docker-compose
+        - curl -L https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname -s`-`uname -m` > docker-compose
+        - chmod +rx docker-compose
+        - sudo mv docker-compose /usr/local/bin
+      script:
+        - docker build . -t internap/netman:latest
+        - docker-compose up -d
+        - docker inspect -f {{.State.Running}} netman_tsr1.yul1.example.net_1
+        - docker inspect -f {{.State.Running}} netman_netman_1
+        - docker ps
+        - "curl -X POST http://localhost:32771/switches/netman_tsr1.yul1.example.net_1/vlans -d '{\"number\": 1000, \"name\": \"myvlan\"}' -H 'Content-Type: application/json' -H 'Netman-model: cisco' -H 'Netman-username: root' -H 'Netman-password: root'"
