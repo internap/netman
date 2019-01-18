@@ -9,7 +9,6 @@ from pyeapi.eapilib import CommandError
 from netman import regex
 from netman.adapters.shell import default_command_timeout
 from netman.adapters.switches.util import split_on_dedent
-from netman.api.validators import is_valid_mpls_state
 from netman.core.objects.exceptions import VlanAlreadyExist, UnknownVlan, BadVlanNumber, BadVlanName, \
     IPAlreadySet, IPNotAvailable, UnknownIP, DhcpRelayServerAlreadyExists, UnknownDhcpRelayServer, UnknownInterface, \
     UnknownBond, VarpAlreadyExistsForVlan, VarpDoesNotExistForVlan, BadLoadIntervalNumber
@@ -18,6 +17,7 @@ from netman.core.objects.interface_states import OFF, ON
 from netman.core.objects.port_modes import ACCESS, TRUNK
 from netman.core.objects.switch_base import SwitchBase
 from netman.core.objects.vlan import Vlan
+from netman.core.validator import is_valid_mpls_state
 
 
 def eapi_http(switch_descriptor):
