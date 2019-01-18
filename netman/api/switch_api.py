@@ -20,8 +20,9 @@ from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
-    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode, is_valid_mpls_state
+    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode
 from netman.core.objects.interface_states import OFF, ON
+from netman.core.validator import is_valid_mpls_state
 
 
 class SwitchApi(SwitchApiBase):
