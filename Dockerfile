@@ -1,18 +1,22 @@
 FROM python:2.7-alpine
 
-RUN apk update && apk add --no-cache python-dev gcc git g++ make libffi-dev openssl-dev libxml2 libxml2-dev libxslt libxslt-dev
+ENV APP_EXPOSED_PORT 5000
 
-RUN mkdir -p /usr/src/app
-WORKDIR /usr/src/app
+RUN apk update && apk add --no-cache python-dev gcc git g++ make libffi-dev openssl-dev pcre-dev libxml2 libxml2-dev libxslt libxslt-dev curl
 
-COPY requirements.txt /usr/src/app/
+ENV APP_ROOT /usr/src/app
+
+RUN mkdir -p $APP_ROOT
+WORKDIR $APP_ROOT
+
+COPY requirements.txt $APP_ROOT
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /usr/src/app
+COPY . $APP_ROOT
 
 RUN PBR_VERSION=0.0.0 pip install .
 
-EXPOSE 5000
-ENTRYPOINT [ "python" ]
+EXPOSE $APP_EXPOSED_PORT
 
-CMD [ "netman/main.py", "--host=0.0.0.0"]
+HEALTHCHECK --interval=5s --timeout=3s CMD curl --fail http://localhost:$APP_EXPOSED_PORT/healthcheck
+ENTRYPOINT uwsgi --ini uwsgi.ini

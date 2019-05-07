@@ -8,3 +8,4 @@ gunicorn>=19.4.5
 flake8==3.4.1
 futures; # Runtime dependency of gunicorn
 jabstract
+uwsgi
