@@ -4,68 +4,70 @@
 #
 #    pip-compile --no-index --no-emit-trusted-host --output-file test-constraints.txt test-requirements.txt constraints.txt rtd-requirements.txt
 #
+-e git+https://github.com/simon-begin/fake-switches.git#egg=fake-switches
+-e git+https://github.com/simon-begin/mockssh.git#egg=MockSSH
 alabaster==0.7.12         # via sphinx
 appdirs==1.4.3            # via rply, twisted
 args==0.1.0               # via clint
-asn1crypto==0.24.0
-astor==0.7.1              # via hy
-babel==2.6.0              # via sphinx
-bcrypt==3.1.5
-certifi==2018.11.29
-cffi==1.11.5
+astor==0.8.1              # via hy
+attrs==19.3.0             # via automat, twisted
+automat==0.8.0            # via twisted
+babel==2.8.0              # via sphinx
+bcrypt==3.1.7
+certifi==2019.11.28
+cffi==1.13.2
 chardet==3.0.4
 click==7.0
 clint==0.5.1              # via hy
-configparser==3.5.0       # via flake8
+configparser==4.0.2       # via flake8
 constantly==15.1.0        # via twisted
-cryptography==2.4.2
-docutils==0.14            # via sphinx
+cryptography==2.8
+docutils==0.15.2          # via sphinx
 enum34==1.1.6
-fake-switches==1.3.8
 flake8==3.4.1
-flask==1.0.2
-flexmock==0.10.3
+flask==1.1.1
+flexmock==0.10.4
 funcparserlib==0.3.6      # via hy
 funcsigs==1.0.2           # via mock
-futures==3.2.0
-gunicorn==19.9.0
-hy==0.15.0                # via mockssh
+futures==3.3.0 ; python_version == "2.7"
+gunicorn==19.10.0
+hy==0.17
+hyperlink==19.0.0         # via twisted
 idna==2.8
-imagesize==1.1.0          # via sphinx
+imagesize==1.2.0          # via sphinx
 incremental==17.5.0       # via twisted
-ipaddress==1.0.22
+ipaddress==1.0.23
 itsdangerous==1.1.0
-jabstract==0.1.2
-jinja2==2.10
-lxml==4.3.0
-markupsafe==1.1.0
+jabstract==0.1.3
+jinja2==2.10.3
+lxml==4.4.2
+markupsafe==1.1.1
 mccabe==0.6.1             # via flake8
-mock==2.0.0
-mockssh==1.4.3
-ncclient==0.6.3
+mock==3.0.5
+ncclient==0.6.7
 netaddr==0.7.19
 nose==1.3.7
-paramiko==2.4.2
-pbr==5.1.1
-pyasn1==0.4.5
+paramiko==2.7.1
+pbr==5.4.4
+pyasn1==0.4.8             # via twisted
 pycodestyle==2.3.1        # via flake8
 pycparser==2.19
-pycrypto==2.6.1           # via mockssh
+pycryptodome==3.8.2
 pyeapi==0.8.2
 pyflakes==1.5.0           # via flake8
-pygments==2.3.1           # via sphinx
-pyhamcrest==1.9.0
+pygments==2.5.2           # via sphinx
+pyhamcrest==1.10.0
 pynacl==1.3.0
-pytz==2018.9              # via babel
-requests==2.21.0
-rply==0.7.6               # via hy
+pytz==2019.3              # via babel
+requests==2.22.0
+rply==0.7.7               # via hy
 selectors2==2.0.1
-six==1.12.0
-snowballstemmer==1.2.1    # via sphinx
+six==1.13.0
+snowballstemmer==2.0.0    # via sphinx
 sphinx==1.5.6
 sphinxcontrib-httpdomain==1.7.0
-tftpy==0.8.0              # via fake-switches
-twisted[conch]==16.6.0    # via fake-switches, mockssh
-urllib3==1.24.1
-werkzeug==0.14.1
-zope.interface==4.6.0     # via twisted
+tftpy==0.8.0
+twisted[conch]==19.2.1
+urllib3==1.25.7
+werkzeug==0.16.0
+zope.interface==4.7.1     # via twisted

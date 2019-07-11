@@ -4,31 +4,29 @@
 #
 #    pip-compile --no-index --no-emit-trusted-host --output-file constraints.txt requirements.txt
 #
-asn1crypto==0.24.0        # via cryptography
-bcrypt==3.1.5             # via paramiko
-certifi==2018.11.29       # via requests
-cffi==1.11.5              # via bcrypt, cryptography, pynacl
+bcrypt==3.1.7             # via paramiko
+certifi==2019.11.28       # via requests
+cffi==1.13.2              # via bcrypt, cryptography, pynacl
 chardet==3.0.4            # via requests
 click==7.0                # via flask
-cryptography==2.4.2       # via paramiko
+cryptography==2.8         # via paramiko
 enum34==1.1.6             # via cryptography
-flask==1.0.2
-idna==2.8                 # via cryptography, requests
-ipaddress==1.0.22         # via cryptography
+flask==1.1.1
+idna==2.8                 # via requests
+ipaddress==1.0.23         # via cryptography
 itsdangerous==1.1.0       # via flask
-jinja2==2.10              # via flask
-lxml==4.3.0               # via ncclient
-markupsafe==1.1.0         # via jinja2
-ncclient==0.6.3
+jinja2==2.10.3            # via flask
+lxml==4.4.2               # via ncclient
+markupsafe==1.1.1         # via jinja2
+ncclient==0.6.7
 netaddr==0.7.19
-paramiko==2.4.2
-pbr==5.1.1
-pyasn1==0.4.5             # via paramiko
+paramiko==2.7.1
+pbr==5.4.4
 pycparser==2.19           # via cffi
 pyeapi==0.8.2
 pynacl==1.3.0             # via paramiko
-requests==2.21.0
+requests==2.22.0
 selectors2==2.0.1         # via ncclient
-six==1.12.0               # via bcrypt, cryptography, ncclient, pynacl
-urllib3==1.24.1           # via requests
-werkzeug==0.14.1          # via flask
+six==1.13.0               # via bcrypt, cryptography, ncclient, pynacl
+urllib3==1.25.7           # via requests
+werkzeug==0.16.0          # via flask

@@ -18,10 +18,10 @@ from functools import wraps
 from hamcrest.core.core.isequal import IsEqual
 from netaddr import IPNetwork
 
-from global_reactor import ThreadedReactor
 from tests.adapters.model_list import available_models
 from tests.adapters.shell.telnet_login_special_cases_test import hanging_password_telnet_hook
 from tests.adapters.shell.terminal_client_test import telnet_hook_to_reactor, ssh_hook_to_reactor
+from tests.global_reactor import ThreadedReactor
 
 
 def setup():
