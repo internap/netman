@@ -506,7 +506,7 @@ class Juniper(SwitchBase):
             self.logger.info("actual setting error was {}".format(e))
             # When sending a "delete operation" on a nonexistent element <disable />, this is the error that is thrown.
             # It's ignored because the result of this operation would be the same as if the command was successful.
-            if e.message != "statement not found: ":
+            if "statement not found" not in e.message:
                 raise UnknownInterface(interface_id)
 
     def unset_interface_state(self, interface_id):

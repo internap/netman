@@ -42,7 +42,8 @@ from tests import ignore_deprecation_warnings
 @ignore_deprecation_warnings
 def test_factory():
     lock = mock.Mock()
-    switch = juniper.standard_factory(SwitchDescriptor(hostname='hostname', model='juniper', username='username', password='password', port=22), lock)
+    switch = juniper.standard_factory(
+        SwitchDescriptor(hostname='hostname', model='juniper', username='username', password='password', port=22), lock)
 
     assert_that(switch, instance_of(FlowControlSwitch))
     assert_that(switch.wrapped_switch, instance_of(Juniper))
@@ -1920,7 +1921,6 @@ class JuniperTest(unittest.TestCase):
         self.switch.set_access_mode("ge-0/0/6")
 
     def test_port_mode_access_with_no_mode_and_1_vlan_does_not_remove_it(self):
-
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
             <filter>
               <configuration>
@@ -3382,7 +3382,8 @@ class JuniperTest(unittest.TestCase):
         with self.assertRaises(VlanAlreadyInTrunk) as expect:
             self.switch.set_interface_native_vlan("ge-0/0/6", 1000)
 
-        assert_that(str(expect.exception), contains_string("Vlan 1000 cannot be set as native vlan because it is already a member of the trunk"))
+        assert_that(str(expect.exception), contains_string(
+            "Vlan 1000 cannot be set as native vlan because it is already a member of the trunk"))
 
     def test_set_interface_native_vlan_on_unknown_vlan_raises(self):
         self.netconf_mock.should_receive("get_config").with_args(source="candidate", filter=is_xml("""
@@ -5028,8 +5029,29 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.unset_interface_state("ge-0/0/6")
 
-    def test_unset_interface_state_raises_on_unknown_interface(self):
+    def test_unset_interface_state_succeeds_even_if_interface_is_already_shut(self):
+        self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
+            <config>
+              <configuration>
+                <interfaces>
+                  <interface>
+                    <name>ge-0/0/6</name>
+                    <disable operation="delete" />
+                  </interface>
+                </interfaces>
+              </configuration>
+            </config>
+        """)).and_raise(RPCError(to_ele(textwrap.dedent("""
+            <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/17.3R3/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
+            <error-severity>warning</error-severity>
+            <error-path>[edit interfaces]</error-path>
+            <error-message>statement not found: ge-0/0/6</error-message>
+            </rpc-error>
+            """))))
 
+        self.switch.unset_interface_state("ge-0/0/6")
+
+    def test_unset_interface_state_raises_on_unknown_interface(self):
         self.netconf_mock.should_receive("edit_config").once().with_args(target="candidate", config=is_xml("""
             <config>
               <configuration>
@@ -5563,7 +5585,7 @@ class JuniperTest(unittest.TestCase):
                 </interfaces>
               </configuration>
             </config>""")).and_raise(
-                RPCError(to_ele(textwrap.dedent("""
+            RPCError(to_ele(textwrap.dedent("""
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
@@ -5673,7 +5695,7 @@ class JuniperTest(unittest.TestCase):
                 </interfaces>
               </configuration>
             </config>""")).and_raise(
-                RPCError(to_ele(textwrap.dedent("""
+            RPCError(to_ele(textwrap.dedent("""
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
@@ -5718,7 +5740,7 @@ class JuniperTest(unittest.TestCase):
                 </interfaces>
               </configuration>
             </config>""")).and_raise(
-                RPCError(to_ele(textwrap.dedent("""
+            RPCError(to_ele(textwrap.dedent("""
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
@@ -6514,8 +6536,7 @@ class JuniperTest(unittest.TestCase):
         self.switch.start_transaction()
 
     def test_start_transaction_fails_discard_changes_and_retries(self):
-
-        self.netconf_mock.should_receive("lock").with_args(target="candidate").twice()\
+        self.netconf_mock.should_receive("lock").with_args(target="candidate").twice() \
             .and_raise(RPCError(to_ele(textwrap.dedent("""
                 <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
                 <error-severity>error</error-severity>
@@ -6532,7 +6553,7 @@ class JuniperTest(unittest.TestCase):
                 <edit-path>[edit]</edit-path>
                 </database-status>
                 </database-status-information>
-                </rpc-error>"""))))\
+                </rpc-error>""")))) \
             .and_return()
 
         self.netconf_mock.should_receive("discard_changes").with_args().once().and_return(an_ok_response())
@@ -6540,8 +6561,8 @@ class JuniperTest(unittest.TestCase):
         self.switch.start_transaction()
 
     def test_start_transaction_locking_fails_already_in_use_raises(self):
-
-        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered().and_raise(RPCError(to_ele(textwrap.dedent("""
+        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered().and_raise(
+            RPCError(to_ele(textwrap.dedent("""
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
@@ -6556,8 +6577,8 @@ class JuniperTest(unittest.TestCase):
         assert_that(str(expect.exception), equal_to("Switch is locked and can't be modified"))
 
     def test_start_transaction_locking_fails_of_unknown_reason_raises(self):
-
-        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered().and_raise(RPCError(to_ele(textwrap.dedent("""
+        self.netconf_mock.should_receive("lock").with_args(target="candidate").once().ordered().and_raise(
+            RPCError(to_ele(textwrap.dedent("""
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <error-message>
@@ -6582,7 +6603,8 @@ class JuniperTest(unittest.TestCase):
         self.switch.commit_transaction()
 
     def test_commit_transaction_failing_to_commit_discard_changes_and_raises(self):
-        self.netconf_mock.should_receive("commit").with_args().once().ordered().and_raise(RPCError(to_ele(textwrap.dedent("""
+        self.netconf_mock.should_receive("commit").with_args().once().ordered().and_raise(
+            RPCError(to_ele(textwrap.dedent("""
             <rpc-error xmlns="urn:ietf:params:xml:ns:netconf:base:1.0" xmlns:junos="http://xml.juniper.net/junos/11.4R1/junos" xmlns:nc="urn:ietf:params:xml:ns:netconf:base:1.0">
             <error-severity>error</error-severity>
             <source-daemon>
@@ -6597,7 +6619,8 @@ class JuniperTest(unittest.TestCase):
         with self.assertRaises(OperationNotCompleted) as expect:
             self.switch.commit_transaction()
 
-        assert_that(str(expect.exception), equal_to("An error occured while completing operation, no modifications have been applied : tag value 1000 is being used by more than one vlan <VLAN1000> and <SOMETHINGELSE>"))
+        assert_that(str(expect.exception), equal_to(
+            "An error occured while completing operation, no modifications have been applied : tag value 1000 is being used by more than one vlan <VLAN1000> and <SOMETHINGELSE>"))
 
     def test_rollback_succeeds(self):
         self.netconf_mock.should_receive("discard_changes").with_args().once().ordered()
