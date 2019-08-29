@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import argparse
+import json
 from logging import DEBUG, getLogger
 
-from flask import request
+from flask import make_response, request
 from flask.app import Flask
 
 from adapters.threading_lock_factory import ThreadingLockFactory
@@ -38,6 +39,15 @@ def log_request():
     if logger.isEnabledFor(DEBUG):
         logger.debug("body : {}".format(repr(request.data) if request.data else "<<empty>>"))
         logger.debug("Headers : " + ", ".join(["{0}={1}".format(h[0], h[1]) for h in request.headers]))
+
+
+@app.route('/healthcheck')
+def healthcheck():
+    return make_response((
+        json.dumps(dict(running=True)),
+        200,
+        {'Content-Type': 'application/json'}
+    ))
 
 
 lock_factory = ThreadingLockFactory()

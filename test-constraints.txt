@@ -67,5 +67,6 @@ sphinxcontrib-httpdomain==1.7.0
 tftpy==0.8.0              # via fake-switches
 twisted[conch]==16.6.0    # via fake-switches, mockssh
 urllib3==1.24.1
+uwsgi==2.0.18
 werkzeug==0.14.1
 zope.interface==4.6.0     # via twisted

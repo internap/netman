@@ -43,7 +43,7 @@ class NetmanTestApp(object):
         params = self._popen_params(path)
 
         logging.info("starting netman : \"{}\"".format('" "'.join(params)))
-        self.proc = subprocess.Popen(params, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+        self.proc = subprocess.Popen(params)
         self._wait_until_port_is_opened(self.port)
 
     def _stop(self):
