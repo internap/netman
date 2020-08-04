@@ -220,6 +220,13 @@ class SshClientTest(TerminalClientTest):
         ssh2 = SshClient(**self._get_some_credentials())
         self.assertEqual(600, ssh2.command_timeout)
 
+    @patch('netman.adapters.shell.ssh.SshClient._open_channel', Mock())
+    def test_close_on_deletion_prevents_leaking_filedescriptor(self):
+        ssh = SshClient(**self._get_some_credentials())
+        ssh.client = paramiko_connection = Mock()
+        del ssh
+        paramiko_connection.close.assert_called_once()
+
 
 class TelnetClientTest(TerminalClientTest):
     __test__ = True

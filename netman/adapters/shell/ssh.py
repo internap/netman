@@ -108,3 +108,7 @@ class SshClient(TerminalClient):
             self.logger.debug("[SSH][{}@{}:{}] Recv << {}".format(self.username, self.host, self.port, repr(read)))
             self.full_log += read
             self.current_buffer += read
+
+    def __del__(self):
+        if self.client:
+            self.client.close()
