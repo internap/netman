@@ -1701,6 +1701,30 @@ class RemoteSwitchTest(unittest.TestCase):
         with self.assertRaises(BadMplsIpState):
             self.switch.set_vlan_mpls_ip_state(123, 30)
 
+    def test_get_mac_addresses(self):
+        self.requests_mock.should_receive("get").once().with_args(
+            url=self.netman_url + "/switches/toto/interfaces/mac-addresses",
+            headers=self.headers,
+        ).and_return(
+            Reply(
+                content=open_fixture('get_switch_hostname_mac_addresses.json').read(),
+                status_code=200))
+
+        mac_addresses = self.switch.get_mac_addresses()
+
+        for mac_address in mac_addresses.json():
+            if mac_address.get('mac_address') == 'AA:AA:AA:AA:AA:AA':
+                assert_that(mac_address.get('interface'), is_('1/g1'))
+                assert_that(mac_address.get('vlan'), is_(1234))
+            elif mac_address.get('mac_address') == 'BB:BB:BB:BB:BB:BB':
+                assert_that(mac_address.get('interface'), is_('1/g2'))
+                assert_that(mac_address.get('vlan'), is_(5678))
+            elif mac_address.get('mac_address') == 'CC:CC:CC:CC:CC:CC':
+                assert_that(mac_address.get('interface'), is_('2/g22'))
+                assert_that(mac_address.get('vlan'), is_(9012))
+            else:
+                self.assert_(False, "Invalid mac_address returned : {}".format(mac_address.mac_address))
+
 
 class Reply:
     def __init__(self, status_code, content, headers=None):

@@ -76,6 +76,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.unset_interface_auto_negotiation_state, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.set_interface_mtu, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.unset_interface_mtu, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/mac-addresses', view_func=self.get_mac_addresses, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.add_bond, methods=['POST'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>', view_func=self.get_bond, methods=['GET'])
@@ -1170,3 +1171,21 @@ class SwitchApi(SwitchApiBase):
 
         switch.unset_vlan_unicast_rpf_mode(vlan_number)
         return 204, None
+
+    @to_response
+    @resource(Switch)
+    def get_mac_addresses(self, switch):
+        """
+        Retrieves the visible mac addresses on the specified switch
+
+        :arg str hostname: Hostname or IP of the switch
+
+        :code 200 OK:
+
+        Example output:
+
+        .. literalinclude:: ../doc_config/api_samples/get_switch_hostname_mac_addresses.json
+            :language: json
+        """
+
+        return 200, [port.__dict__ for port in switch.get_mac_addresses()]
