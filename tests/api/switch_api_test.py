@@ -19,6 +19,7 @@ from netaddr import IPNetwork
 from netaddr.ip import IPAddress
 
 from netman.core.objects.interface_states import OFF, ON
+from netman.core.objects.mac_address import MacAddress
 from netman.core.objects.switch_descriptor import SwitchDescriptor
 from netman.core.objects.unicast_rpf_modes import STRICT
 from netman.core.objects.vrrp_group import VrrpGroup
@@ -1783,6 +1784,21 @@ class SwitchApiTest(BaseApiTest):
 
         assert_that(code, equal_to(400))
         assert_that(result, equal_to({'error': 'MPLS IP state is invalid : ahahaha'}))
+
+    def test_get_mac_address(self):
+        self.switch_factory.should_receive('get_switch').with_args('my.switch').and_return(self.switch_mock).once().ordered()
+        self.switch_mock.should_receive('connect').once().ordered()
+        self.switch_mock.should_receive('get_mac_addresses').and_return([
+            MacAddress(1234, "AA:AA:AA:AA:AA:AA", "1/g1"),
+            MacAddress(5678, "BB:BB:BB:BB:BB:BB", "1/g2"),
+            MacAddress(9012, "CC:CC:CC:CC:CC:CC", "2/g22")
+        ]).once().ordered()
+        self.switch_mock.should_receive('disconnect').once().ordered()
+
+        result, code = self.get("/switches/my.switch/interfaces/mac-adresses")
+
+        assert_that(code, equal_to(200))
+        assert_that(result, matches_fixture("get_mac_addresses.json"))
 
 
 class EmptyException(Exception):

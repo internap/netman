@@ -1532,6 +1532,44 @@ class DellTest(unittest.TestCase):
 
         self.switch.unset_bond_mtu(10)
 
+    def test_get_mac_addresses(self):
+        flexmock(self.switch.page_reader).should_receive("do") \
+            .with_args(self.mocked_ssh_client, "show bridge address-table").once() \
+            .and_return(
+            [
+                "",
+                "Aging time is 300 Sec"
+                "",
+                "  Vlan        Mac Address       Port          Type",
+                "-------- --------------------- ---------- --------------------",
+                "1201     F8B1.5649.0F99        vlan 1201  Management",
+                "1206     F8B1.5649.0F99        vlan 1206  Management",
+                "3991     02E0.5236.3801        1/g22      Dynamic",
+                "3991     748E.F8A7.1B01        ch1        Dynamic",
+                "4063     0013.C601.53A7        2/g22      Dynamic",
+                "4063     00C0.B785.3213        ch1        Dynamic",
+                "4063     00C0.B7B4.742C        2/xg3      Dynamic",
+                "",
+                "Total MAC Addresses in use:206",
+                "",
+            ])
+
+        mac = self.switch.get_mac_addresses()
+
+        assert_that(len(mac), is_(7))
+
+        assert_that(mac[0].vlan, is_(1201))
+        assert_that(mac[0].mac_address, is_("F8:B1:56:49:0F:99"))
+        assert_that(mac[0].interface, is_("Vlan 1201"))
+
+        assert_that(mac[2].vlan, is_(3991))
+        assert_that(mac[2].mac_address, is_("02:E0:52:36:38:01"))
+        assert_that(mac[2].interface, is_("1/g22"))
+
+        assert_that(mac[3].vlan, is_(3991))
+        assert_that(mac[3].mac_address, is_("74:8E:F8:A7:1B:01"))
+        assert_that(mac[3].interface, is_("Ag 1"))
+
     def test_commit(self):
         self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
