@@ -994,6 +994,46 @@ class Dell10GTest(unittest.TestCase):
 
         self.switch.set_interface_lldp_state("tengigabitethernet 1/0/10", False)
 
+    def test_mac_addresses(self):
+        self.mocked_ssh_client.should_receive("do") \
+            .with_args("show mac address-table").once() \
+            .and_return(
+            [
+                "",
+                "Aging time is 300 Sec",
+                "",
+                "Vlan     Mac Address           Type        Port",
+                "-------- --------------------- ----------- ---------------------",
+                "1        F8B1.567E.FE22        Management  Vl1",
+                "2        0031.463A.2001        Dynamic     Po30",
+                "2227     FA16.3EED.9D0F        Dynamic     Po30",
+                "3217     0025.906B.DACF        Dynamic     Te1/0/4",
+                "2327     001C.7300.0081        Dynamic     Po30",
+                "1234     0025.906B.DBFF        Dynamic     Te1/0/2",
+                "3217     0025.9097.70EB        Dynamic     Te1/0/14",
+                "2327     001C.7300.0081        Dynamic     Po30",
+                "4082     CC4E.248F.FD00        Dynamic     Po30",
+                "",
+                "Total MAC Addresses in use: 671",
+                "",
+            ])
+
+        mac = self.switch.get_mac_addresses()
+
+        assert_that(len(mac), is_(3))
+
+        assert_that(mac[0].vlan, is_("3217"))
+        assert_that(mac[0].mac_address, is_("00:25:90:6B:DA:CF"))
+        assert_that(mac[0].interface, is_("Te1/0/4"))
+
+        assert_that(mac[1].vlan, is_("1234"))
+        assert_that(mac[1].mac_address, is_("00:25:90:6B:DB:FF"))
+        assert_that(mac[1].interface, is_("Te1/0/2"))
+
+        assert_that(mac[2].vlan, is_("3217"))
+        assert_that(mac[2].mac_address, is_("00:25:90:97:70:EB"))
+        assert_that(mac[2].interface, is_("Te1/0/14"))
+
     def test_commit(self):
         self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
         self.mocked_ssh_client.should_receive("send_key").with_args("y").once().ordered().and_return([])
