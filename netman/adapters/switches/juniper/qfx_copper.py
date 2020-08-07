@@ -14,8 +14,9 @@
 
 from ncclient.xml_ import to_ele
 
-from netman.adapters.switches.juniper.base import interface_replace, bond_name, Juniper
+from netman.adapters.switches.juniper.base import interface_replace, bond_name, Juniper, first_text
 from netman.adapters.switches.juniper.standard import JuniperCustomStrategies
+from netman.core.objects.mac_address import MacAddress
 
 
 def netconf(switch_descriptor):
@@ -51,3 +52,12 @@ class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
 
     def get_protocols_interface_name(self, interface_name):
         return interface_name
+
+    def parse_mac_address_table(self, mac_table):
+        mac = []
+        for vlan_path in mac_table.xpath("//l2ng-l2ald-mac-entry-vlan"):
+            interface = first_text(vlan_path.xpath("l2ng-l2-mac-logical-interface"))
+            vlan = int(first_text(vlan_path.xpath("l2ng-l2-vlan-id")))
+            mac_address = first_text(vlan_path.xpath("l2ng-l2-mac-address"))
+            mac.append(MacAddress(vlan, mac_address, interface))
+        return mac
