@@ -474,6 +474,9 @@ class JuniperMXCustomStrategies(JuniperQfxCopperCustomStrategies):
     def get_delete_vlan_element(self):
         return to_ele('<vlan-id operation="delete" />')
 
+    def parse_mac_address_table(self, mac_table):
+        raise NotImplementedError()
+
 
 def one_interface_vlan(vlan_number, extra_path=""):
     def m():

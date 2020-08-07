@@ -16,6 +16,7 @@ from ncclient.xml_ import to_ele, new_ele
 from netman.adapters.switches.juniper.base import interface_speed, interface_replace, interface_speed_update, \
     first_text, bond_name, Juniper, first, value_of, parse_range, to_range
 from netman.core.objects.exceptions import BadVlanName, BadVlanNumber, VlanAlreadyExist, UnknownVlan
+from netman.core.objects.mac_address import MacAddress
 
 
 def netconf(switch_descriptor, *args, **kwargs):
@@ -217,3 +218,21 @@ class JuniperCustomStrategies(object):
 
     def get_delete_vlan_element(self):
         return to_ele('<vlan operation="delete" />')
+
+    def parse_mac_address_table(self, mac_table):
+        rejected_interface_names = ['All-members', 'Router']
+        mac = []
+        for mac_table in mac_table.xpath("//mac-table-entry"):
+            interface = first_text(mac_table.xpath("mac-interface"))
+            if interface not in rejected_interface_names:
+                interface = self._parse_interface_type(interface)
+                mac_address = first_text(mac_table.xpath("mac-address"))
+                vlan = int(first_text(mac_table.xpath("mac-vlan-tag")))
+                mac.append(MacAddress(vlan, mac_address, interface))
+        return mac
+
+    def _parse_interface_type(self, interface):
+        if interface.startswith("ae"):
+            return "Ag {}".format(interface[2:])
+        else:
+            return interface
