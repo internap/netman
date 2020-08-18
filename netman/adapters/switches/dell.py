@@ -16,6 +16,7 @@ import warnings
 from netman.adapters.shell.ssh import SshClient
 from netman.adapters.shell.telnet import TelnetClient
 from netman.core.objects.interface_states import OFF
+from netman.core.objects.mac_address import MacAddress
 from netman.core.objects.port_modes import TRUNK
 from netman.core.objects.port_modes import ACCESS
 from netman.core.objects.interface import Interface
@@ -288,6 +289,23 @@ class Dell(SwitchBase):
     def unset_bond_native_vlan(self, number):
         with NamedBond(number) as bond:
             return self.unset_interface_native_vlan(bond.name)
+
+    def get_mac_addresses(self):
+        payload = self.page_reader.do(self.shell, 'show bridge address-table')
+        return self.parse_mac_addresses(payload)
+
+    def parse_mac_addresses(self, mac_addresses):
+        mac = []
+        for line in mac_addresses:
+            if regex.match("(\d\S+) +([A-F0-9.]{14}) +(.*?)  +", line):
+                vlan = int(regex[0])
+                mac_address = regex[1]
+                mac_address = "".join(mac_address.split('.'))
+                mac_address = ":".join([mac_address[x:x+2] for x in range(0, len(mac_address), 2)])
+                interface = regex[2]
+                mac.append(MacAddress(vlan, mac_address, interface))
+
+        return mac
 
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')

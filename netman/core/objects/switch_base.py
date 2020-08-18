@@ -317,6 +317,10 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
     def set_vlan_mpls_ip_state(self, vlan_number, state):
         pass
 
+    @not_implemented
+    def get_mac_addresses(self):
+        pass
+
 
 class SwitchBase(SwitchOperations):
     def __init__(self, switch_descriptor):

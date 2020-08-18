@@ -1,0 +1,17 @@
+[
+  {
+    "interface": "1/g1",
+    "vlan": 1234,
+    "mac_address": "AA:AA:AA:AA:AA:AA"
+  },
+  {
+    "interface": "1/g2",
+    "vlan": 5678,
+    "mac_address": "BB:BB:BB:BB:BB:BB"
+  },
+  {
+    "interface": "2/g22",
+    "vlan": 9012,
+    "mac_address": "CC:CC:CC:CC:CC:CC"
+  }
+]

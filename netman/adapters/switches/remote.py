@@ -344,6 +344,9 @@ class RemoteSwitch(SwitchBase):
     def unset_vlan_unicast_rpf_mode(self, vlan_number):
         self.delete('/vlans/{}/unicast-rpf-mode'.format(vlan_number))
 
+    def get_mac_addresses(self):
+        return self.get("/interfaces/mac-addresses")
+
     def get_versions(self):
         return self.get("/versions").json()
 
