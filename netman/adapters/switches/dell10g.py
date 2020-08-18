@@ -21,6 +21,7 @@ from netman.adapters.switches.dell import Dell, resolve_port_mode
 from netman.core.objects.exceptions import InterfaceInWrongPortMode, UnknownVlan, UnknownInterface, BadVlanName, \
     BadVlanNumber, TrunkVlanNotSet, VlanAlreadyExist
 from netman.core.objects.interface import Interface
+from netman.core.objects.mac_address import MacAddress
 from netman.core.objects.port_modes import TRUNK, ACCESS
 from netman.core.objects.switch_transactional import FlowControlSwitch
 from netman.core.objects.vlan import Vlan
@@ -217,6 +218,23 @@ class Dell10G(Dell):
                 interfaces.append("port-channel {}".format(regex[0]))
 
         return interfaces
+
+    def get_mac_addresses(self):
+        payload = self.shell.do("show mac address-table")
+        return self.parse_mac_addresses(payload)
+
+    def parse_mac_addresses(self, mac_addresses):
+        mac = []
+        for line in mac_addresses:
+            if regex.match("(\d\S+) +([A-F0-9.]{14}) .*? (Te.*?)$", line):
+                vlan = regex[0]
+                mac_address = regex[1]
+                mac_address = "".join(mac_address.split('.'))
+                mac_address = ":".join([mac_address[x:x+2] for x in range(0, len(mac_address),2)])
+                interface = regex[2]
+                mac.append(MacAddress(vlan, mac_address, interface))
+
+        return mac
 
     def set_interface_mtu(self, interface_id, size):
         raise NotImplementedError()
