@@ -230,7 +230,7 @@ class Dell10G(Dell):
                 vlan = regex[0]
                 mac_address = regex[1]
                 mac_address = "".join(mac_address.split('.'))
-                mac_address = ":".join([mac_address[x:x+2] for x in range(0, len(mac_address),2)])
+                mac_address = ":".join([mac_address[x:x+2] for x in range(0, len(mac_address), 2)])
                 interface = regex[2]
                 mac.append(MacAddress(vlan, mac_address, interface))
 
