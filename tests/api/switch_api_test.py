@@ -1798,7 +1798,7 @@ class SwitchApiTest(BaseApiTest):
         result, code = self.get("/switches/my.switch/interfaces/mac-addresses")
 
         assert_that(code, equal_to(200))
-        assert_that(result, matches_fixture("get_mac_addresses.json"))
+        assert_that(result, matches_fixture("get_switch_hostname_mac_addresses.json"))
 
 
 class EmptyException(Exception):
