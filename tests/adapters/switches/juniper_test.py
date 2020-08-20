@@ -6627,6 +6627,88 @@ class JuniperTest(unittest.TestCase):
 
         self.switch.rollback_transaction()
 
+    def test_get_mac_addresses(self):
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-ethernet-switching-table-information>
+                        <detail/>
+                    </get-ethernet-switching-table-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                  <ethernet-switching-table-information style="extensive">
+                    <ethernet-switching-table style="extensive">
+                      <mac-table-count>385</mac-table-count>
+                      <mac-table-learned>181</mac-table-learned>
+                      <mac-table-persistent>0</mac-table-persistent>
+                      <mac-table-entry style="extensive">
+                        <mac-vlan>VLAN3991</mac-vlan>
+                        <mac-vlan-tag>3991</mac-vlan-tag>
+                        <mac-address>*</mac-address>
+                        <mac-interface>All-members</mac-interface>
+                        <mac-interfaces-list style="flood-list">
+                          <mac-interfaces>ae2.0</mac-interfaces>
+                          <mac-interfaces>ae1.0</mac-interfaces>
+                          <mac-interfaces>ae0.0</mac-interfaces>
+                          <mac-interfaces>ae19.0</mac-interfaces>
+                        </mac-interfaces-list>
+                        <mac-type>Flood</mac-type>
+                        <mac-action>Forward</mac-action>
+                        <mac-nexthop>1530</mac-nexthop>
+                      </mac-table-entry>
+                      <mac-table-entry style="extensive">
+                        <mac-vlan>VLAN3991</mac-vlan>
+                        <mac-vlan-tag>3991</mac-vlan-tag>
+                        <mac-address>02:e0:52:36:38:01</mac-address>
+                        <mac-interface>ae19.0</mac-interface>
+                        <mac-interfaces-list>
+                          <mac-interfaces>ae19.0</mac-interfaces>
+                        </mac-interfaces-list>
+                        <mac-type>Learn</mac-type>
+                        <mac-age seconds="0">0</mac-age>
+                        <mac-learned-time seconds="23611665">39w0d 6:47:45</mac-learned-time>
+                        <mac-action>Forward</mac-action>
+                        <mac-nexthop>1525</mac-nexthop>
+                      </mac-table-entry>
+                      <mac-table-entry style="extensive">
+                        <mac-vlan>VLAN4063</mac-vlan>
+                        <mac-vlan-tag>4063</mac-vlan-tag>
+                        <mac-address>f8:c0:01:ce:3a:c1</mac-address>
+                        <mac-interface>Router</mac-interface>
+                        <mac-interfaces-list>
+                          <mac-interfaces>Router</mac-interfaces>
+                        </mac-interfaces-list>
+                        <mac-type>Static</mac-type>
+                        <mac-action>Forward</mac-action>
+                        <mac-nexthop>0</mac-nexthop>
+                      </mac-table-entry>
+                      <mac-table-entry style="extensive">
+                        <mac-vlan>VLAN3991</mac-vlan>
+                        <mac-vlan-tag>3991</mac-vlan-tag>
+                        <mac-address>52:d1:aa:9a:b2:2b</mac-address>
+                        <mac-interface>ge-1/0/13.0</mac-interface>
+                        <mac-interfaces-list>
+                          <mac-interfaces>ae0.0</mac-interfaces>
+                        </mac-interfaces-list>
+                        <mac-type>Learn</mac-type>
+                        <mac-age seconds="0">0</mac-age>
+                        <mac-learned-time seconds="52266618">86w2d 22:30:18</mac-learned-time>
+                        <mac-action>Forward</mac-action>
+                        <mac-nexthop>1516</mac-nexthop>
+                      </mac-table-entry>
+                    </ethernet-switching-table>
+                </ethernet-switching-table-information>
+                """)))
+        mac_addresses = self.switch.get_mac_addresses()
+        assert_that(len(mac_addresses), is_(2))
+
+        for mac_address in mac_addresses:
+            if mac_address.mac_address == '02:e0:52:36:38:01':
+                assert_that(mac_address.interface, is_('ae19.0'))
+                assert_that(mac_address.vlan, is_(3991))
+            elif mac_address.mac_address == '52:d1:aa:9a:b2:2b':
+                assert_that(mac_address.interface, is_('ge-1/0/13.0'))
+                assert_that(mac_address.vlan, is_(3991))
+            else:
+                self.assert_(False, "Invalid mac_address returned : {}".format(mac_address.mac_address))
+
 
 def a_configuration(inner_data=""):
     return an_rpc_response("""

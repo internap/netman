@@ -799,6 +799,15 @@ class Juniper(SwitchBase):
     def _for_protocol(self, interface_name):
         return self.custom_strategies.get_protocols_interface_name(interface_name)
 
+    def get_mac_addresses(self):
+        mac_table = self.netconf.rpc(to_ele("""
+            <get-ethernet-switching-table-information>
+                <detail/>
+            </get-ethernet-switching-table-information>
+        """))
+
+        return self.custom_strategies.parse_mac_address_table(mac_table)
+
 
 def all_interfaces():
     return new_ele("interfaces")

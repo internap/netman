@@ -31,7 +31,9 @@ from tests.adapters.switches.juniper_test import an_ok_response, is_xml, a_confi
 @ignore_deprecation_warnings
 def test_factory():
     lock = mock.Mock()
-    switch = juniper.qfx_copper_factory(SwitchDescriptor(hostname='hostname', model='juniper_qfx_copper', username='username', password='password', port=22), lock)
+    switch = juniper.qfx_copper_factory(
+        SwitchDescriptor(hostname='hostname', model='juniper_qfx_copper', username='username', password='password',
+                         port=22), lock)
 
     assert_that(switch, instance_of(FlowControlSwitch))
     assert_that(switch.wrapped_switch, instance_of(Juniper))
@@ -651,3 +653,69 @@ class JuniperTest(unittest.TestCase):
             </config>""")).and_return(an_ok_response())
 
         self.switch.set_bond_link_speed(10, '1g')
+
+    def test_get_mac_addresses(self):
+        self.netconf_mock.should_receive("rpc").with_args(is_xml("""
+                    <get-ethernet-switching-table-information>
+                    </get-ethernet-switching-table-information>
+                """)).and_return(an_rpc_response(textwrap.dedent("""
+                  <l2ng-l2ald-rtb-macdb>
+                    <l2ng-l2ald-mac-entry-vlan style="extensive">
+                      <l2ng-l2-mac-address>00:11:c6:01:53:a7</l2ng-l2-mac-address>
+                      <mac-count-global>8</mac-count-global>
+                      <learnt-mac-count>8</learnt-mac-count>
+                      <l2ng-l2-mac-routing-instance>default-switch</l2ng-l2-mac-routing-instance>
+                      <l2ng-l2-vlan-id>4063</l2ng-l2-vlan-id>
+                      <l2ng-l2-mac-vlan-name>VLAN4063</l2ng-l2-mac-vlan-name>
+                      <l2ng-l2-mac-logical-interface>ae47.0</l2ng-l2-mac-logical-interface>
+                      <l2ng-l2-mac-ifl-generation>240</l2ng-l2-mac-ifl-generation>
+                      <l2ng-l2-mac-entry-flags>in_hash,in_ifd,in_ifl,in_vlan,in_rtt,kernel,in_ifbd</l2ng-l2-mac-entry-flags>
+                      <l2ng-l2-mac-epoch>1</l2ng-l2-mac-epoch>
+                      <l2ng-l2-mac-sequence-number>2</l2ng-l2-mac-sequence-number>
+                      <l2ng-l2-mac-learn-mask>0x00000002</l2ng-l2-mac-learn-mask>
+                    </l2ng-l2ald-mac-entry-vlan>
+                    <l2ng-l2ald-mac-entry-vlan style="extensive">
+                      <l2ng-l2-mac-address>00:11:90:3d:33:58</l2ng-l2-mac-address>
+                      <mac-count-global>6</mac-count-global>
+                      <learnt-mac-count>6</learnt-mac-count>
+                      <l2ng-l2-mac-routing-instance>default-switch</l2ng-l2-mac-routing-instance>
+                      <l2ng-l2-vlan-id>4080</l2ng-l2-vlan-id>
+                      <l2ng-l2-mac-vlan-name>VLAN4080</l2ng-l2-mac-vlan-name>
+                      <l2ng-l2-mac-logical-interface>xe-0/0/6.0</l2ng-l2-mac-logical-interface>
+                      <l2ng-l2-mac-ifl-generation>3045</l2ng-l2-mac-ifl-generation>
+                      <l2ng-l2-mac-entry-flags>in_hash,in_ifd,in_ifl,in_vlan,in_rtt,kernel,in_ifbd</l2ng-l2-mac-entry-flags>
+                      <l2ng-l2-mac-epoch>31</l2ng-l2-mac-epoch>
+                      <l2ng-l2-mac-sequence-number>0</l2ng-l2-mac-sequence-number>
+                      <l2ng-l2-mac-learn-mask>0x00000001</l2ng-l2-mac-learn-mask>
+                    </l2ng-l2ald-mac-entry-vlan>
+                    <l2ng-l2ald-mac-entry-vlan style="extensive">
+                      <l2ng-l2-mac-address>00:11:b7:b4:74:2c</l2ng-l2-mac-address>
+                      <mac-count-global>8</mac-count-global>
+                      <learnt-mac-count>8</learnt-mac-count>
+                      <l2ng-l2-mac-routing-instance>default-switch</l2ng-l2-mac-routing-instance>
+                      <l2ng-l2-vlan-id>4063</l2ng-l2-vlan-id>
+                      <l2ng-l2-mac-vlan-name>VLAN4063</l2ng-l2-mac-vlan-name>
+                      <l2ng-l2-mac-logical-interface>ae47.0</l2ng-l2-mac-logical-interface>
+                      <l2ng-l2-mac-ifl-generation>240</l2ng-l2-mac-ifl-generation>
+                      <l2ng-l2-mac-entry-flags>in_hash,in_ifd,in_ifl,in_vlan,in_rtt,kernel,in_ifbd</l2ng-l2-mac-entry-flags>
+                      <l2ng-l2-mac-epoch>1</l2ng-l2-mac-epoch>
+                      <l2ng-l2-mac-sequence-number>2</l2ng-l2-mac-sequence-number>
+                      <l2ng-l2-mac-learn-mask>0x00000002</l2ng-l2-mac-learn-mask>
+                    </l2ng-l2ald-mac-entry-vlan>
+                </l2ng-l2ald-rtb-macdb>
+                """)))
+        mac_addresses = self.switch.get_mac_addresses()
+        assert_that(len(mac_addresses), is_(3))
+
+        for mac_address in mac_addresses:
+            if mac_address.mac_address == '00:11:c6:01:53:a7':
+                assert_that(mac_address.interface, is_('ae47.0'))
+                assert_that(mac_address.vlan, is_(4063))
+            elif mac_address.mac_address == '00:11:90:3d:33:58':
+                assert_that(mac_address.interface, is_('xe-0/0/6.0'))
+                assert_that(mac_address.vlan, is_(4080))
+            elif mac_address.mac_address == '00:11:b7:b4:74:2c':
+                assert_that(mac_address.interface, is_('ae47.0'))
+                assert_that(mac_address.vlan, is_(4063))
+            else:
+                self.assert_(False, "Invalid mac_address returned : {}".format(mac_address.mac_address))
