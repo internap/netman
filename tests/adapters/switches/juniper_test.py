@@ -6703,9 +6703,11 @@ class JuniperTest(unittest.TestCase):
             if mac_address.mac_address == '02:e0:52:36:38:01':
                 assert_that(mac_address.interface, is_('ae19.0'))
                 assert_that(mac_address.vlan, is_(3991))
+                assert_that(mac_address.type, is_('Agregated'))
             elif mac_address.mac_address == '52:d1:aa:9a:b2:2b':
                 assert_that(mac_address.interface, is_('ge-1/0/13.0'))
                 assert_that(mac_address.vlan, is_(3991))
+                assert_that(mac_address.type, is_('Physical'))
             else:
                 self.assert_(False, "Invalid mac_address returned : {}".format(mac_address.mac_address))
 

@@ -2,16 +2,19 @@
   {
     "interface": "1/g1",
     "vlan": 1234,
-    "mac_address": "AA:AA:AA:AA:AA:AA"
+    "mac_address": "AA:AA:AA:AA:AA:AA",
+    "type": "Physical"
   },
   {
-    "interface": "1/g2",
+    "interface": "ag01",
     "vlan": 5678,
-    "mac_address": "BB:BB:BB:BB:BB:BB"
+    "mac_address": "BB:BB:BB:BB:BB:BB",
+    "type": "Agregated"
   },
   {
-    "interface": "2/g22",
+    "interface": "vl1234",
     "vlan": 9012,
-    "mac_address": "CC:CC:CC:CC:CC:CC"
+    "mac_address": "CC:CC:CC:CC:CC:CC",
+    "type": "Vlan"
   }
 ]

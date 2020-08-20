@@ -303,9 +303,18 @@ class Dell(SwitchBase):
                 mac_address = "".join(mac_address.split('.'))
                 mac_address = ":".join([mac_address[x:x+2] for x in range(0, len(mac_address), 2)])
                 interface = regex[2]
-                mac.append(MacAddress(vlan, mac_address, interface))
+                type = self._parse_interface_type(interface)
+                mac.append(MacAddress(vlan, mac_address, interface, type))
 
         return mac
+
+    def _parse_interface_type(self, interface):
+        if interface.startswith("vlan"):
+            return "Vlan"
+        elif interface.startswith("ch"):
+            return "Agregated"
+        else:
+            return "Physical"
 
     def config(self):
         return SubShell(self.shell, enter="configure", exit_cmd='exit')

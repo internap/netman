@@ -711,11 +711,14 @@ class JuniperTest(unittest.TestCase):
             if mac_address.mac_address == '00:11:c6:01:53:a7':
                 assert_that(mac_address.interface, is_('ae47.0'))
                 assert_that(mac_address.vlan, is_(4063))
+                assert_that(mac_address.type, is_('Agregated'))
             elif mac_address.mac_address == '00:11:90:3d:33:58':
                 assert_that(mac_address.interface, is_('xe-0/0/6.0'))
                 assert_that(mac_address.vlan, is_(4080))
+                assert_that(mac_address.type, is_('Physical'))
             elif mac_address.mac_address == '00:11:b7:b4:74:2c':
                 assert_that(mac_address.interface, is_('ae47.0'))
                 assert_that(mac_address.vlan, is_(4063))
+                assert_that(mac_address.type, is_('Agregated'))
             else:
                 self.assert_(False, "Invalid mac_address returned : {}".format(mac_address.mac_address))
