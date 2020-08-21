@@ -227,12 +227,12 @@ class JuniperCustomStrategies(object):
             if interface not in rejected_interface_names:
                 mac_address = first_text(mac_table.xpath("mac-address"))
                 vlan = int(first_text(mac_table.xpath("mac-vlan-tag")))
-                type = self._parse_interface_type(interface)
+                interface, type = self._parse_interface_type(interface)
                 mac.append(MacAddress(vlan, mac_address, interface, type))
         return mac
 
     def _parse_interface_type(self, interface):
         if interface.startswith("ae"):
-            return "Agregated"
+            return interface.strip('.0'), "Agregated"
         else:
-            return "Physical"
+            return interface.strip('.0'), "Physical"
