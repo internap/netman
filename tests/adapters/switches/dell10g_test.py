@@ -1020,19 +1020,22 @@ class Dell10GTest(unittest.TestCase):
 
         mac = self.switch.get_mac_addresses()
 
-        assert_that(len(mac), is_(3))
+        assert_that(len(mac), is_(9))
 
-        assert_that(mac[0].vlan, is_("3217"))
-        assert_that(mac[0].mac_address, is_("00:25:90:6B:DA:CF"))
-        assert_that(mac[0].interface, is_("Te1/0/4"))
+        assert_that(mac[0].vlan, is_(1))
+        assert_that(mac[0].mac_address, is_("F8:B1:56:7E:FE:22"))
+        assert_that(mac[0].interface, is_("Vl1"))
+        assert_that(mac[0].type, is_("Vlan"))
 
-        assert_that(mac[1].vlan, is_("1234"))
-        assert_that(mac[1].mac_address, is_("00:25:90:6B:DB:FF"))
-        assert_that(mac[1].interface, is_("Te1/0/2"))
+        assert_that(mac[2].vlan, is_(2227))
+        assert_that(mac[2].mac_address, is_("FA:16:3E:ED:9D:0F"))
+        assert_that(mac[2].interface, is_("Po30"))
+        assert_that(mac[2].type, is_("Agregated"))
 
-        assert_that(mac[2].vlan, is_("3217"))
-        assert_that(mac[2].mac_address, is_("00:25:90:97:70:EB"))
-        assert_that(mac[2].interface, is_("Te1/0/14"))
+        assert_that(mac[6].vlan, is_(3217))
+        assert_that(mac[6].mac_address, is_("00:25:90:97:70:EB"))
+        assert_that(mac[6].interface, is_("Te1/0/14"))
+        assert_that(mac[6].type, is_("Physical"))
 
     def test_commit(self):
         self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])

@@ -59,5 +59,12 @@ class JuniperQfxCopperCustomStrategies(JuniperCustomStrategies):
             interface = first_text(vlan_path.xpath("l2ng-l2-mac-logical-interface"))
             vlan = int(first_text(vlan_path.xpath("l2ng-l2-vlan-id")))
             mac_address = first_text(vlan_path.xpath("l2ng-l2-mac-address"))
-            mac.append(MacAddress(vlan, mac_address, interface))
+            type = self._parse_interface_type(interface)
+            mac.append(MacAddress(vlan, mac_address, interface, type))
         return mac
+
+    def _parse_interface_type(self, interface):
+        if interface.startswith("ae"):
+            return "Agregated"
+        else:
+            return "Physical"

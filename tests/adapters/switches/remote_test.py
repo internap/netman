@@ -1716,12 +1716,15 @@ class RemoteSwitchTest(unittest.TestCase):
             if mac_address.get('mac_address') == 'AA:AA:AA:AA:AA:AA':
                 assert_that(mac_address.get('interface'), is_('1/g1'))
                 assert_that(mac_address.get('vlan'), is_(1234))
+                assert_that(mac_address.get('type'), is_('Physical'))
             elif mac_address.get('mac_address') == 'BB:BB:BB:BB:BB:BB':
-                assert_that(mac_address.get('interface'), is_('1/g2'))
+                assert_that(mac_address.get('interface'), is_('ag01'))
                 assert_that(mac_address.get('vlan'), is_(5678))
+                assert_that(mac_address.get('type'), is_('Agregated'))
             elif mac_address.get('mac_address') == 'CC:CC:CC:CC:CC:CC':
-                assert_that(mac_address.get('interface'), is_('2/g22'))
+                assert_that(mac_address.get('interface'), is_('vl1234'))
                 assert_that(mac_address.get('vlan'), is_(9012))
+                assert_that(mac_address.get('type'), is_('Vlan'))
             else:
                 self.assert_(False, "Invalid mac_address returned : {}".format(mac_address.mac_address))
 

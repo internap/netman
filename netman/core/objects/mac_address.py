@@ -15,7 +15,8 @@ from netman.core.objects import Model
 
 
 class MacAddress(Model):
-    def __init__(self, vlan, mac_address, interface):
+    def __init__(self, vlan, mac_address, interface, type):
         self.mac_address = mac_address
         self.interface = interface
         self.vlan = vlan
+        self.type = type

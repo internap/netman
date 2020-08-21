@@ -1561,14 +1561,17 @@ class DellTest(unittest.TestCase):
         assert_that(mac[0].vlan, is_(1201))
         assert_that(mac[0].mac_address, is_("F8:B1:56:49:0F:99"))
         assert_that(mac[0].interface, is_("vlan 1201"))
+        assert_that(mac[0].type, is_("Vlan"))
 
         assert_that(mac[2].vlan, is_(3991))
         assert_that(mac[2].mac_address, is_("02:E0:52:36:38:01"))
         assert_that(mac[2].interface, is_("1/g22"))
+        assert_that(mac[2].type, is_("Physical"))
 
         assert_that(mac[3].vlan, is_(3991))
         assert_that(mac[3].mac_address, is_("74:8E:F8:A7:1B:01"))
         assert_that(mac[3].interface, is_("ch1"))
+        assert_that(mac[3].type, is_("Agregated"))
 
     def test_commit(self):
         self.mocked_ssh_client.should_receive("do").with_args("copy running-config startup-config", wait_for="? (y/n) ").once().ordered().and_return([])
