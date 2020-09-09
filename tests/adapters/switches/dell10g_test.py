@@ -1029,7 +1029,7 @@ class Dell10GTest(unittest.TestCase):
 
         assert_that(mac[2].vlan, is_(2227))
         assert_that(mac[2].mac_address, is_("FA:16:3E:ED:9D:0F"))
-        assert_that(mac[2].interface, is_("Po30"))
+        assert_that(mac[2].interface, is_("port-channel 30"))
         assert_that(mac[2].type, is_("Agregated"))
 
         assert_that(mac[6].vlan, is_(3217))

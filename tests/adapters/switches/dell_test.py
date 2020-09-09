@@ -1570,7 +1570,7 @@ class DellTest(unittest.TestCase):
 
         assert_that(mac[3].vlan, is_(3991))
         assert_that(mac[3].mac_address, is_("74:8E:F8:A7:1B:01"))
-        assert_that(mac[3].interface, is_("ch1"))
+        assert_that(mac[3].interface, is_("port-channel 1"))
         assert_that(mac[3].type, is_("Agregated"))
 
     def test_commit(self):
