@@ -232,18 +232,18 @@ class Dell10G(Dell):
                 mac_address = "".join(mac_address.split('.'))
                 mac_address = ":".join([mac_address[x:x+2] for x in range(0, len(mac_address), 2)])
                 interface = regex[2]
-                type = self._parse_interface_type(interface)
+                interface, type = self._parse_interface_type(interface)
                 mac.append(MacAddress(vlan, mac_address, interface, type))
 
         return mac
 
     def _parse_interface_type(self, interface):
         if interface.startswith("Vl"):
-            return "Vlan"
+            return interface, "Vlan"
         elif interface.startswith("Po"):
-            return "Agregated"
+            return interface.replace("Po", "port-channel "), "Agregated"
         else:
-            return "Physical"
+            return interface, "Physical"
 
     def set_interface_mtu(self, interface_id, size):
         raise NotImplementedError()
