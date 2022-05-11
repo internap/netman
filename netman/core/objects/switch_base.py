@@ -121,6 +121,14 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
         pass
 
     @not_implemented
+    def set_interface_lacp_force_up(self, interface_id):
+        pass
+
+    @not_implemented
+    def unset_interface_lacp_force_up(self, interface_id):
+        pass
+
+    @not_implemented
     def set_interface_native_vlan(self, interface_id, vlan):
         pass
 

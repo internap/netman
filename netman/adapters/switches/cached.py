@@ -308,6 +308,14 @@ class CachedSwitch(SwitchBase):
         self.real_switch.unset_interface_auto_negotiation_state(interface_id)
         self.interfaces_cache[interface_id].auto_negotiation = None
 
+    def set_interface_lacp_force_up(self, interface_id):
+        self.real_switch.set_interface_lacp_force_up(interface_id)
+        self.interfaces_cache[interface_id].force_up = True
+
+    def unset_interface_lacp_force_up(self, interface_id):
+        self.real_switch.unset_interface_lacp_force_up(interface_id)
+        self.interfaces_cache[interface_id].force_up = None
+
     def add_bond(self, number):
         self.real_switch.add_bond(number)
         self.bonds_cache.refresh_items.add(number)

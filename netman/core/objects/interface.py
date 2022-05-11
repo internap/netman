@@ -32,3 +32,4 @@ class Interface(BaseInterface):
         self.name = name
         self.bond_master = bond_master
         self.auto_negotiation = auto_negotiation
+        self.force_up = None

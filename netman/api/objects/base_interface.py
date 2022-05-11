@@ -43,7 +43,8 @@ class V1(Serializer):
             access_vlan=base_interface.access_vlan,
             trunk_native_vlan=base_interface.trunk_native_vlan,
             trunk_vlans=sorted(base_interface.trunk_vlans),
-            mtu=base_interface.mtu
+            mtu=base_interface.mtu,
+            foce_up=base_interface.force_up
         )
 
 
