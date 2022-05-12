@@ -1,0 +1,65 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Pulls
+on: pull_request
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['2.7']
+        tox_env: ['py27']
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        pip install tox
+        tox -e ${{ matrix.tox_env }} --notest
+    - name: Run
+      run: |
+        tox -e ${{ matrix.tox_env }} -- --nocapture
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ '2.7' ]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v3
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install tox
+          tox -r -e pep8 --notest
+      - name: lint
+        run: |
+          tox -e pep8
+  docker-build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['2.7']
+        tox_env: ['py27']
+    steps:
+      - uses: actions/checkout@v3
+      - name: docker build
+        run: |
+          docker build . -t internap/netman:latest
+      - name: docker verify
+        run: |
+          docker compose up -d
+          docker inspect -f {{.State.Running}} netman-tsr1.yul1.example.net-1
+          docker inspect -f {{.State.Running}} netman-netman-1
+          while [[ $(docker inspect -f {{.State.Health.Status}} netman-netman-1) != "healthy" ]]; do echo "Container is" $(docker inspect -f {{.State.Health.Status}} netman-netman-1); sleep 1; done;
+          curl --fail -vvv -X POST http://localhost:32771/switches/netman-tsr1.yul1.example.net-1/vlans -d '{"number": 1000, "name": "myvlan"}' -H 'Content-Type: application/json' -H 'Netman-model: cisco' -H 'Netman-username: root' -H 'Netman-password: root'
