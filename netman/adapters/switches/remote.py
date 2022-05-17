@@ -271,10 +271,10 @@ class RemoteSwitch(SwitchBase):
         self.delete("/interfaces/" + interface_id + '/auto-negotiation')
 
     def set_interface_lacp_force_up(self, interface_id):
-        self.put("/interfaces/" + interface_id + '/force-up')
+        self.put("/interfaces/" + interface_id + '/lacp-force-up')
 
     def unset_interface_lacp_force_up(self, interface_id):
-        self.delete("/interfaces/" + interface_id + '/force-up')
+        self.delete("/interfaces/" + interface_id + '/lacp-force-up')
 
     def add_bond(self, number):
         self.post("/bonds", data={'number': number})
