@@ -1120,6 +1120,7 @@ def get_bond_master(interface_node):
         interface_node.xpath('ether-options/ieee-802.3ad/bundle'),
         transformer=bond_number)
 
+
 def value_of(xpath_result, transformer=None):
     node = first(xpath_result)
     if node is not None:
