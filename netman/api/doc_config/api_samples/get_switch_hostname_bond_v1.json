@@ -11,6 +11,7 @@
     "trunk_native_vlan": null,
     "trunk_vlans": [],
     "auto_negotiation": null,
-    "mtu": 1500
+    "mtu": 1500,
+    "force_up": null
   }
 }

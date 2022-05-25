@@ -27,8 +27,9 @@ class BaseInterface(Model):
 
 
 class Interface(BaseInterface):
-    def __init__(self, name=None, bond_master=None, auto_negotiation=None, **interface):
+    def __init__(self, name=None, bond_master=None, auto_negotiation=None, force_up=None, **interface):
         super(Interface, self).__init__(**interface)
         self.name = name
         self.bond_master = bond_master
         self.auto_negotiation = auto_negotiation
+        self.force_up = force_up

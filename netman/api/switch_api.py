@@ -75,6 +75,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lldp', view_func=self.set_interface_lldp_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.set_interface_auto_negotiation_state, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.unset_interface_auto_negotiation_state, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lacp-force-up', view_func=self.set_interface_lacp_force_up, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lacp-force-up', view_func=self.unset_interface_lacp_force_up, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.set_interface_mtu, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.unset_interface_mtu, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
@@ -498,6 +500,31 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.unset_interface_auto_negotiation_state(interface_id)
+        return 204, None
+
+    @to_response
+    @resource(Switch, Interface)
+    def set_interface_lacp_force_up(self, switch, interface_id):
+        """
+        Sets lacp force_up state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        """
+        switch.set_interface_lacp_force_up(interface_id)
+        return 204, None
+
+    @to_response
+    @resource(Switch, Interface)
+    def unset_interface_lacp_force_up(self, switch, interface_id):
+        """
+        Unsets lacp force_up state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        """
+
+        switch.unset_interface_lacp_force_up(interface_id)
         return 204, None
 
     @to_response

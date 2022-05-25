@@ -28,12 +28,13 @@ class V1(Serializer):
             base_interface.to_api(interface),
             name=interface.name,
             bond_master=interface.bond_master,
-            auto_negotiation=interface.auto_negotiation
+            auto_negotiation=interface.auto_negotiation,
+            force_up=interface.force_up
         )
 
     def to_core(self, serialized):
         params = dict(vars(base_interface.to_core(serialized)))
-        params.update(sub_dict(serialized, 'name', 'bond_master', 'auto_negotiation'))
+        params.update(sub_dict(serialized, 'name', 'bond_master', 'auto_negotiation', 'force_up'))
         return Interface(**params)
 
 

@@ -600,6 +600,7 @@ class RemoteSwitchTest(unittest.TestCase):
         assert_that(interface.access_vlan, equal_to(None))
         assert_that(interface.trunk_native_vlan, equal_to(2999))
         assert_that(interface.trunk_vlans, equal_to([3000, 3001, 3002]))
+        assert_that(interface.force_up, equal_to(None))
 
     def test_get_nonexistent_interface_raises(self):
         self.requests_mock.should_receive("get").once().with_args(

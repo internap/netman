@@ -356,6 +356,46 @@ class Juniper(SwitchBase):
 
             self._push_interface_update(interface_id, update)
 
+    def set_interface_lacp_force_up(self, interface_id):
+        content = to_ele("""
+            <interface>
+                <name>{0}</name>
+            </interface>
+            """.format(interface_id))
+        content.append(to_ele("""
+            <ether-options>
+                <ieee-802.3ad>
+                    <lacp>
+                        <force-up/>
+                    </lacp>
+                </ieee-802.3ad>
+            </ether-options>
+        """))
+        update = Update()
+        update.add_interface(content)
+
+        self._push_interface_update(interface_id, update)
+
+    def unset_interface_lacp_force_up(self, interface_id):
+        content = to_ele("""
+            <interface>
+                <name>{0}</name>
+            </interface>
+            """.format(interface_id))
+        content.append(
+            to_ele("""
+            <ether-options>
+                <ieee-802.3ad>
+                    <lacp operation=\"delete\"></lacp>
+                </ieee-802.3ad>
+            </ether-options>
+            """)
+        )
+        update = Update()
+        update.add_interface(content)
+
+        self._push_interface_update(interface_id, update)
+
     def reset_interface(self, interface_id):
         content = to_ele("""
             <interface operation=\"delete\">
@@ -738,6 +778,8 @@ class Juniper(SwitchBase):
                 interface.auto_negotiation = True
             elif first(interface_node.xpath('ether-options/no-auto-negotiation')) is not None:
                 interface.auto_negotiation = False
+            if first(interface_node.xpath('ether-options/ieee-802.3ad/lacp/force-up')) is not None:
+                interface.force_up = True
         return interface
 
     def node_to_interface(self, interface_node, config):
