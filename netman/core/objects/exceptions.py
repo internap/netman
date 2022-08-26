@@ -224,6 +224,11 @@ class BadBondNumber(InvalidValue):
         super(BadBondNumber, self).__init__("Bond number is invalid")
 
 
+class BadRecoveryTimeoutNumber(InvalidValue):
+    def __init__(self):
+        super(BadRecoveryTimeoutNumber, self).__init__("Recovery timeout number is invalid")
+
+
 class InterfaceNotInBond(UnknownResource):
     def __init__(self):
         super(InterfaceNotInBond, self).__init__("Interface not associated to specified bond")

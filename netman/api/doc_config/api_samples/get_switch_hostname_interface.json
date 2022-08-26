@@ -8,5 +8,6 @@
    "trunk_vlans": [3000, 3001, 3002],
    "auto_negotiation": null,
    "mtu": 1500,
-   "force_up": null
+   "force_up": null,
+   "recovery-timeout": null
 }

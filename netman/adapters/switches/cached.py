@@ -316,6 +316,14 @@ class CachedSwitch(SwitchBase):
         self.real_switch.unset_interface_lacp_force_up(interface_id)
         self.interfaces_cache[interface_id].force_up = None
 
+    def set_interface_recovery_timeout(self, interface_id, recovery_timeout):
+        self.real_switch.set_interface_lacp_force_up(interface_id, recovery_timeout)
+        self.interfaces_cache[interface_id].recovery_timeout = recovery_timeout
+
+    def set_bond_recovery_timeout(self, interface_id, recovery_timeout):
+        self.real_switch.set_bond_lacp_force_up(interface_id, recovery_timeout)
+        self.interfaces_cache[interface_id].recovery_timeout = recovery_timeout
+
     def add_bond(self, number):
         self.real_switch.add_bond(number)
         self.bonds_cache.refresh_items.add(number)

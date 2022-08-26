@@ -129,6 +129,14 @@ class SwitchOperations(BackwardCompatibleSwitchOperations):
         pass
 
     @not_implemented
+    def set_interface_recovery_timeout(self, interface_id, recovery_timeout):
+        pass
+
+    @not_implemented
+    def set_bond_recovery_timeout(self, bond_id, recovery_timeout):
+        pass
+
+    @not_implemented
     def set_interface_native_vlan(self, interface_id, vlan):
         pass
 

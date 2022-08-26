@@ -396,6 +396,18 @@ class Juniper(SwitchBase):
 
         self._push_interface_update(interface_id, update)
 
+    def set_interface_recovery_timeout(self, interface_id, recovery_timeout):
+        update_attributes = [to_ele("<recovery-timeout>{}</recovery-timeout>".format(recovery_timeout))]
+        update = Update()
+        update.add_interface(self.custom_strategies.interface_update(interface_id, "0", update_attributes))
+        self._push_interface_update(interface_id, update)
+
+    def set_bond_recovery_timeout(self, bond_id, recovery_timeout):
+        update_attributes = [to_ele("<recovery-timeout>{}</recovery-timeout>".format(recovery_timeout))]
+        update = Update()
+        update.add_interface(self.custom_strategies.interface_update(bond_name(bond_id), "0", update_attributes))
+        self._push_interface_update(bond_name(bond_id), update)
+
     def reset_interface(self, interface_id):
         content = to_ele("""
             <interface operation=\"delete\">
@@ -780,6 +792,8 @@ class Juniper(SwitchBase):
                 interface.auto_negotiation = False
             if first(interface_node.xpath('ether-options/ieee-802.3ad/lacp/force-up')) is not None:
                 interface.force_up = True
+            if first(interface_node.xpath("unit/family/ethernet-switching/recovery-timeout")) is not None:
+                interface.force_up = interface_node.xpath("unit/family/ethernet-switching/recovery-timeout")[0].text
         return interface
 
     def node_to_interface(self, interface_node, config):

@@ -9,7 +9,8 @@
       "trunk_vlans": [3000, 3001, 3002],
       "auto_negotiation": null,
       "mtu": 1500,
-      "force_up": null
+      "force_up": null,
+      "recovery-timeout": null
    },
    {
       "name": "FastEthernet0/3",
@@ -21,7 +22,8 @@
       "trunk_vlans": [],
       "auto_negotiation": null,
       "mtu": null,
-      "force_up": null
+      "force_up": null,
+      "recovery-timeout": null
    },
    {
       "name": "GigabitEthernet0/6",
@@ -33,7 +35,8 @@
       "trunk_vlans": [3000, 3001, 3002],
       "auto_negotiation": true,
       "mtu": null,
-      "force_up": null
+      "force_up": null,
+      "recovery-timeout": null
    },
    {
       "name": "GigabitEthernet0/8",
@@ -45,6 +48,7 @@
       "trunk_vlans": [],
       "auto_negotiation": false,
       "mtu": null,
-      "force_up": null
+      "force_up": null,
+      "recovery-timeout": null
    }
 ]
