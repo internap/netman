@@ -16,6 +16,7 @@ from ncclient import manager
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import new_ele, sub_ele, to_ele, to_xml
 from netaddr import IPNetwork
+import xml.etree.ElementTree as ET
 
 from netman import regex
 from netman.core.objects.access_groups import IN, OUT
@@ -793,7 +794,10 @@ class Juniper(SwitchBase):
             if first(interface_node.xpath('ether-options/ieee-802.3ad/lacp/force-up')) is not None:
                 interface.force_up = True
             if first(interface_node.xpath("unit/family/ethernet-switching/recovery-timeout")) is not None:
-                interface.force_up = interface_node.xpath("unit/family/ethernet-switching/recovery-timeout")[0].text
+                interface.recovery_timeout = \
+                    value_of(
+                        interface_node.xpath("unit/family/ethernet-switching/recovery-timeout/time-in-seconds"),
+                        transformer=int)
         return interface
 
     def node_to_interface(self, interface_node, config):

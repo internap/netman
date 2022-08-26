@@ -75,7 +75,6 @@ class Bond:
         self.bond = None
 
     def process(self, parameters):
-        print parameters
         self.bond = is_bond_number(parameters.pop('bond_number'))['bond_number']
 
     def __enter__(self):
@@ -356,6 +355,7 @@ def is_recovery_timeout(data, **_):
     return {
         'recovery_timeout': json_data["recovery_timeout"]
     }
+
 
 def is_unincast_rpf_mode(data, **_):
     if data not in [STRICT]:

@@ -77,7 +77,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.unset_interface_auto_negotiation_state, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lacp-force-up', view_func=self.set_interface_lacp_force_up, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lacp-force-up', view_func=self.unset_interface_lacp_force_up, methods=['DELETE'])
-        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/recovery-timeout ', view_func=self.set_interface_recovery_timeout, methods=['PUT'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/recovery-timeout', view_func=self.set_interface_recovery_timeout, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.set_interface_mtu, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.unset_interface_mtu, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
