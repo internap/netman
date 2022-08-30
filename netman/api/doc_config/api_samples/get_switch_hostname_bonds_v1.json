@@ -14,7 +14,7 @@
       "auto_negotiation": null,
       "mtu": 1500,
       "force_up": null,
-      "recovery-timeout": null
+      "recovery_timeout": null
     }
   },
   {
@@ -39,7 +39,7 @@
       "auto_negotiation": null,
       "mtu": null,
       "force_up": null,
-      "recovery-timeout": null
+      "recovery_timeout": null
     }
   },
   {
@@ -61,7 +61,7 @@
       "auto_negotiation": null,
       "mtu": null,
       "force_up": null,
-      "recovery-timeout": null
+      "recovery_timeout": null
     }
   }
 ]

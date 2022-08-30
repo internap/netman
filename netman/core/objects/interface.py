@@ -17,21 +17,20 @@ from netman.core.objects import Model
 
 class BaseInterface(Model):
     def __init__(self, shutdown=None, port_mode=None, access_vlan=None,
-                 trunk_native_vlan=None, trunk_vlans=None, mtu=None):
+                 trunk_native_vlan=None, trunk_vlans=None, mtu=None, recovery_timeout=None):
         self.shutdown = shutdown
         self.port_mode = port_mode
         self.access_vlan = access_vlan
         self.trunk_native_vlan = trunk_native_vlan
         self.trunk_vlans = trunk_vlans or []
         self.mtu = mtu
+        self.recovery_timeout = recovery_timeout
 
 
 class Interface(BaseInterface):
-    def __init__(self, name=None, bond_master=None, auto_negotiation=None, force_up=None, recovery_timeout=None,
-                 **interface):
+    def __init__(self, name=None, bond_master=None, auto_negotiation=None, force_up=None, **interface):
         super(Interface, self).__init__(**interface)
         self.name = name
         self.bond_master = bond_master
         self.auto_negotiation = auto_negotiation
         self.force_up = force_up
-        self.recovery_timeout = recovery_timeout

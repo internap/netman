@@ -16,7 +16,6 @@ from ncclient import manager
 from ncclient.operations import RPCError, TimeoutExpiredError
 from ncclient.xml_ import new_ele, sub_ele, to_ele, to_xml
 from netaddr import IPNetwork
-import xml.etree.ElementTree as ET
 
 from netman import regex
 from netman.core.objects.access_groups import IN, OUT
