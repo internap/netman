@@ -276,6 +276,12 @@ class RemoteSwitch(SwitchBase):
     def unset_interface_lacp_force_up(self, interface_id):
         self.delete("/interfaces/" + interface_id + '/lacp-force-up')
 
+    def set_interface_recovery_timeout(self, interface_id, recovery_timeout):
+        self.put("/interfaces/{0}/recovery-timeout".format(interface_id), data={'recovery_timeout': recovery_timeout})
+
+    def set_bond_recovery_timeout(self, bond_id, recovery_timeout):
+        self.put("/bonds/{0}/recovery-timeout".format(bond_id), data={'recovery_timeout': recovery_timeout})
+
     def add_bond(self, number):
         self.post("/bonds", data={'number': number})
 

@@ -20,7 +20,7 @@ from netman.api.switch_api_base import SwitchApiBase
 from netman.api.validators import Switch, is_boolean, is_vlan_number, Interface, Vlan, resource, content, is_ip_network, \
     IPNetworkResource, is_access_group_name, Direction, is_vlan, is_bond, Bond, \
     is_bond_link_speed, is_bond_number, is_description, is_vrf_name, \
-    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode
+    is_vrrp_group, VrrpGroup, is_dict_with, optional, is_type, is_int, is_unincast_rpf_mode, is_recovery_timeout
 from netman.core.objects.interface_states import OFF, ON
 from netman.core.validator import is_valid_mpls_state
 
@@ -77,6 +77,7 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/auto-negotiation', view_func=self.unset_interface_auto_negotiation_state, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lacp-force-up', view_func=self.set_interface_lacp_force_up, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/lacp-force-up', view_func=self.unset_interface_lacp_force_up, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/recovery-timeout', view_func=self.set_interface_recovery_timeout, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.set_interface_mtu, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/interfaces/<path:interface_id>/mtu', view_func=self.unset_interface_mtu, methods=['DELETE'])
         server.add_url_rule('/switches/<hostname>/bonds', view_func=self.get_bonds, methods=['GET'])
@@ -96,6 +97,8 @@ class SwitchApi(SwitchApiBase):
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/spanning-tree', view_func=self.edit_bond_spanning_tree, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/mtu', view_func=self.set_bond_mtu, methods=['PUT'])
         server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/mtu', view_func=self.unset_bond_mtu, methods=['DELETE'])
+        server.add_url_rule('/switches/<hostname>/bonds/<bond_number>/recovery-timeout', view_func=self.set_bond_recovery_timeout, methods=['PUT'])
+
         return self
 
     @to_response
@@ -525,6 +528,34 @@ class SwitchApi(SwitchApiBase):
         """
 
         switch.unset_interface_lacp_force_up(interface_id)
+        return 204, None
+
+    @to_response
+    @content(is_recovery_timeout)
+    @resource(Switch, Interface)
+    def set_interface_recovery_timeout(self, switch, interface_id, recovery_timeout):
+        """
+        Sets lacp force_up state of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str interface_id: Interface name (ex. ``FastEthernet0/1``, ``ethernet1/11``)
+        :arg int recovery_timeout: Recovery timeout
+        """
+        switch.set_interface_recovery_timeout(interface_id, recovery_timeout)
+        return 204, None
+
+    @to_response
+    @content(is_recovery_timeout)
+    @resource(Switch, Bond)
+    def set_bond_recovery_timeout(self, switch, bond_number, recovery_timeout):
+        """
+        Sets recovery timeout of an interface
+
+        :arg str hostname: Hostname or IP of the switch
+        :arg str bond_id: Bond id (ex. ``1``, ``2``)
+        :arg int recovery_timeout: Recovery timeout (ex. ``100``, ``200``)
+        """
+        switch.set_bond_recovery_timeout(bond_number, recovery_timeout)
         return 204, None
 
     @to_response

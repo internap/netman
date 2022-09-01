@@ -24,7 +24,7 @@ from netman.api.api_utils import BadRequest, MultiContext
 from netman.core.objects.access_groups import IN, OUT
 from netman.core.objects.exceptions import UnknownResource, BadVlanNumber, \
     BadVlanName, BadBondNumber, BadBondLinkSpeed, MalformedSwitchSessionRequest, \
-    BadVrrpGroupNumber
+    BadVrrpGroupNumber, BadRecoveryTimeoutNumber
 from netman.core.objects.unicast_rpf_modes import STRICT
 
 
@@ -340,6 +340,20 @@ def is_bond(data, **_):
 
     return {
         'bond_number': is_bond_number(json_data["number"])['bond_number'],
+    }
+
+
+def is_recovery_timeout(data, **_):
+    try:
+        json_data = json.loads(data)
+    except ValueError:
+        raise BadRequest("Malformed content, should be a JSON object")
+
+    if "recovery_timeout" not in json_data:
+        raise BadRecoveryTimeoutNumber()
+
+    return {
+        'recovery_timeout': json_data["recovery_timeout"]
     }
 
 
