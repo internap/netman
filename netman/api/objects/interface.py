@@ -35,7 +35,7 @@ class V1(Serializer):
 
     def to_core(self, serialized):
         params = dict(vars(base_interface.to_core(serialized)))
-        params.update(sub_dict(serialized, 'name', 'bond_master', 'auto_negotiation', 'force_up', 'recovery_timeout'))
+        params.update(sub_dict(serialized, 'name', 'bond_master', 'auto_negotiation', 'force_up'))
         return Interface(**params)
 
 
